@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Candidat, CandidatDocument } from './schemas/candidat.schema';
@@ -34,13 +34,21 @@ export class CandidatsService {
     return this.candidatModel.findById(id).exec();
   }
 
-  update(id: string, updateCandidatDto: UpdateCandidatDto) {
-    return this.candidatModel
+  async update(id: string, updateCandidatDto: UpdateCandidatDto) {
+    const candidat = await this.candidatModel
       .findByIdAndUpdate(id, updateCandidatDto, { new: true })
       .exec();
+    if (!candidat) {
+      throw new NotFoundException('Candidat introuvable');
+    }
+    return candidat;
   }
 
-  remove(id: string) {
-    return this.candidatModel.findByIdAndDelete(id).exec();
+  async remove(id: string) {
+    const candidat = await this.candidatModel.findByIdAndDelete(id).exec();
+    if (!candidat) {
+      throw new NotFoundException('Candidat introuvable');
+    }
+    return candidat;
   }
 }

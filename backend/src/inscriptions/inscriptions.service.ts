@@ -1,7 +1,7 @@
-import { Injectable, NotFoundException, BadRequestException  } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { Inscription, InscriptionDocument, Service, ModePaiement  } from './schemas/inscription.schema';
+import { Inscription, InscriptionDocument, Service, ModePaiement } from './schemas/inscription.schema';
 import { Candidat, CandidatDocument } from '../candidats/schemas/candidat.schema';
 import { CreateInscriptionDto } from './dto/create-inscription.dto';
 import { UpdateInscriptionDto } from './dto/update-inscription.dto';
@@ -13,7 +13,7 @@ export class InscriptionsService {
     @InjectModel(Candidat.name) private candidatModel: Model<CandidatDocument>,
   ) {}
 
- async create(createInscriptionDto: CreateInscriptionDto) {
+  async create(createInscriptionDto: CreateInscriptionDto) {
     // 1. Vérifier que le candidat existe
     const candidat = await this.candidatModel.findById(createInscriptionDto.candidatId);
     if (!candidat) {
@@ -72,6 +72,14 @@ export class InscriptionsService {
       montantPaye = createInscriptionDto.montantPaye ?? 0;
     }
 
+    // 5.5 Vérifier que le montant payé est cohérent
+    if (montantPaye < 0) {
+      throw new BadRequestException('Le montant payé ne peut pas être négatif');
+    }
+    if (montantPaye > montantTotal) {
+      throw new BadRequestException('Le montant payé ne peut pas dépasser le montant total');
+    }
+
     // 6. Calculer le reste à payer
     const resteAPayer = montantTotal - montantPaye;
 
@@ -105,7 +113,7 @@ export class InscriptionsService {
       numeroRecu,
     });
 
-   return inscription.save();
+    return inscription.save();
   }
 
   async findAll(filtres: { nom?: string; service?: string; regime?: string }) {
@@ -144,5 +152,22 @@ export class InscriptionsService {
 
   remove(id: string) {
     return this.inscriptionModel.findByIdAndDelete(id).exec();
+  }
+
+  async ajouterPaiement(id: string, montant: number) {
+    const inscription = await this.inscriptionModel.findById(id);
+    if (!inscription) {
+      throw new NotFoundException('Inscription introuvable');
+    }
+    if (montant <= 0) {
+      throw new BadRequestException('Le montant du paiement doit être positif');
+    }
+    const nouveauMontantPaye = inscription.montantPaye + montant;
+    if (nouveauMontantPaye > inscription.montantTotal) {
+      throw new BadRequestException('Ce paiement dépasserait le montant total dû');
+    }
+    inscription.montantPaye = nouveauMontantPaye;
+    inscription.resteAPayer = inscription.montantTotal - inscription.montantPaye;
+    return inscription.save();
   }
 }

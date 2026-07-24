@@ -1,5 +1,5 @@
 import { Controller, Get, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { StatsService } from './stats.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
@@ -12,22 +12,26 @@ import { Roles } from '../auth/roles.decorator';
 export class StatsController {
   constructor(private readonly statsService: StatsService) {}
 
-  @Get('journalieres')
+  @ApiOperation({ summary: "Statistiques du jour : candidats totaux, inscriptions et montant encaissé aujourd'hui" })
+  @Get('daily')
   journalieres() {
     return this.statsService.journalieres();
   }
 
-  @Get('hebdomadaires')
+  @ApiOperation({ summary: 'Statistiques de la semaine en cours' })
+  @Get('weekly')
   hebdomadaires() {
     return this.statsService.hebdomadaires();
   }
 
-  @Get('mensuelles')
+  @ApiOperation({ summary: 'Statistiques du mois en cours' })
+  @Get('monthly')
   mensuelles() {
     return this.statsService.mensuelles();
   }
 
-  @Get('graphiques')
+  @ApiOperation({ summary: "Données journalières du mois, pour construire des graphiques d'inscriptions et d'encaissements" })
+  @Get('charts')
   graphiques() {
     return this.statsService.graphiques();
   }
