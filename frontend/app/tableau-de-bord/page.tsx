@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "../lib/api";
 
@@ -40,7 +40,7 @@ function semaineDuMois(dateStr: string) {
   return `Semaine ${numeroSemaine}`;
 }
 
-const ICONES: Record<string, JSX.Element> = {
+const ICONES: Record<string, ReactNode> = {
   jour: (
     <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6">
       <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" />
