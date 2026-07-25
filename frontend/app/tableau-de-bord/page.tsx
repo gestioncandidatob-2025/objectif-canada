@@ -41,7 +41,11 @@ function semaineDuMois(dateStr: string) {
 }
 
 const ICONES: Record<string, ReactNode> = {
+<<<<<<< HEAD
       jour: (
+=======
+  jour: (
+>>>>>>> b7bac6d19c5cd94bcb8982e41cf06126a0f80f66
     <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6">
       <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" />
       <path d="M12 7v5l3.5 2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
