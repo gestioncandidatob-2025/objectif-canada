@@ -150,7 +150,7 @@ export default function CandidatsPage() {
         >
           ← Retour
         </button>
-        
+
         <a href="/bienvenue">
           <img
             src="/logo.jpeg"
@@ -158,6 +158,7 @@ export default function CandidatsPage() {
             className="mx-auto h-20 w-auto object-contain"
           />
         </a>
+
         <h1
           className="mb-6 mt-2 text-3xl text-ink"
           style={{ fontFamily: "var(--font-display)" }}
@@ -386,13 +387,13 @@ export default function CandidatsPage() {
                         <div className="flex gap-2 pt-1">
                           <button
                             onClick={() => enregistrerModification(insc._id)}
-                            className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition active:scale-[0.97] hover:bg-accent-hover"
+                            className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition hover:bg-accent-hover"
                           >
                             Enregistrer
                           </button>
                           <button
                             onClick={() => setLigneEnEdition(null)}
-                            className="rounded-lg border border-ink/15 px-4 py-2 text-sm font-medium text-ink transition active:scale-[0.97] hover:bg-paper"
+                            className="rounded-lg border border-ink/15 px-4 py-2 text-sm font-medium text-ink transition hover:bg-paper"
                           >
                             Annuler
                           </button>
