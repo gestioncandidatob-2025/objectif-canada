@@ -207,8 +207,8 @@ export default function CandidatsPage() {
           Chercher
         </button>
 
-        <div className="overflow-hidden rounded-2xl border border-ink/10 bg-white shadow-sm">
-          <table className="w-full border-collapse text-sm">
+        <div className="overflow-x-auto rounded-2xl border border-ink/10 bg-white shadow-sm">
+          <table className="w-full min-w-[700px] border-collapse text-sm">
             <thead>
               <tr className="border-b border-ink/10 bg-paper text-left text-ink-soft">
                 <th className="px-4 py-3 font-medium">Nom</th>
