@@ -5,6 +5,7 @@ import { Inscription, InscriptionDocument, Service, ModePaiement } from './schem
 import { Candidat, CandidatDocument } from '../candidats/schemas/candidat.schema';
 import { CreateInscriptionDto } from './dto/create-inscription.dto';
 import { UpdateInscriptionDto } from './dto/update-inscription.dto';
+import { Types } from 'mongoose';
 
 @Injectable()
 export class InscriptionsService {
@@ -96,7 +97,7 @@ export class InscriptionsService {
 
     // 8. Assembler et sauvegarder l'inscription
     const inscription = new this.inscriptionModel({
-      candidatId: createInscriptionDto.candidatId,
+      candidatId: new Types.ObjectId(createInscriptionDto.candidatId),
       service: createInscriptionDto.service,
       regime: createInscriptionDto.regime,
       dateInscription,
@@ -116,7 +117,10 @@ export class InscriptionsService {
     return inscription.save();
   }
 
-  async findAll(filtres: { nom?: string; service?: string; regime?: string }) {
+
+// ... (garde le reste des imports existants)
+
+  async findAll(filtres: { nom?: string; service?: string; regime?: string; candidatId?: string }) {
     const filtre: Record<string, any> = {};
 
     if (filtres.service) {
@@ -124,6 +128,9 @@ export class InscriptionsService {
     }
     if (filtres.regime) {
       filtre.regime = filtres.regime;
+    }
+    if (filtres.candidatId && Types.ObjectId.isValid(filtres.candidatId)) {
+      filtre.candidatId = new Types.ObjectId(filtres.candidatId);
     }
 
     if (filtres.nom) {
@@ -139,7 +146,6 @@ export class InscriptionsService {
 
     return this.inscriptionModel.find(filtre).populate('candidatId').exec();
   }
-
   findOne(id: string) {
     return this.inscriptionModel.findById(id).populate('candidatId').exec();
   }

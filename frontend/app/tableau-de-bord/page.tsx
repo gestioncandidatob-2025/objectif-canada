@@ -41,11 +41,7 @@ function semaineDuMois(dateStr: string) {
 }
 
 const ICONES: Record<string, ReactNode> = {
-<<<<<<< HEAD
       jour: (
-=======
-  jour: (
->>>>>>> b7bac6d19c5cd94bcb8982e41cf06126a0f80f66
     <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6">
       <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" />
       <path d="M12 7v5l3.5 2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
@@ -212,11 +208,19 @@ export default function TableauDeBordPage() {
   return (
     <div className="min-h-screen bg-paper px-4 py-12">
       <div className="mx-auto max-w-4xl">
-        <img
+        <button
+          onClick={() => router.back()}
+          className="mb-4 flex items-center gap-1 text-sm font-medium text-ink-soft transition hover:text-ink"
+        >
+          ← Retour
+        </button>
+        <a href="/bienvenue">
+          <img
             src="/logo.jpeg"
             alt="Logo"
             className="mx-auto h-20 w-auto object-contain"
           />
+        </a>
         <h1
           className="mb-10 mt-2 text-4xl text-ink"
           style={{ fontFamily: "var(--font-display)" }}

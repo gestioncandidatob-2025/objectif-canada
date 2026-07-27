@@ -181,11 +181,19 @@ export default function EnregistrementPage() {
   return (
     <div className="min-h-screen bg-paper px-4 py-10">
       <div className="mx-auto max-w-xl">
-        <img
+         <button
+          onClick={() => router.back()}
+          className="mb-4 flex items-center gap-1 text-sm font-medium text-ink-soft transition hover:text-ink"
+        >
+          ← Retour
+        </button>
+       <a href="/bienvenue">
+          <img
             src="/logo.jpeg"
             alt="Logo"
             className="mx-auto h-20 w-auto object-contain"
           />
+        </a>
         <h1
           className="mb-6 mt-2 text-3xl text-ink"
           style={{ fontFamily: "var(--font-display)" }}

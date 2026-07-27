@@ -144,9 +144,20 @@ export default function CandidatsPage() {
   return (
     <div className="min-h-screen bg-paper px-4 py-10">
       <div className="mx-auto max-w-5xl">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-seal">
-          Objectif Canada
-        </p>
+        <button
+          onClick={() => router.back()}
+          className="mb-4 flex items-center gap-1 text-sm font-medium text-ink-soft transition hover:text-ink"
+        >
+          ← Retour
+        </button>
+        
+        <a href="/bienvenue">
+          <img
+            src="/logo.jpeg"
+            alt="Logo"
+            className="mx-auto h-20 w-auto object-contain"
+          />
+        </a>
         <h1
           className="mb-6 mt-2 text-3xl text-ink"
           style={{ fontFamily: "var(--font-display)" }}
@@ -211,7 +222,14 @@ export default function CandidatsPage() {
               {inscriptions.map((insc) => (
                 <>
                   <tr key={insc._id} className="border-b border-ink/5">
-                    <td className="px-4 py-3">{insc.candidatId?.nom}</td>
+                    <td className="px-4 py-3">
+                      <a
+                        href={`/candidats/${insc.candidatId?._id}`}
+                        className="font-medium text-ink underline-offset-2 hover:underline"
+                      >
+                        {insc.candidatId?.nom}
+                      </a>
+                    </td>
                     <td className="px-4 py-3">{insc.candidatId?.prenom}</td>
                     <td className="px-4 py-3">
                       {LABEL_SERVICE[insc.service] ?? insc.service}
@@ -226,31 +244,58 @@ export default function CandidatsPage() {
                         N° {insc.numeroRecu}
                       </a>
                     </td>
-                    <td className="space-x-3 px-4 py-3">
-                      <button
-                        onClick={() =>
-                          setLigneOuverte(ligneOuverte === insc._id ? null : insc._id)
-                        }
-                        className="font-medium text-accent transition active:scale-[0.95] hover:underline"
-                      >
-                        Voir plus
-                      </button>
-                      {estAdmin && (
-                        <>
-                          <button
-                            onClick={() => ouvrirEdition(insc)}
-                            className="font-medium text-seal transition active:scale-[0.95] hover:underline"
-                          >
-                            Modifier
-                          </button>
-                          <button
-                            onClick={() => supprimer(insc._id)}
-                            className="font-medium text-error transition active:scale-[0.95] hover:underline"
-                          >
-                            Supprimer
-                          </button>
-                        </>
-                      )}
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={() =>
+                            setLigneOuverte(ligneOuverte === insc._id ? null : insc._id)
+                          }
+                          title="Voir plus"
+                          className="text-accent transition hover:scale-110 active:scale-95"
+                        >
+                          <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
+                            <path
+                              d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"
+                              stroke="currentColor"
+                              strokeWidth="1.8"
+                            />
+                            <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.8" />
+                          </svg>
+                        </button>
+                        {estAdmin && (
+                          <>
+                            <button
+                              onClick={() => ouvrirEdition(insc)}
+                              title="Modifier"
+                              className="text-blue-900 transition hover:scale-110 active:scale-95"
+                            >
+                              <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
+                                <path
+                                  d="M4 20h4L18.5 9.5a2.1 2.1 0 0 0-3-3L5.5 16.5 4 20Z"
+                                  stroke="currentColor"
+                                  strokeWidth="1.8"
+                                  strokeLinejoin="round"
+                                />
+                              </svg>
+                            </button>
+                            <button
+                              onClick={() => supprimer(insc._id)}
+                              title="Supprimer"
+                              className="text-error transition hover:scale-110 active:scale-95"
+                            >
+                              <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
+                                <path
+                                  d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m2 0-1 13a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1L6 7"
+                                  stroke="currentColor"
+                                  strokeWidth="1.8"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                />
+                              </svg>
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </td>
                   </tr>
 

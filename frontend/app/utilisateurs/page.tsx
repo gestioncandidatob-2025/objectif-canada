@@ -158,9 +158,13 @@ export default function UtilisateursPage() {
   return (
     <div className="min-h-screen bg-paper px-4 py-10">
       <div className="mx-auto max-w-3xl">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-seal">
-          Objectif Canada
-        </p>
+        <a href="/bienvenue">
+          <img
+            src="/logo.jpeg"
+            alt="Logo"
+            className="mx-auto h-20 w-auto object-contain"
+          />
+        </a>
         <div className="mb-6 mt-2 flex items-center justify-between">
           <h1
             className="text-3xl text-ink"
