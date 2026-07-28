@@ -148,26 +148,8 @@ export default function EnregistrementPage() {
       return;
     }
 
-    const inscription = await res.json();
-    setMessage(`Inscription créée avec succès. Reçu n° ${inscription.numeroRecu}`);
-
-    setRecherche("");
-    setResultats([]);
-    setCandidatSelectionne(null);
-    setNouveauNom("");
-    setNouveauPrenom("");
-    setNouveauTelephone("");
-    setService("tcf");
-    setRegime("jour");
-    setDateDebutTest("");
-    setMontantNegocie("");
-    setModePaiement("especes");
-    setMontantPaye("");
-    setMontantMobile("");
-    setMontantEspeces("");
-    setFacturePar("Secretaire 1");
-    setReference("");
-    setEnvoiEnCours(false);
+   const inscription = await res.json();
+    router.push(`/recu/${inscription._id}`);
   }
 
   if (!pret) {

@@ -207,8 +207,8 @@ export default function CandidatsPage() {
           Chercher
         </button>
 
-        <div className="overflow-hidden rounded-2xl border border-ink/10 bg-white shadow-sm">
-          <table className="w-full border-collapse text-sm">
+        <div className="overflow-x-auto rounded-2xl border border-ink/10 bg-white shadow-sm">
+          <table className="w-full min-w-[700px] border-collapse text-sm">
             <thead>
               <tr className="border-b border-ink/10 bg-paper text-left text-ink-soft">
                 <th className="px-4 py-3 font-medium">Nom</th>
@@ -224,7 +224,7 @@ export default function CandidatsPage() {
                 <>
                   <tr key={insc._id} className="border-b border-ink/5">
                     <td className="px-4 py-3">
-                      <a
+                      
                         href={`/candidats/${insc.candidatId?._id}`}
                         className="font-medium text-ink underline-offset-2 hover:underline"
                       >
@@ -237,7 +237,7 @@ export default function CandidatsPage() {
                     </td>
                     <td className="px-4 py-3">{insc.regime ?? "—"}</td>
                     <td className="px-4 py-3">
-                      <a
+                      
                         href={`/recu/${insc._id}`}
                         target="_blank"
                         className="rounded-full border border-seal/30 bg-seal/10 px-3 py-1 text-xs font-medium text-seal transition active:scale-[0.95] hover:bg-seal/20"
