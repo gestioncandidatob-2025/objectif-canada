@@ -49,6 +49,9 @@ export default function CandidatsPage() {
   const [ligneOuverte, setLigneOuverte] = useState<string | null>(null);
   const [ligneEnEdition, setLigneEnEdition] = useState<string | null>(null);
 
+  const [ligneASupprimer, setLigneASupprimer] = useState<string | null>(null);
+  const [lettreConfirmation, setLettreConfirmation] = useState("");
+
   const [editRegime, setEditRegime] = useState("jour");
   const [editDateDebutTest, setEditDateDebutTest] = useState("");
   const [editMontantPaye, setEditMontantPaye] = useState("");
@@ -123,13 +126,14 @@ export default function CandidatsPage() {
     chargerInscriptions();
   }
 
-  async function supprimer(id: string) {
-    if (!window.confirm("Confirmer la suppression de cette inscription ?")) return;
+  async function confirmerSuppression(id: string) {
     const res = await apiFetch(`/registrations/${id}`, { method: "DELETE" });
     if (!res.ok) {
       setErreur("Suppression impossible");
       return;
     }
+    setLigneASupprimer(null);
+    setLettreConfirmation("");
     chargerInscriptions();
   }
 
@@ -224,7 +228,7 @@ export default function CandidatsPage() {
                 <>
                   <tr key={insc._id} className="border-b border-ink/5">
                     <td className="px-4 py-3">
-                      
+                      <a
                         href={`/candidats/${insc.candidatId?._id}`}
                         className="font-medium text-ink underline-offset-2 hover:underline"
                       >
@@ -237,7 +241,7 @@ export default function CandidatsPage() {
                     </td>
                     <td className="px-4 py-3">{insc.regime ?? "—"}</td>
                     <td className="px-4 py-3">
-                      
+                      <a
                         href={`/recu/${insc._id}`}
                         target="_blank"
                         className="rounded-full border border-seal/30 bg-seal/10 px-3 py-1 text-xs font-medium text-seal transition active:scale-[0.95] hover:bg-seal/20"
@@ -279,8 +283,13 @@ export default function CandidatsPage() {
                                 />
                               </svg>
                             </button>
-                            <button
-                              onClick={() => supprimer(insc._id)}
+                          <button
+                              onClick={() => {
+                                setLigneASupprimer(insc._id);
+                                setLigneOuverte(null);
+                                setLigneEnEdition(null);
+                                setLettreConfirmation("");
+                              }}
                               title="Supprimer"
                               className="text-error transition hover:scale-110 active:scale-95"
                             >
@@ -393,6 +402,41 @@ export default function CandidatsPage() {
                           </button>
                           <button
                             onClick={() => setLigneEnEdition(null)}
+                            className="rounded-lg border border-ink/15 px-4 py-2 text-sm font-medium text-ink transition hover:bg-paper"
+                          >
+                            Annuler
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                  {ligneASupprimer === insc._id && (
+                    <tr className="border-b border-ink/5 bg-error/5">
+                      <td colSpan={6} className="px-4 py-4">
+                        <p className="mb-2 text-sm font-medium text-error">
+                          Pour confirmer la suppression de {insc.candidatId?.nom}{" "}
+                          {insc.candidatId?.prenom}, tape la lettre <strong>S</strong> majuscule
+                          ci-dessous.
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <input
+                            value={lettreConfirmation}
+                            onChange={(e) => setLettreConfirmation(e.target.value)}
+                            maxLength={1}
+                            className="w-16 rounded-lg border border-error/30 px-3 py-2 text-center font-bold outline-none focus:border-error focus:ring-2 focus:ring-error/20"
+                          />
+                          <button
+                            onClick={() => confirmerSuppression(insc._id)}
+                            disabled={lettreConfirmation !== "S"}
+                            className="rounded-lg bg-error px-4 py-2 text-sm font-medium text-white transition disabled:cursor-not-allowed disabled:opacity-40 hover:bg-red-700"
+                          >
+                            Confirmer la suppression
+                          </button>
+                          <button
+                            onClick={() => {
+                              setLigneASupprimer(null);
+                              setLettreConfirmation("");
+                            }}
                             className="rounded-lg border border-ink/15 px-4 py-2 text-sm font-medium text-ink transition hover:bg-paper"
                           >
                             Annuler
