@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useState, ReactNode } from "react";
-import { useRouter } from "next/navigation";
-import { apiFetch } from "../lib/api";
+import { apiFetch } from "../../lib/api";
 
 type StatsJour = {
   nombreCandidatsTotal: number;
@@ -41,7 +40,7 @@ function semaineDuMois(dateStr: string) {
 }
 
 const ICONES: Record<string, ReactNode> = {
-      jour: (
+  jour: (
     <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6">
       <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" />
       <path d="M12 7v5l3.5 2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
@@ -78,10 +77,6 @@ const ICONES: Record<string, ReactNode> = {
 };
 
 export default function TableauDeBordPage() {
-  const [pret, setPret] = useState(false);
-  const [accesRefuse, setAccesRefuse] = useState(false);
-  const router = useRouter();
-
   const [jour, setJour] = useState<StatsJour | null>(null);
   const [semaine, setSemaine] = useState<StatsSemaine | null>(null);
   const [mois, setMois] = useState<StatsMois | null>(null);
@@ -93,24 +88,6 @@ export default function TableauDeBordPage() {
   const [sousGraphique, setSousGraphique] = useState<SousGraphique>(null);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    const userStr = localStorage.getItem("user");
-    if (!token || !userStr) {
-      router.push("/login");
-      return;
-    }
-    const user = JSON.parse(userStr);
-    if (user.role !== "admin") {
-      setAccesRefuse(true);
-      setPret(true);
-      return;
-    }
-    setPret(true);
-  }, [router]);
-
-  useEffect(() => {
-    if (!pret || accesRefuse) return;
-
     async function charger() {
       setChargement(true);
       setErreur("");
@@ -135,29 +112,7 @@ export default function TableauDeBordPage() {
     }
 
     charger();
-  }, [pret, accesRefuse]);
-
-  if (!pret) {
-    return null;
-  }
-
-  if (accesRefuse) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-paper px-4">
-        <div className="max-w-sm rounded-2xl border border-ink/10 bg-white p-10 text-center shadow-sm">
-          <p className="text-lg text-ink-soft">
-            Le tableau de bord est réservé à l'administrateur.
-          </p>
-          <a
-            href="/bienvenue"
-            className="mt-6 inline-block text-lg font-semibold text-accent hover:underline"
-          >
-            Retour à l'accueil
-          </a>
-        </div>
-      </div>
-    );
-  }
+  }, []);
 
   const toutesLesDates = Object.entries(graphique).sort(([a], [b]) => a.localeCompare(b));
 
@@ -206,23 +161,10 @@ export default function TableauDeBordPage() {
   }
 
   return (
-    <div className="min-h-screen bg-paper px-4 py-12">
+    <div className="px-4 py-12">
       <div className="mx-auto max-w-4xl">
-        <button
-          onClick={() => router.back()}
-          className="mb-4 flex items-center gap-1 text-sm font-medium text-ink-soft transition hover:text-ink"
-        >
-          ← Retour
-        </button>
-        <a href="/bienvenue">
-          <img
-            src="/logo.jpeg"
-            alt="Logo"
-            className="mx-auto h-20 w-auto object-contain"
-          />
-        </a>
         <h1
-          className="mb-10 mt-2 text-4xl text-ink"
+          className="mb-10 text-4xl text-ink"
           style={{ fontFamily: "var(--font-display)" }}
         >
           Tableau de bord

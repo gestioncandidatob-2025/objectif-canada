@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { apiFetch } from "../lib/api";
+import { apiFetch } from "../../lib/api";
 
 type Candidat = {
   _id: string;
@@ -12,7 +12,6 @@ type Candidat = {
 };
 
 export default function EnregistrementPage() {
-  const [pret, setPret] = useState(false);
   const router = useRouter();
 
   const [recherche, setRecherche] = useState("");
@@ -35,18 +34,8 @@ export default function EnregistrementPage() {
   const [facturePar, setFacturePar] = useState("Secretaire 1");
   const [reference, setReference] = useState("");
 
-  const [message, setMessage] = useState("");
   const [erreur, setErreur] = useState("");
   const [envoiEnCours, setEnvoiEnCours] = useState(false);
-
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      router.push("/login");
-      return;
-    }
-    setPret(true);
-  }, [router]);
 
   function handleTelephoneChange(valeur: string) {
     const chiffresUniquement = valeur.replace(/\D/g, "").slice(0, 9);
@@ -91,7 +80,6 @@ export default function EnregistrementPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErreur("");
-    setMessage("");
     setEnvoiEnCours(true);
 
     let candidat = candidatSelectionne;
@@ -148,12 +136,8 @@ export default function EnregistrementPage() {
       return;
     }
 
-   const inscription = await res.json();
+    const inscription = await res.json();
     router.push(`/recu/${inscription._id}`);
-  }
-
-  if (!pret) {
-    return null;
   }
 
   const champClass =
@@ -161,33 +145,15 @@ export default function EnregistrementPage() {
   const labelClass = "mb-1 block text-sm font-medium text-ink-soft";
 
   return (
-    <div className="min-h-screen bg-paper px-4 py-10">
+    <div className="px-4 py-10">
       <div className="mx-auto max-w-xl">
-         <button
-          onClick={() => router.back()}
-          className="mb-4 flex items-center gap-1 text-sm font-medium text-ink-soft transition hover:text-ink"
-        >
-          ← Retour
-        </button>
-       <a href="/bienvenue">
-          <img
-            src="/logo.jpeg"
-            alt="Logo"
-            className="mx-auto h-20 w-auto object-contain"
-          />
-        </a>
         <h1
-          className="mb-6 mt-2 text-3xl text-ink"
+          className="mb-6 text-3xl text-ink"
           style={{ fontFamily: "var(--font-display)" }}
         >
           Enregistrement d'un candidat
         </h1>
 
-        {message && (
-          <p className="mb-4 rounded-lg bg-accent/10 px-3 py-2.5 text-sm text-accent">
-            {message}
-          </p>
-        )}
         {erreur && (
           <p className="mb-4 rounded-lg bg-error/10 px-3 py-2.5 text-sm text-error">
             {erreur}
@@ -196,25 +162,23 @@ export default function EnregistrementPage() {
 
         <form
           onSubmit={handleSubmit}
-          className="space-y-4 rounded-2xl border border-ink/10 bg-white p-8 shadow-sm"
+          className="space-y-3 rounded-2xl border border-ink/10 bg-white p-8 shadow-sm"
         >
-          <div>
-            <label className={labelClass}>Rechercher un candidat existant</label>
-            <div className="flex gap-2">
-              <input
-                value={recherche}
-                onChange={(e) => setRecherche(e.target.value)}
-                placeholder="Nom ou prénom"
-                className={champClass}
-              />
-              <button
-                type="button"
-                onClick={rechercherCandidats}
-                className="whitespace-nowrap rounded-lg border border-ink/15 px-4 py-2.5 font-medium text-ink transition hover:bg-paper"
-              >
-                Chercher
-              </button>
-            </div>
+          <label className={labelClass}>Rechercher un candidat existant</label>
+          <div className="flex gap-2">
+            <input
+              value={recherche}
+              onChange={(e) => setRecherche(e.target.value)}
+              placeholder="Nom ou prénom"
+              className={champClass}
+            />
+            <button
+              type="button"
+              onClick={rechercherCandidats}
+              className="whitespace-nowrap rounded-lg border border-ink/15 px-4 py-2.5 font-medium text-ink transition hover:bg-paper"
+            >
+              Chercher
+            </button>
           </div>
 
           {resultats.length > 0 && (
@@ -245,35 +209,29 @@ export default function EnregistrementPage() {
 
           {!candidatSelectionne && (
             <>
-              <div>
-                <label className={labelClass}>Nom</label>
-                <input
-                  value={nouveauNom}
-                  onChange={(e) => setNouveauNom(e.target.value)}
-                  className={champClass}
-                />
-              </div>
-              <div>
-                <label className={labelClass}>Prénom</label>
-                <input
-                  value={nouveauPrenom}
-                  onChange={(e) => setNouveauPrenom(e.target.value)}
-                  className={champClass}
-                />
-              </div>
-              <div>
-                <label className={labelClass}>Téléphone (9 chiffres)</label>
-                <input
-                  value={nouveauTelephone}
-                  onChange={(e) => handleTelephoneChange(e.target.value)}
-                  inputMode="numeric"
-                  maxLength={9}
-                  className={champClass}
-                />
-                {erreurTelephone && (
-                  <p className="mt-1 text-sm text-error">{erreurTelephone}</p>
-                )}
-              </div>
+              <label className={labelClass}>Nom</label>
+              <input
+                value={nouveauNom}
+                onChange={(e) => setNouveauNom(e.target.value)}
+                className={champClass}
+              />
+              <label className={labelClass}>Prénom</label>
+              <input
+                value={nouveauPrenom}
+                onChange={(e) => setNouveauPrenom(e.target.value)}
+                className={champClass}
+              />
+              <label className={labelClass}>Téléphone (9 chiffres)</label>
+              <input
+                value={nouveauTelephone}
+                onChange={(e) => handleTelephoneChange(e.target.value)}
+                inputMode="numeric"
+                maxLength={9}
+                className={champClass}
+              />
+              {erreurTelephone && (
+                <p className="text-sm text-error">{erreurTelephone}</p>
+              )}
             </>
           )}
 
@@ -292,31 +250,28 @@ export default function EnregistrementPage() {
 
           {service !== "examen_blanc" && (
             <>
-              <div>
-                <label className={labelClass}>Régime</label>
-                <select
-                  value={regime}
-                  onChange={(e) => setRegime(e.target.value)}
-                  className={champClass}
-                >
-                  <option value="jour">Jour</option>
-                  <option value="soir">Soir</option>
-                </select>
-              </div>
-              <div>
-                <label className={labelClass}>Date de début du test</label>
-                <input
-                  type="date"
-                  value={dateDebutTest}
-                  onChange={(e) => setDateDebutTest(e.target.value)}
-                  className={champClass}
-                />
-              </div>
+              <label className={labelClass}>Régime</label>
+              <select
+                value={regime}
+                onChange={(e) => setRegime(e.target.value)}
+                className={champClass}
+              >
+                <option value="jour">Jour</option>
+                <option value="soir">Soir</option>
+              </select>
+
+              <label className={labelClass}>Date de début du test</label>
+              <input
+                type="date"
+                value={dateDebutTest}
+                onChange={(e) => setDateDebutTest(e.target.value)}
+                className={champClass}
+              />
             </>
           )}
 
           {service === "tcf_special" && (
-            <div>
+            <>
               <label className={labelClass}>Montant négocié (FCFA)</label>
               <input
                 type="number"
@@ -324,46 +279,40 @@ export default function EnregistrementPage() {
                 onChange={(e) => setMontantNegocie(e.target.value)}
                 className={champClass}
               />
-            </div>
+            </>
           )}
 
-          <div>
-            <label className={labelClass}>Mode de paiement</label>
-            <select
-              value={modePaiement}
-              onChange={(e) => setModePaiement(e.target.value)}
-              className={champClass}
-            >
-              <option value="especes">Espèces</option>
-              <option value="orange_money">Orange Money</option>
-              <option value="mobile_money">Mobile Money</option>
-              <option value="mobile_especes">Mobile + Espèces</option>
-            </select>
-          </div>
+          <label className={labelClass}>Mode de paiement</label>
+          <select
+            value={modePaiement}
+            onChange={(e) => setModePaiement(e.target.value)}
+            className={champClass}
+          >
+            <option value="especes">Espèces</option>
+            <option value="orange_money">Orange Money</option>
+            <option value="mobile_money">Mobile Money</option>
+            <option value="mobile_especes">Mobile + Espèces</option>
+          </select>
 
           {modePaiement === "mobile_especes" ? (
             <>
-              <div>
-                <label className={labelClass}>Montant Mobile</label>
-                <input
-                  type="number"
-                  value={montantMobile}
-                  onChange={(e) => setMontantMobile(e.target.value)}
-                  className={champClass}
-                />
-              </div>
-              <div>
-                <label className={labelClass}>Montant Espèces</label>
-                <input
-                  type="number"
-                  value={montantEspeces}
-                  onChange={(e) => setMontantEspeces(e.target.value)}
-                  className={champClass}
-                />
-              </div>
+              <label className={labelClass}>Montant Mobile</label>
+              <input
+                type="number"
+                value={montantMobile}
+                onChange={(e) => setMontantMobile(e.target.value)}
+                className={champClass}
+              />
+              <label className={labelClass}>Montant Espèces</label>
+              <input
+                type="number"
+                value={montantEspeces}
+                onChange={(e) => setMontantEspeces(e.target.value)}
+                className={champClass}
+              />
             </>
           ) : (
-            <div>
+            <>
               <label className={labelClass}>Montant payé</label>
               <input
                 type="number"
@@ -371,31 +320,27 @@ export default function EnregistrementPage() {
                 onChange={(e) => setMontantPaye(e.target.value)}
                 className={champClass}
               />
-            </div>
+            </>
           )}
 
-          <div>
-            <label className={labelClass}>Facturé par</label>
-            <select
-              value={facturePar}
-              onChange={(e) => setFacturePar(e.target.value)}
-              className={champClass}
-            >
-              <option value="Secretaire 1">Secretaire 1</option>
-              <option value="Secretaire 2">Secretaire 2</option>
-              <option value="Secretaire 3">Secretaire 3</option>
-              <option value="Admin">Admin</option>
-            </select>
-          </div>
+          <label className={labelClass}>Facturé par</label>
+          <select
+            value={facturePar}
+            onChange={(e) => setFacturePar(e.target.value)}
+            className={champClass}
+          >
+            <option value="Secretaire 1">Secretaire 1</option>
+            <option value="Secretaire 2">Secretaire 2</option>
+            <option value="Secretaire 3">Secretaire 3</option>
+            <option value="Admin">Admin</option>
+          </select>
 
-          <div>
-            <label className={labelClass}>Référence (optionnel)</label>
-            <input
-              value={reference}
-              onChange={(e) => setReference(e.target.value)}
-              className={champClass}
-            />
-          </div>
+          <label className={labelClass}>Référence (optionnel)</label>
+          <input
+            value={reference}
+            onChange={(e) => setReference(e.target.value)}
+            className={champClass}
+          />
 
           <button
             type="submit"

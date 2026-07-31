@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { apiFetch } from "../lib/api";
+import { apiFetch } from "../../lib/api";
 
 type Candidat = {
   _id: string;
@@ -35,9 +34,7 @@ const LABEL_SERVICE: Record<string, string> = {
 };
 
 export default function CandidatsPage() {
-  const [pret, setPret] = useState(false);
   const [role, setRole] = useState<string>("");
-  const router = useRouter();
 
   const [inscriptions, setInscriptions] = useState<Inscription[]>([]);
   const [recherche, setRecherche] = useState("");
@@ -48,7 +45,6 @@ export default function CandidatsPage() {
 
   const [ligneOuverte, setLigneOuverte] = useState<string | null>(null);
   const [ligneEnEdition, setLigneEnEdition] = useState<string | null>(null);
-
   const [ligneASupprimer, setLigneASupprimer] = useState<string | null>(null);
   const [lettreConfirmation, setLettreConfirmation] = useState("");
 
@@ -59,15 +55,11 @@ export default function CandidatsPage() {
   const [editReference, setEditReference] = useState("");
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
     const userStr = localStorage.getItem("user");
-    if (!token || !userStr) {
-      router.push("/login");
-      return;
+    if (userStr) {
+      setRole(JSON.parse(userStr).role);
     }
-    setRole(JSON.parse(userStr).role);
-    setPret(true);
-  }, [router]);
+  }, []);
 
   async function chargerInscriptions() {
     setChargement(true);
@@ -89,15 +81,14 @@ export default function CandidatsPage() {
   }
 
   useEffect(() => {
-    if (pret) {
-      chargerInscriptions();
-    }
+    chargerInscriptions();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pret]);
+  }, []);
 
   function ouvrirEdition(insc: Inscription) {
     setLigneEnEdition(insc._id);
     setLigneOuverte(null);
+    setLigneASupprimer(null);
     setEditRegime(insc.regime ?? "jour");
     setEditDateDebutTest(insc.dateDebutTest ? insc.dateDebutTest.slice(0, 10) : "");
     setEditMontantPaye(String(insc.montantPaye));
@@ -137,34 +128,15 @@ export default function CandidatsPage() {
     chargerInscriptions();
   }
 
-  if (!pret) {
-    return null;
-  }
-
   const estAdmin = role === "admin";
   const champClass =
     "w-full rounded-lg border border-ink/15 px-3 py-2 text-sm text-ink outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20";
 
   return (
-    <div className="min-h-screen bg-paper px-4 py-10">
+    <div className="px-4 py-10">
       <div className="mx-auto max-w-5xl">
-        <button
-          onClick={() => router.back()}
-          className="mb-4 flex items-center gap-1 text-sm font-medium text-ink-soft transition hover:text-ink"
-        >
-          ← Retour
-        </button>
-
-        <a href="/bienvenue">
-          <img
-            src="/logo.jpeg"
-            alt="Logo"
-            className="mx-auto h-20 w-auto object-contain"
-          />
-        </a>
-
         <h1
-          className="mb-6 mt-2 text-3xl text-ink"
+          className="mb-6 text-3xl text-ink"
           style={{ fontFamily: "var(--font-display)" }}
         >
           Liste des candidats
@@ -283,7 +255,7 @@ export default function CandidatsPage() {
                                 />
                               </svg>
                             </button>
-                          <button
+                            <button
                               onClick={() => {
                                 setLigneASupprimer(insc._id);
                                 setLigneOuverte(null);
@@ -410,6 +382,7 @@ export default function CandidatsPage() {
                       </td>
                     </tr>
                   )}
+
                   {ligneASupprimer === insc._id && (
                     <tr className="border-b border-ink/5 bg-error/5">
                       <td colSpan={6} className="px-4 py-4">

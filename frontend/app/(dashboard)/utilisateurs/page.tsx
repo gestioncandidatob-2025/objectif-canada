@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { apiFetch } from "../lib/api";
+import { apiFetch } from "../../lib/api";
 
 type User = {
   _id: string;
@@ -17,10 +16,6 @@ const LABEL_ROLE: Record<string, string> = {
 };
 
 export default function UtilisateursPage() {
-  const [pret, setPret] = useState(false);
-  const [accesRefuse, setAccesRefuse] = useState(false);
-  const router = useRouter();
-
   const [users, setUsers] = useState<User[]>([]);
   const [chargement, setChargement] = useState(false);
   const [erreur, setErreur] = useState("");
@@ -37,22 +32,6 @@ export default function UtilisateursPage() {
   const [editNom, setEditNom] = useState("");
   const [editRole, setEditRole] = useState("secretariat");
 
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    const userStr = localStorage.getItem("user");
-    if (!token || !userStr) {
-      router.push("/login");
-      return;
-    }
-    const u = JSON.parse(userStr);
-    if (u.role !== "admin") {
-      setAccesRefuse(true);
-      setPret(true);
-      return;
-    }
-    setPret(true);
-  }, [router]);
-
   async function chargerUsers() {
     setChargement(true);
     setErreur("");
@@ -66,10 +45,8 @@ export default function UtilisateursPage() {
   }
 
   useEffect(() => {
-    if (pret && !accesRefuse) {
-      chargerUsers();
-    }
-  }, [pret, accesRefuse]);
+    chargerUsers();
+  }, []);
 
   async function handleCreer(e: React.FormEvent) {
     e.preventDefault();
@@ -129,43 +106,14 @@ export default function UtilisateursPage() {
     chargerUsers();
   }
 
-  if (!pret) {
-    return null;
-  }
-
-  if (accesRefuse) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-paper px-4">
-        <div className="max-w-sm rounded-2xl border border-ink/10 bg-white p-8 text-center shadow-sm">
-          <p className="text-ink-soft">
-            La gestion des utilisateurs est réservée à l'administrateur.
-          </p>
-          <a
-            href="/bienvenue"
-            className="mt-4 inline-block font-medium text-accent hover:underline"
-          >
-            Retour à l'accueil
-          </a>
-        </div>
-      </div>
-    );
-  }
-
   const champClass =
     "w-full rounded-lg border border-ink/15 px-3 py-2.5 text-ink outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20";
   const labelClass = "mb-1 block text-sm font-medium text-ink-soft";
 
   return (
-    <div className="min-h-screen bg-paper px-4 py-10">
+    <div className="px-4 py-10">
       <div className="mx-auto max-w-3xl">
-        <a href="/bienvenue">
-          <img
-            src="/logo.jpeg"
-            alt="Logo"
-            className="mx-auto h-20 w-auto object-contain"
-          />
-        </a>
-        <div className="mb-6 mt-2 flex items-center justify-between">
+        <div className="mb-6 flex items-center justify-between">
           <h1
             className="text-3xl text-ink"
             style={{ fontFamily: "var(--font-display)" }}
@@ -196,43 +144,35 @@ export default function UtilisateursPage() {
             onSubmit={handleCreer}
             className="mb-6 space-y-3 rounded-2xl border border-ink/10 bg-white p-6 shadow-sm"
           >
-            <div>
-              <label className={labelClass}>Nom</label>
-              <input
-                value={nom}
-                onChange={(e) => setNom(e.target.value)}
-                className={champClass}
-              />
-            </div>
-            <div>
-              <label className={labelClass}>Email</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className={champClass}
-              />
-            </div>
-            <div>
-              <label className={labelClass}>Mot de passe</label>
-              <input
-                type="password"
-                value={motDePasse}
-                onChange={(e) => setMotDePasse(e.target.value)}
-                className={champClass}
-              />
-            </div>
-            <div>
-              <label className={labelClass}>Rôle</label>
-              <select
-                value={role}
-                onChange={(e) => setRole(e.target.value)}
-                className={champClass}
-              >
-                <option value="secretariat">Secrétariat</option>
-                <option value="admin">Administrateur</option>
-              </select>
-            </div>
+            <label className={labelClass}>Nom</label>
+            <input
+              value={nom}
+              onChange={(e) => setNom(e.target.value)}
+              className={champClass}
+            />
+            <label className={labelClass}>Email</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className={champClass}
+            />
+            <label className={labelClass}>Mot de passe</label>
+            <input
+              type="password"
+              value={motDePasse}
+              onChange={(e) => setMotDePasse(e.target.value)}
+              className={champClass}
+            />
+            <label className={labelClass}>Rôle</label>
+            <select
+              value={role}
+              onChange={(e) => setRole(e.target.value)}
+              className={champClass}
+            >
+              <option value="secretariat">Secrétariat</option>
+              <option value="admin">Administrateur</option>
+            </select>
             <button
               type="submit"
               disabled={envoiEnCours}

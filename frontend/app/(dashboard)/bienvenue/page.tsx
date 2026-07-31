@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 
 type User = {
   nom: string;
@@ -16,37 +15,22 @@ const LABEL_ROLE: Record<string, string> = {
 
 export default function BienvenuePage() {
   const [user, setUser] = useState<User | null>(null);
-  const router = useRouter();
 
   useEffect(() => {
     const stored = localStorage.getItem("user");
-    if (!stored) {
-      router.push("/login");
-      return;
+    if (stored) {
+      setUser(JSON.parse(stored));
     }
-    setUser(JSON.parse(stored));
-  }, [router]);
-
-  function handleLogout() {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    router.push("/login");
-  }
+  }, []);
 
   if (!user) {
     return null;
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-paper px-4">
+    <div className="flex min-h-screen items-center justify-center px-4">
       <div className="w-full max-w-md text-center">
-        <img
-            src="/logo.jpeg"
-            alt="Logo"
-            className="mx-auto h-20 w-auto object-contain"
-          />
-
-        <div className="mt-6 rounded-2xl border border-ink/10 bg-white p-10 shadow-sm">
+        <div className="rounded-2xl border border-ink/10 bg-white p-10 shadow-sm">
           <h1
             className="text-3xl text-ink"
             style={{ fontFamily: "var(--font-display)" }}
@@ -71,28 +55,6 @@ export default function BienvenuePage() {
             >
               Voir la liste des candidats
             </a>
-            {user.role === "admin" && (
-              <a
-                href="/tableau-de-bord"
-                className="rounded-lg border border-ink/15 py-2.5 font-medium text-ink transition hover:bg-paper"
-              >
-                Tableau de bord
-              </a>
-            )}
-            {user.role === "admin" && (
-              <a
-                href="/utilisateurs"
-                className="rounded-lg border border-ink/15 py-2.5 font-medium text-ink transition hover:bg-paper"
-              >
-                Gestion des utilisateurs
-              </a>
-            )}
-            <button
-              onClick={handleLogout}
-              className="mt-2 text-sm text-ink-soft transition hover:text-error"
-            >
-              Se déconnecter
-            </button>
           </div>
         </div>
       </div>

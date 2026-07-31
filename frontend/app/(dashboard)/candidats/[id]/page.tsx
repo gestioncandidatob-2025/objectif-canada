@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { apiFetch } from "../../lib/api";
+import { useParams } from "next/navigation";
+import { apiFetch } from "../../../lib/api";
 
 type Candidat = {
   _id: string;
@@ -32,7 +32,6 @@ const LABEL_SERVICE: Record<string, string> = {
 
 export default function DossierCandidatPage() {
   const { id } = useParams<{ id: string }>();
-  const router = useRouter();
 
   const [candidat, setCandidat] = useState<Candidat | null>(null);
   const [inscriptions, setInscriptions] = useState<Inscription[]>([]);
@@ -40,12 +39,6 @@ export default function DossierCandidatPage() {
   const [chargement, setChargement] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      router.push("/login");
-      return;
-    }
-
     async function charger() {
       const [rCandidat, rInscriptions] = await Promise.all([
         apiFetch(`/candidates/${id}`),
@@ -64,7 +57,7 @@ export default function DossierCandidatPage() {
     }
 
     charger();
-  }, [id, router]);
+  }, [id]);
 
   if (chargement) {
     return null;
@@ -72,31 +65,16 @@ export default function DossierCandidatPage() {
 
   if (erreur || !candidat) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-paper px-4">
+      <div className="flex min-h-screen items-center justify-center px-4">
         <p className="text-error">{erreur || "Candidat introuvable"}</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-paper px-4 py-10">
+    <div className="px-4 py-10">
       <div className="mx-auto max-w-3xl">
-        <button
-          onClick={() => router.back()}
-          className="mb-4 flex items-center gap-1 text-sm font-medium text-ink-soft transition hover:text-ink"
-        >
-          ← Retour
-        </button>
-
-        <a href="/bienvenue">
-          <img
-            src="/logo.jpeg"
-            alt="Logo"
-            className="mx-auto h-20 w-auto object-contain"
-          />
-        </a>
-
-        <div className="mt-6 rounded-2xl border border-ink/10 bg-white p-8 shadow-sm">
+        <div className="rounded-2xl border border-ink/10 bg-white p-8 shadow-sm">
           <h1
             className="text-2xl text-ink"
             style={{ fontFamily: "var(--font-display)" }}

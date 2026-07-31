@@ -20,17 +20,19 @@ export class InscriptionsController {
     return this.inscriptionsService.create(createInscriptionDto);
   }
 
-  @ApiOperation({ summary: 'Lister les inscriptions, avec filtres optionnels par nom/service/régime' })
+ @ApiOperation({ summary: 'Lister les inscriptions, avec filtres optionnels par nom/service/régime/candidat' })
   @ApiQuery({ name: 'nom', required: false })
   @ApiQuery({ name: 'service', required: false })
   @ApiQuery({ name: 'regime', required: false })
+  @ApiQuery({ name: 'candidatId', required: false })
   @Get()
   findAll(
     @Query('nom') nom?: string,
     @Query('service') service?: string,
     @Query('regime') regime?: string,
+    @Query('candidatId') candidatId?: string,
   ) {
-    return this.inscriptionsService.findAll({ nom, service, regime });
+    return this.inscriptionsService.findAll({ nom, service, regime, candidatId });
   }
 
   @ApiOperation({ summary: "Voir le détail d'une inscription précise" })
