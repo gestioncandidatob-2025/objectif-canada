@@ -329,10 +329,10 @@ export default function EnregistrementPage() {
             onChange={(e) => setFacturePar(e.target.value)}
             className={champClass}
           >
-            <option value="Secretaire 1">stephane</option>
-            <option value="Secretaire 2">vanelle</option>
-            <option value="Secretaire 3">silaine</option>
-            <option value="Admin">big manager</option>
+            <option value="stephane">stephane</option>
+            <option value="vanelle">vanelle</option>
+            <option value="silaine">silaine</option>
+            <option value="big manager">big manager</option>
           </select>
 
           <label className={labelClass}>Référence (optionnel)</label>

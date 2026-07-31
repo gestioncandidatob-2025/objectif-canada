@@ -347,14 +347,14 @@ export default function CandidatsPage() {
                               value={editFacturePar}
                               onChange={(e) => setEditFacturePar(e.target.value)}
                               className={`${champClass} bg-white`}
-                            >
-                              <option value="Secretaire 1">Secretaire 1</option>
-                              <option value="Secretaire 2">Secretaire 2</option>
-                              <option value="Secretaire 3">Secretaire 3</option>
-                              <option value="Admin">Admin</option>
+                                              >
+                              <option value="stephane">stephane</option>
+                              <option value="vanelle">vanelle</option>
+                              <option value="silaine">silaine</option>
+                              <option value="big manager">big manager</option>
                             </select>
-                          </div>
-                          <div className="col-span-2">
+                            </div>
+                            <div className="col-span-2">
                             <label className="mb-1 block text-xs font-medium text-ink-soft">
                               Référence
                             </label>

@@ -21,7 +21,6 @@ type StatsMois = {
 
 type StatsJournalieres = Record<string, { inscriptions: number; montant: number }>;
 
-type Onglet = "jour" | "semaine" | "mois" | "graphique" | null;
 type SousGraphique = "mensuel" | "hebdomadaire" | null;
 
 function debutSemaineCourante() {
@@ -84,7 +83,7 @@ export default function TableauDeBordPage() {
   const [erreur, setErreur] = useState("");
   const [chargement, setChargement] = useState(false);
 
-  const [onglet, setOnglet] = useState<Onglet>(null);
+  const [graphiqueOuvert, setGraphiqueOuvert] = useState(false);
   const [sousGraphique, setSousGraphique] = useState<SousGraphique>(null);
 
   useEffect(() => {
@@ -144,15 +143,6 @@ export default function TableauDeBordPage() {
     0,
   );
 
-  function boutonPrincipalClass(actif: boolean) {
-    return (
-      "flex flex-1 min-w-[160px] flex-col items-center gap-2 rounded-2xl border-2 px-6 py-6 text-base font-semibold transition " +
-      (actif
-        ? "border-accent bg-accent text-white shadow-md"
-        : "border-ink/10 bg-white text-ink hover:border-accent/40 hover:bg-accent/5")
-    );
-  }
-
   function sousBoutonClass(actif: boolean) {
     return (
       "rounded-xl px-6 py-3 text-base font-semibold transition " +
@@ -177,168 +167,163 @@ export default function TableauDeBordPage() {
         )}
         {chargement && <p className="mb-6 text-base text-ink-soft">Chargement...</p>}
 
-        <div className="mb-8 flex flex-wrap gap-4">
-          <button
-            onClick={() => setOnglet(onglet === "jour" ? null : "jour")}
-            className={boutonPrincipalClass(onglet === "jour")}
-          >
+        {/* Section Aujourd'hui */}
+        <div className="mb-10">
+          <div className="mb-4 flex items-center gap-3 text-ink">
             {ICONES.jour}
-            Aujourd'hui
-          </button>
-          <button
-            onClick={() => setOnglet(onglet === "semaine" ? null : "semaine")}
-            className={boutonPrincipalClass(onglet === "semaine")}
-          >
-            {ICONES.semaine}
-            Cette semaine
-          </button>
-          <button
-            onClick={() => setOnglet(onglet === "mois" ? null : "mois")}
-            className={boutonPrincipalClass(onglet === "mois")}
-          >
-            {ICONES.mois}
-            Ce mois
-          </button>
-          <button
-            onClick={() => {
-              setOnglet(onglet === "graphique" ? null : "graphique");
-              setSousGraphique(null);
-            }}
-            className={boutonPrincipalClass(onglet === "graphique")}
-          >
-            {ICONES.graphique}
-            Graphique
-          </button>
+            <h2 className="text-xl font-semibold">Aujourd'hui</h2>
+          </div>
+          {jour && (
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+              <div className="rounded-2xl border border-ink/10 bg-white p-8 shadow-sm">
+                <p className="text-base text-ink-soft">Inscriptions aujourd'hui</p>
+                <p className="mt-3 text-5xl font-semibold text-ink">
+                  {jour.nombreInscriptionsJour}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-ink/10 bg-white p-8 shadow-sm">
+                <p className="text-base text-ink-soft">Montant encaissé aujourd'hui</p>
+                <p className="mt-3 text-4xl font-semibold text-accent">
+                  {jour.montantEncaisseJour.toLocaleString("fr-FR")}{" "}
+                  <span className="text-xl">FCFA</span>
+                </p>
+              </div>
+            </div>
+          )}
         </div>
 
-        {onglet === "jour" && jour && (
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-            <div className="rounded-2xl border border-ink/10 bg-white p-8 shadow-sm">
-              <p className="text-base text-ink-soft">Inscriptions aujourd'hui</p>
-              <p className="mt-3 text-5xl font-semibold text-ink">
-                {jour.nombreInscriptionsJour}
-              </p>
-            </div>
-            <div className="rounded-2xl border border-ink/10 bg-white p-8 shadow-sm">
-              <p className="text-base text-ink-soft">Montant encaissé aujourd'hui</p>
-              <p className="mt-3 text-4xl font-semibold text-accent">
-                {jour.montantEncaisseJour.toLocaleString("fr-FR")}{" "}
-                <span className="text-xl">FCFA</span>
-              </p>
-            </div>
+        {/* Section Cette semaine */}
+        <div className="mb-10">
+          <div className="mb-4 flex items-center gap-3 text-ink">
+            {ICONES.semaine}
+            <h2 className="text-xl font-semibold">Cette semaine</h2>
           </div>
-        )}
-
-        {onglet === "semaine" && semaine && (
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-            <div className="rounded-2xl border border-ink/10 bg-white p-8 shadow-sm">
-              <p className="text-base text-ink-soft">Inscriptions cette semaine</p>
-              <p className="mt-3 text-5xl font-semibold text-ink">
-                {semaine.nombreInscriptionsSemaine}
-              </p>
-            </div>
-            <div className="rounded-2xl border border-ink/10 bg-white p-8 shadow-sm">
-              <p className="text-base text-ink-soft">Montant encaissé cette semaine</p>
-              <p className="mt-3 text-4xl font-semibold text-accent">
-                {semaine.montantEncaisseSemaine.toLocaleString("fr-FR")}{" "}
-                <span className="text-xl">FCFA</span>
-              </p>
-            </div>
-          </div>
-        )}
-
-        {onglet === "mois" && mois && (
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-            <div className="rounded-2xl border border-ink/10 bg-white p-8 shadow-sm">
-              <p className="text-base text-ink-soft">Inscriptions ce mois</p>
-              <p className="mt-3 text-5xl font-semibold text-ink">
-                {mois.nombreInscriptionsMois}
-              </p>
-            </div>
-            <div className="rounded-2xl border border-ink/10 bg-white p-8 shadow-sm">
-              <p className="text-base text-ink-soft">Montant encaissé ce mois</p>
-              <p className="mt-3 text-4xl font-semibold text-accent">
-                {mois.montantEncaisseMois.toLocaleString("fr-FR")}{" "}
-                <span className="text-xl">FCFA</span>
-              </p>
-            </div>
-          </div>
-        )}
-
-        {onglet === "graphique" && (
-          <div>
-            <div className="mb-5 flex flex-wrap gap-3">
-              <button
-                onClick={() => setSousGraphique("mensuel")}
-                className={sousBoutonClass(sousGraphique === "mensuel")}
-              >
-                Graphique mensuel
-              </button>
-              <button
-                onClick={() => setSousGraphique("hebdomadaire")}
-                className={sousBoutonClass(sousGraphique === "hebdomadaire")}
-              >
-                Graphique hebdomadaire
-              </button>
-            </div>
-
-            {sousGraphique && (
+          {semaine && (
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
               <div className="rounded-2xl border border-ink/10 bg-white p-8 shadow-sm">
-                <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
-                  <p className="text-lg font-semibold text-ink">
-                    {sousGraphique === "mensuel"
-                      ? "Inscriptions par semaine — ce mois"
-                      : "Inscriptions par jour — cette semaine"}
-                  </p>
-                  <p className="rounded-full bg-seal/10 px-4 py-2 text-base font-semibold text-seal">
-                    Total : {totalEncaisseGraphique.toLocaleString("fr-FR")} FCFA
-                  </p>
-                </div>
-
-                {donneesGraphActif.length === 0 ? (
-                  <p className="text-base text-ink-soft">Aucune donnée pour le moment.</p>
-                ) : (
-                  <div className="flex h-64 items-end gap-3">
-                    {donneesGraphActif.map((entree) => {
-                      const label = entree[0];
-                      const valeurs = entree[1];
-                      const hauteur = (valeurs.inscriptions / maxInscriptions) * 100;
-                      const labelAffiche =
-                        sousGraphique === "mensuel"
-                          ? label
-                          : label.slice(8, 10) + "/" + label.slice(5, 7);
-
-                      return (
-                        <div key={label} className="flex flex-1 flex-col items-center gap-2">
-                          <span className="text-sm font-semibold text-ink">
-                            {valeurs.inscriptions}
-                          </span>
-                          <div
-                            className="w-full rounded-t-lg bg-accent"
-                            style={{
-                              height: hauteur + "%",
-                              minHeight: valeurs.inscriptions > 0 ? "6px" : "0",
-                            }}
-                          />
-                          <span className="text-sm text-ink-soft">{labelAffiche}</span>
-                          <span className="text-sm font-semibold text-seal">
-                            {valeurs.montant.toLocaleString("fr-FR")} F
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
+                <p className="text-base text-ink-soft">Inscriptions cette semaine</p>
+                <p className="mt-3 text-5xl font-semibold text-ink">
+                  {semaine.nombreInscriptionsSemaine}
+                </p>
               </div>
-            )}
-          </div>
-        )}
+              <div className="rounded-2xl border border-ink/10 bg-white p-8 shadow-sm">
+                <p className="text-base text-ink-soft">Montant encaissé cette semaine</p>
+                <p className="mt-3 text-4xl font-semibold text-accent">
+                  {semaine.montantEncaisseSemaine.toLocaleString("fr-FR")}{" "}
+                  <span className="text-xl">FCFA</span>
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
 
-        {!onglet && (
-          <p className="text-lg text-ink-soft">
-            Choisis une période ci-dessus pour voir le détail.
-          </p>
-        )}
+        {/* Section Ce mois */}
+        <div className="mb-10">
+          <div className="mb-4 flex items-center gap-3 text-ink">
+            {ICONES.mois}
+            <h2 className="text-xl font-semibold">Ce mois</h2>
+          </div>
+          {mois && (
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+              <div className="rounded-2xl border border-ink/10 bg-white p-8 shadow-sm">
+                <p className="text-base text-ink-soft">Inscriptions ce mois</p>
+                <p className="mt-3 text-5xl font-semibold text-ink">
+                  {mois.nombreInscriptionsMois}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-ink/10 bg-white p-8 shadow-sm">
+                <p className="text-base text-ink-soft">Montant encaissé ce mois</p>
+                <p className="mt-3 text-4xl font-semibold text-accent">
+                  {mois.montantEncaisseMois.toLocaleString("fr-FR")}{" "}
+                  <span className="text-xl">FCFA</span>
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Section Graphique — reste cliquable comme avant */}
+        <div>
+          <button
+            onClick={() => {
+              setGraphiqueOuvert(!graphiqueOuvert);
+              setSousGraphique(null);
+            }}
+            className="mb-4 flex items-center gap-3 text-ink"
+          >
+            {ICONES.graphique}
+            <h2 className="text-xl font-semibold">Graphique</h2>
+          </button>
+
+          {graphiqueOuvert && (
+            <div>
+              <div className="mb-5 flex flex-wrap gap-3">
+                <button
+                  onClick={() => setSousGraphique("mensuel")}
+                  className={sousBoutonClass(sousGraphique === "mensuel")}
+                >
+                  Graphique mensuel
+                </button>
+                <button
+                  onClick={() => setSousGraphique("hebdomadaire")}
+                  className={sousBoutonClass(sousGraphique === "hebdomadaire")}
+                >
+                  Graphique hebdomadaire
+                </button>
+              </div>
+
+              {sousGraphique && (
+                <div className="rounded-2xl border border-ink/10 bg-white p-8 shadow-sm">
+                  <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
+                    <p className="text-lg font-semibold text-ink">
+                      {sousGraphique === "mensuel"
+                        ? "Inscriptions par semaine — ce mois"
+                        : "Inscriptions par jour — cette semaine"}
+                    </p>
+                    <p className="rounded-full bg-seal/10 px-4 py-2 text-base font-semibold text-seal">
+                      Total : {totalEncaisseGraphique.toLocaleString("fr-FR")} FCFA
+                    </p>
+                  </div>
+
+                  {donneesGraphActif.length === 0 ? (
+                    <p className="text-base text-ink-soft">Aucune donnée pour le moment.</p>
+                  ) : (
+                    <div className="flex h-64 items-end gap-3">
+                      {donneesGraphActif.map((entree) => {
+                        const label = entree[0];
+                        const valeurs = entree[1];
+                        const hauteur = (valeurs.inscriptions / maxInscriptions) * 100;
+                        const labelAffiche =
+                          sousGraphique === "mensuel"
+                            ? label
+                            : label.slice(8, 10) + "/" + label.slice(5, 7);
+
+                        return (
+                          <div key={label} className="flex flex-1 flex-col items-center gap-2">
+                            <span className="text-sm font-semibold text-ink">
+                              {valeurs.inscriptions}
+                            </span>
+                            <div
+                              className="w-full rounded-t-lg bg-accent"
+                              style={{
+                                height: hauteur + "%",
+                                minHeight: valeurs.inscriptions > 0 ? "6px" : "0",
+                              }}
+                            />
+                            <span className="text-sm text-ink-soft">{labelAffiche}</span>
+                            <span className="text-sm font-semibold text-seal">
+                              {valeurs.montant.toLocaleString("fr-FR")} F
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
