@@ -1,11 +1,10 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { Inscription, InscriptionDocument, Service, ModePaiement } from './schemas/inscription.schema';
 import { Candidat, CandidatDocument } from '../candidats/schemas/candidat.schema';
 import { CreateInscriptionDto } from './dto/create-inscription.dto';
 import { UpdateInscriptionDto } from './dto/update-inscription.dto';
-import { Types } from 'mongoose';
 
 @Injectable()
 export class InscriptionsService {
@@ -43,11 +42,9 @@ export class InscriptionsService {
     let dateFin: Date;
 
     if (createInscriptionDto.service === Service.EXAMEN_BLANC) {
-      // Examen blanc : un seul jour, pas de régime, pas de dateDebutTest à fournir
       dateDebutTest = dateInscription;
       dateFin = dateInscription;
     } else {
-      // TCF / TCF SPECIAL : régime et dateDebutTest obligatoires
       if (!createInscriptionDto.regime) {
         throw new BadRequestException(
           'Le régime (jour/soir) est obligatoire pour ce service',
@@ -117,9 +114,6 @@ export class InscriptionsService {
     return inscription.save();
   }
 
-
-// ... (garde le reste des imports existants)
-
   async findAll(filtres: { nom?: string; service?: string; regime?: string; candidatId?: string }) {
     const filtre: Record<string, any> = {};
 
@@ -146,6 +140,7 @@ export class InscriptionsService {
 
     return this.inscriptionModel.find(filtre).populate('candidatId').exec();
   }
+
   findOne(id: string) {
     return this.inscriptionModel.findById(id).populate('candidatId').exec();
   }
@@ -156,8 +151,23 @@ export class InscriptionsService {
       .exec();
   }
 
-  remove(id: string) {
-    return this.inscriptionModel.findByIdAndDelete(id).exec();
+  async remove(id: string) {
+    const inscription = await this.inscriptionModel.findByIdAndDelete(id).exec();
+    if (!inscription) {
+      throw new NotFoundException('Inscription introuvable');
+    }
+
+    // Vérifier s'il reste d'autres inscriptions pour ce candidat
+    const inscriptionsRestantes = await this.inscriptionModel.countDocuments({
+      candidatId: inscription.candidatId,
+    });
+
+    // Si plus aucune inscription, supprimer aussi le candidat
+    if (inscriptionsRestantes === 0) {
+      await this.candidatModel.findByIdAndDelete(inscription.candidatId).exec();
+    }
+
+    return inscription;
   }
 
   async ajouterPaiement(id: string, montant: number) {
