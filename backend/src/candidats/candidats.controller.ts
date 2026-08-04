@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query, UseGuards, Req } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { CandidatsService } from './candidats.service';
 import { CreateCandidatDto } from './dto/create-candidat.dto';
@@ -20,7 +20,7 @@ export class CandidatsController {
   }
 
   @ApiOperation({ summary: 'Lister tous les candidats, avec filtre optionnel par nom/prénom' })
-  @ApiQuery({ name: 'nom', required: false, description: 'Filtre par nom ou prénom (recherche partielle)' })
+  @ApiQuery({ name: 'nom', required: false })
   @Get()
   findAll(@Query('nom') nom?: string) {
     return this.candidatsService.findAll(nom);
@@ -32,12 +32,10 @@ export class CandidatsController {
     return this.candidatsService.findOne(id);
   }
 
-  @ApiOperation({ summary: "Modifier un candidat (réservé à l'administrateur)" })
-  @UseGuards(RolesGuard)
-  @Roles('admin')
+  @ApiOperation({ summary: 'Modifier un candidat (avec justification obligatoire)' })
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateCandidatDto: UpdateCandidatDto) {
-    return this.candidatsService.update(id, updateCandidatDto);
+  update(@Param('id') id: string, @Body() updateCandidatDto: UpdateCandidatDto, @Req() req: any) {
+    return this.candidatsService.update(id, updateCandidatDto, req.user.email);
   }
 
   @ApiOperation({ summary: "Supprimer un candidat (réservé à l'administrateur)" })

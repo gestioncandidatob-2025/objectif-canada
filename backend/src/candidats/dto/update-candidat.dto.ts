@@ -1,4 +1,19 @@
-import { PartialType } from '@nestjs/mapped-types';
-import { CreateCandidatDto } from './create-candidat.dto';
+import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
-export class UpdateCandidatDto extends PartialType(CreateCandidatDto) {}
+export class UpdateCandidatDto {
+  @IsOptional()
+  @IsString()
+  nom?: string;
+
+  @IsOptional()
+  @IsString()
+  prenom?: string;
+
+  @IsOptional()
+  @IsString()
+  telephone?: string;
+
+  @IsNotEmpty({ message: 'La raison de la modification est obligatoire' })
+  @IsString()
+  raison!: string;
+}

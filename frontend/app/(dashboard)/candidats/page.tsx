@@ -53,7 +53,7 @@ export default function CandidatsPage() {
   const [editMontantPaye, setEditMontantPaye] = useState("");
   const [editFacturePar, setEditFacturePar] = useState("Secretaire 1");
   const [editReference, setEditReference] = useState("");
-
+  const [editRaison, setEditRaison] = useState("");
   useEffect(() => {
     const userStr = localStorage.getItem("user");
     if (userStr) {
@@ -85,7 +85,7 @@ export default function CandidatsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function ouvrirEdition(insc: Inscription) {
+ function ouvrirEdition(insc: Inscription) {
     setLigneEnEdition(insc._id);
     setLigneOuverte(null);
     setLigneASupprimer(null);
@@ -94,15 +94,21 @@ export default function CandidatsPage() {
     setEditMontantPaye(String(insc.montantPaye));
     setEditFacturePar(insc.facturePar);
     setEditReference(insc.reference ?? "");
+    setEditRaison("");
   }
 
   async function enregistrerModification(id: string) {
+    if (!editRaison.trim()) {
+      setErreur("La raison de la modification est obligatoire");
+      return;
+    }
     const body: Record<string, unknown> = {
       regime: editRegime,
       dateDebutTest: editDateDebutTest || undefined,
       montantPaye: Number(editMontantPaye),
       facturePar: editFacturePar,
       reference: editReference || undefined,
+      raison: editRaison,
     };
     const res = await apiFetch(`/registrations/${id}`, {
       method: "PATCH",
@@ -347,7 +353,7 @@ export default function CandidatsPage() {
                               value={editFacturePar}
                               onChange={(e) => setEditFacturePar(e.target.value)}
                               className={`${champClass} bg-white`}
-                                              >
+                            >
                               <option value="stephane">stephane</option>
                               <option value="vanelle">vanelle</option>
                               <option value="silaine">silaine</option>

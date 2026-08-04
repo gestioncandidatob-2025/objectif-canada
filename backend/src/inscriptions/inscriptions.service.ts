@@ -57,7 +57,7 @@ export class InscriptionsService {
       }
       dateDebutTest = new Date(createInscriptionDto.dateDebutTest);
       dateFin = new Date(dateDebutTest);
-      dateFin.setDate(dateFin.getDate() + 30);
+      dateFin.setDate(dateFin.getDate() + 35);;
     }
 
     // 5. Calculer le montant payé selon le mode de paiement
