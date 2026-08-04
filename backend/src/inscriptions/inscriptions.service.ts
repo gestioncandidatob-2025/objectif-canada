@@ -81,16 +81,18 @@ export class InscriptionsService {
     // 6. Calculer le reste à payer
     const resteAPayer = montantTotal - montantPaye;
 
-    // 7. Générer le numéro de reçu unique (basé sur la date d'inscription)
-    const nombreInscriptions = await this.inscriptionModel.countDocuments();
-    const compteur = nombreInscriptions + 1;
-
+   // 7. Générer un numéro de reçu unique (vérifié pour éviter tout conflit)
     const jour = String(dateInscription.getDate()).padStart(2, '0');
     const mois = String(dateInscription.getMonth() + 1).padStart(2, '0');
     const annee = dateInscription.getFullYear();
-    const compteurFormate = String(compteur).padStart(4, '0');
 
-    const numeroRecu = `${jour}${mois}${annee}${compteurFormate}`;
+    let compteur = (await this.inscriptionModel.countDocuments()) + 1;
+    let numeroRecu = `${jour}${mois}${annee}${String(compteur).padStart(4, '0')}`;
+
+    while (await this.inscriptionModel.exists({ numeroRecu })) {
+      compteur += 1;
+      numeroRecu = `${jour}${mois}${annee}${String(compteur).padStart(4, '0')}`;
+    }
 
     // 8. Assembler et sauvegarder l'inscription
     const inscription = new this.inscriptionModel({
