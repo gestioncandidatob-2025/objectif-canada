@@ -31,7 +31,7 @@ export default function EnregistrementPage() {
   const [montantPaye, setMontantPaye] = useState("");
   const [montantMobile, setMontantMobile] = useState("");
   const [montantEspeces, setMontantEspeces] = useState("");
-  const [facturePar, setFacturePar] = useState("Secretaire 1");
+const [facturePar, setFacturePar] = useState("stephane");
   const [reference, setReference] = useState("");
 
   const [erreur, setErreur] = useState("");
