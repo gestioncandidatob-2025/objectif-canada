@@ -51,7 +51,7 @@ export default function CandidatsPage() {
   const [editRegime, setEditRegime] = useState("jour");
   const [editDateDebutTest, setEditDateDebutTest] = useState("");
   const [editMontantPaye, setEditMontantPaye] = useState("");
-  const [editFacturePar, setEditFacturePar] = useState("Secretaire 1");
+  const [editFacturePar, setEditFacturePar] = useState("STEPHANE");
   const [editReference, setEditReference] = useState("");
   const [editRaison, setEditRaison] = useState("");
   useEffect(() => {
@@ -354,10 +354,10 @@ export default function CandidatsPage() {
                               onChange={(e) => setEditFacturePar(e.target.value)}
                               className={`${champClass} bg-white`}
                             >
-                              <option value="stephane">stephane</option>
-                              <option value="vanelle">vanelle</option>
-                              <option value="silaine">silaine</option>
-                              <option value="big manager">big manager</option>
+                              <option value="STEPHANE">STEPHANE</option>
+                              <option value="VANELLE">VANELLE</option>
+                              <option value="SILAINE">SILAINE</option>
+                              <option value="BOFIA.S">BOFIA.S</option>
                             </select>
                             </div>
                             <div className="col-span-2">
