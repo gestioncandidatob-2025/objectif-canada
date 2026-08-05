@@ -329,10 +329,10 @@ const [facturePar, setFacturePar] = useState("stephane");
             onChange={(e) => setFacturePar(e.target.value)}
             className={champClass}
           >
-            <option value="stephane">stephane</option>
-            <option value="vanelle">vanelle</option>
-            <option value="silaine">silaine</option>
-            <option value="big manager">big manager</option>
+            <option value="STEPHANE">STEPHANE</option>
+            <option value="VANELLE">VANELLE</option>
+            <option value="SILAINE">SILAINE</option>
+            <option value="BOFIA.S">BOFIA.S</option>
           </select>
 
           <label className={labelClass}>Référence (optionnel)</label>
