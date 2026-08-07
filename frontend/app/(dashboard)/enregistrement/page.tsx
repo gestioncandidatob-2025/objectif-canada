@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect  } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "../../lib/api";
 
@@ -26,12 +26,21 @@ export default function EnregistrementPage() {
   const [service, setService] = useState("tcf");
   const [regime, setRegime] = useState("jour");
   const [dateDebutTest, setDateDebutTest] = useState("");
+  const [dateFin, setDateFin] = useState("");
   const [montantNegocie, setMontantNegocie] = useState("");
   const [modePaiement, setModePaiement] = useState("especes");
   const [montantPaye, setMontantPaye] = useState("");
   const [montantMobile, setMontantMobile] = useState("");
   const [montantEspeces, setMontantEspeces] = useState("");
-  const [facturePar, setFacturePar] = useState("Secretaire 1");
+  const [facturePar, setFacturePar] = useState("");
+
+  useEffect(() => {
+    const userStr = localStorage.getItem("user");
+    if (userStr) {
+      const user = JSON.parse(userStr);
+      setFacturePar(user.nom);
+    }
+  }, []);
   const [reference, setReference] = useState("");
 
   const [erreur, setErreur] = useState("");
@@ -114,8 +123,11 @@ export default function EnregistrementPage() {
       body.regime = regime;
       body.dateDebutTest = dateDebutTest;
     }
-    if (service === "tcf_special") {
-      body.montantNegocie = Number(montantNegocie);
+    if (service === "tcf") {
+      body.dateFin = dateFin;
+    }
+   if (service === "tcf_special") {
+      body.dateFin = dateFin;
     }
     if (modePaiement === "mobile_especes") {
       body.montantMobile = Number(montantMobile);
@@ -243,6 +255,7 @@ export default function EnregistrementPage() {
               className={champClass}
             >
               <option value="tcf">TCF</option>
+              <option value="tcf_2mois">TCF 2 mois</option>
               <option value="examen_blanc">Examen blanc</option>
               <option value="tcf_special">TCF SPECIAL</option>
             </select>
@@ -267,6 +280,18 @@ export default function EnregistrementPage() {
                 onChange={(e) => setDateDebutTest(e.target.value)}
                 className={champClass}
               />
+
+             {service === "tcf_special" && (
+                <>
+                  <label className={labelClass}>Date de fin du test</label>
+                  <input
+                    type="date"
+                    value={dateFin}
+                    onChange={(e) => setDateFin(e.target.value)}
+                    className={champClass}
+                  />
+                </>
+              )}
             </>
           )}
 
@@ -323,17 +348,12 @@ export default function EnregistrementPage() {
             </>
           )}
 
-          <label className={labelClass}>Facturé par</label>
-          <select
+         <label className={labelClass}>Facturé par</label>
+          <input
             value={facturePar}
-            onChange={(e) => setFacturePar(e.target.value)}
-            className={champClass}
-          >
-            <option value="stephane">stephane</option>
-            <option value="vanelle">vanelle</option>
-            <option value="silaine">silaine</option>
-            <option value="big manager">big manager</option>
-          </select>
+            disabled
+            className={`${champClass} cursor-not-allowed bg-paper text-ink-soft`}
+          />
 
           <label className={labelClass}>Référence (optionnel)</label>
           <input

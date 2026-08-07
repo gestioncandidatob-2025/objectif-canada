@@ -22,6 +22,10 @@ export class CreateInscriptionDto {
   @IsDateString({}, { message: 'Date de début du test invalide' })
   dateDebutTest?: Date;
 
+  @IsOptional()
+  @IsDateString({}, { message: 'Date de fin invalide' })
+  dateFin?: Date;
+  
   @ApiProperty({ enum: ModePaiement, example: ModePaiement.MOBILE_ESPECES, description: 'Mode de paiement' })
   @IsEnum(ModePaiement, { message: 'Mode de paiement invalide' })
   modePaiement!: ModePaiement;

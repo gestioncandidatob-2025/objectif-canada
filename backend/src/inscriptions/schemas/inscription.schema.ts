@@ -5,6 +5,7 @@ export type InscriptionDocument = HydratedDocument<Inscription>;
 
 export enum Service {
   TCF = 'tcf',
+  TCF_2MOIS = 'tcf_2mois',
   EXAMEN_BLANC = 'examen_blanc',
   TCF_SPECIAL = 'tcf_special',
 }

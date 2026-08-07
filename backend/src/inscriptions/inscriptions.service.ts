@@ -26,6 +26,9 @@ export class InscriptionsService {
       case Service.TCF:
         montantTotal = 65000;
         break;
+      case Service.TCF_2MOIS:
+        montantTotal = 120000;
+        break;
       case Service.EXAMEN_BLANC:
         montantTotal = 5000;
         break;
@@ -37,7 +40,7 @@ export class InscriptionsService {
     // 3. La date d'inscription est toujours aujourd'hui, générée par le système
     const dateInscription = new Date();
 
-    // 4. Vérifier régime + dateDebutTest, et calculer dateDebutTest / dateFin
+    // 4. Calculer dateDebutTest / dateFin selon le service
     let dateDebutTest: Date;
     let dateFin: Date;
 
@@ -56,8 +59,24 @@ export class InscriptionsService {
         );
       }
       dateDebutTest = new Date(createInscriptionDto.dateDebutTest);
-      dateFin = new Date(dateDebutTest);
-      dateFin.setDate(dateFin.getDate() + 35);;
+
+      if (createInscriptionDto.service === Service.TCF_SPECIAL) {
+        // TCF SPECIAL : date de fin saisie manuellement
+        if (!createInscriptionDto.dateFin) {
+          throw new BadRequestException(
+            'La date de fin est obligatoire pour le TCF SPECIAL',
+          );
+        }
+        dateFin = new Date(createInscriptionDto.dateFin);
+      } else if (createInscriptionDto.service === Service.TCF_2MOIS) {
+        // TCF 2 mois : date de fin calculée automatiquement (+62 jours)
+        dateFin = new Date(dateDebutTest);
+        dateFin.setDate(dateFin.getDate() + 62);
+      } else {
+        // TCF classique : date de fin calculée automatiquement (+35 jours)
+        dateFin = new Date(dateDebutTest);
+        dateFin.setDate(dateFin.getDate() + 35);
+      }
     }
 
     // 5. Calculer le montant payé selon le mode de paiement
@@ -81,7 +100,7 @@ export class InscriptionsService {
     // 6. Calculer le reste à payer
     const resteAPayer = montantTotal - montantPaye;
 
-   // 7. Générer un numéro de reçu unique (vérifié pour éviter tout conflit)
+    // 7. Générer un numéro de reçu unique (vérifié pour éviter tout conflit)
     const jour = String(dateInscription.getDate()).padStart(2, '0');
     const mois = String(dateInscription.getMonth() + 1).padStart(2, '0');
     const annee = dateInscription.getFullYear();
@@ -159,12 +178,10 @@ export class InscriptionsService {
       throw new NotFoundException('Inscription introuvable');
     }
 
-    // Vérifier s'il reste d'autres inscriptions pour ce candidat
     const inscriptionsRestantes = await this.inscriptionModel.countDocuments({
       candidatId: inscription.candidatId,
     });
 
-    // Si plus aucune inscription, supprimer aussi le candidat
     if (inscriptionsRestantes === 0) {
       await this.candidatModel.findByIdAndDelete(inscription.candidatId).exec();
     }
