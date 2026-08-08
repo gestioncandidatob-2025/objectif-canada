@@ -32,7 +32,7 @@ export default function EnregistrementPage() {
   const [montantPaye, setMontantPaye] = useState("");
   const [montantMobile, setMontantMobile] = useState("");
   const [montantEspeces, setMontantEspeces] = useState("");
-  const [facturePar, setFacturePar] = useState("");
+const [facturePar, setFacturePar] = useState("");
 
   useEffect(() => {
     const userStr = localStorage.getItem("user");
@@ -351,10 +351,9 @@ export default function EnregistrementPage() {
          <label className={labelClass}>Facturé par</label>
           <input
             value={facturePar}
-            disabled
+disabled
             className={`${champClass} cursor-not-allowed bg-paper text-ink-soft`}
           />
-
           <label className={labelClass}>Référence (optionnel)</label>
           <input
             value={reference}

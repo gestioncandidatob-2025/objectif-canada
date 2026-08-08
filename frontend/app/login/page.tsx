@@ -80,11 +80,11 @@ export default function LoginPage() {
           />
 
           <button
-            type="submit"
-            className="w-full rounded-lg bg-accent py-2.5 font-medium text-white transition hover:bg-accent-hover"
-          >
-            Se connecter
-          </button>
+          type="submit"
+          className="w-full rounded-lg bg-accent py-2.5 font-medium text-white transition active:scale-[0.97] hover:bg-accent-hover"
+        >
+          Se connecter
+        </button>
         </form>
       </div>
     </div>
