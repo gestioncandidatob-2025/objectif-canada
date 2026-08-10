@@ -11,12 +11,30 @@ type Candidat = {
   telephone: string;
 };
 
+type DetteInfo = {
+  existe: boolean;
+  aUneDette?: boolean;
+  candidat?: Candidat;
+  inscription?: {
+    _id: string;
+    numeroRecu: string;
+    montantTotal: number;
+    montantPaye: number;
+    resteAPayer: number;
+  };
+};
+
 export default function EnregistrementPage() {
   const router = useRouter();
 
   const [recherche, setRecherche] = useState("");
   const [resultats, setResultats] = useState<Candidat[]>([]);
   const [candidatSelectionne, setCandidatSelectionne] = useState<Candidat | null>(null);
+
+  const [detteInfo, setDetteInfo] = useState<DetteInfo | null>(null);
+  const [verificationDetteEnCours, setVerificationDetteEnCours] = useState(false);
+  const [montantComplement, setMontantComplement] = useState("");
+  const [paiementEnCours, setPaiementEnCours] = useState(false);
 
   const [nouveauNom, setNouveauNom] = useState("");
   const [nouveauPrenom, setNouveauPrenom] = useState("");
@@ -49,6 +67,7 @@ export default function EnregistrementPage() {
   function handleTelephoneChange(valeur: string) {
     const chiffresUniquement = valeur.replace(/\D/g, "").slice(0, 9);
     setNouveauTelephone(chiffresUniquement);
+    setDetteInfo(null);
 
     if (chiffresUniquement.length === 0) {
       setErreurTelephone("");
@@ -56,7 +75,57 @@ export default function EnregistrementPage() {
       setErreurTelephone("Le téléphone doit contenir exactement 9 chiffres");
     } else {
       setErreurTelephone("");
+      verifierDette(chiffresUniquement);
     }
+  }
+
+  async function verifierDette(telephone: string) {
+    setVerificationDetteEnCours(true);
+    const res = await apiFetch(`/registrations/dette/${telephone}`);
+    setVerificationDetteEnCours(false);
+    if (!res.ok) {
+      return;
+    }
+    const data: DetteInfo = await res.json();
+    setDetteInfo(data);
+
+    // Le téléphone correspond déjà à un candidat existant : on le sélectionne
+    // pour éviter de créer un doublon, qu'il ait une dette ou non.
+    if (data.existe && data.candidat) {
+      setCandidatSelectionne(data.candidat);
+      setResultats([]);
+    }
+  }
+
+  async function mettreAJourPaiement() {
+    if (!detteInfo?.inscription) return;
+    setErreur("");
+
+    const montant = Number(montantComplement);
+    if (!montant || montant <= 0) {
+      setErreur("Le montant à ajouter doit être positif");
+      return;
+    }
+    if (montant > detteInfo.inscription.resteAPayer) {
+      setErreur("Ce montant dépasse le reste à payer");
+      return;
+    }
+
+    setPaiementEnCours(true);
+    const res = await apiFetch(`/registrations/${detteInfo.inscription._id}/payment`, {
+      method: "PATCH",
+      body: JSON.stringify({ montant }),
+    });
+    setPaiementEnCours(false);
+
+    if (!res.ok) {
+      const data = await res.json();
+      setErreur(Array.isArray(data.message) ? data.message.join(", ") : data.message);
+      return;
+    }
+
+    const inscription = await res.json();
+    router.push(`/recu/${inscription._id}`);
   }
 
   async function rechercherCandidats() {
@@ -89,6 +158,12 @@ export default function EnregistrementPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErreur("");
+
+    if (detteInfo?.aUneDette) {
+      setErreur("Ce client a une dette en cours : mets à jour son paiement au lieu de créer un nouvel enregistrement");
+      return;
+    }
+
     setEnvoiEnCours(true);
 
     let candidat = candidatSelectionne;
@@ -205,6 +280,7 @@ export default function EnregistrementPage() {
                       setCandidatSelectionne(c);
                       setResultats([]);
                       setRecherche(`${c.nom} ${c.prenom}`);
+                      verifierDette(c.telephone);
                     }}
                     className="w-full rounded-lg border border-ink/10 px-3 py-2 text-left transition hover:bg-paper"
                   >
@@ -215,10 +291,43 @@ export default function EnregistrementPage() {
             </ul>
           )}
 
-          {candidatSelectionne && (
+          {candidatSelectionne && !detteInfo?.aUneDette && (
             <p className="rounded-lg bg-accent/10 px-3 py-2 text-sm text-accent">
               Candidat sélectionné : {candidatSelectionne.nom} {candidatSelectionne.prenom}
             </p>
+          )}
+
+          {verificationDetteEnCours && (
+            <p className="text-sm text-ink-soft">Vérification du client...</p>
+          )}
+
+          {detteInfo?.aUneDette && detteInfo.inscription && candidatSelectionne && (
+            <div className="space-y-3 rounded-lg border border-error/30 bg-error/10 p-4">
+              <p className="text-sm font-medium text-error">
+                Ce client existe déjà ({candidatSelectionne.nom} {candidatSelectionne.prenom}) et
+                a une dette en cours sur le reçu N° {detteInfo.inscription.numeroRecu} : reste à
+                payer {detteInfo.inscription.resteAPayer.toLocaleString("fr-FR")} FCFA. Mets à
+                jour son paiement au lieu de créer un nouvel enregistrement — le numéro de facture
+                reste le même tant que le paiement n'est pas complété.
+              </p>
+              <div>
+                <label className={labelClass}>Montant reçu aujourd'hui (FCFA)</label>
+                <input
+                  type="number"
+                  value={montantComplement}
+                  onChange={(e) => setMontantComplement(e.target.value)}
+                  className={champClass}
+                />
+              </div>
+              <button
+                type="button"
+                onClick={mettreAJourPaiement}
+                disabled={paiementEnCours}
+                className="w-full rounded-lg bg-accent py-2.5 font-medium text-white transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 hover:bg-accent-hover"
+              >
+                {paiementEnCours ? "Mise à jour du paiement en cours..." : "Mettre à jour le paiement"}
+              </button>
+            </div>
           )}
 
           {!candidatSelectionne && (
@@ -249,124 +358,128 @@ export default function EnregistrementPage() {
             </>
           )}
 
-          <div className="border-t border-ink/10 pt-4">
-            <label className={labelClass}>Service</label>
-            <select
-              value={service}
-              onChange={(e) => setService(e.target.value)}
-              className={champClass}
-            >
-              <option value="tcf">TCF</option>
-              <option value="tcf_2mois">TCF 2 mois</option>
-              <option value="examen_blanc">Examen blanc</option>
-              <option value="tcf_special">TCF SPECIAL</option>
-            </select>
-          </div>
-
-          {service !== "examen_blanc" && (
+          {!detteInfo?.aUneDette && (
             <>
-              <label className={labelClass}>Régime</label>
+              <div className="border-t border-ink/10 pt-4">
+                <label className={labelClass}>Service</label>
+                <select
+                  value={service}
+                  onChange={(e) => setService(e.target.value)}
+                  className={champClass}
+                >
+                  <option value="tcf">TCF</option>
+                  <option value="tcf_2mois">TCF 2 mois</option>
+                  <option value="examen_blanc">Examen blanc</option>
+                  <option value="tcf_special">TCF SPECIAL</option>
+                </select>
+              </div>
+
+              {service !== "examen_blanc" && (
+                <>
+                  <label className={labelClass}>Régime</label>
+                  <select
+                    value={regime}
+                    onChange={(e) => setRegime(e.target.value)}
+                    className={champClass}
+                  >
+                    <option value="jour">Jour</option>
+                    <option value="soir">Soir</option>
+                  </select>
+
+                  <label className={labelClass}>Date de début du test</label>
+                  <input
+                    type="date"
+                    value={dateDebutTest}
+                    onChange={(e) => setDateDebutTest(e.target.value)}
+                    className={champClass}
+                  />
+                </>
+              )}
+
+              {service === "tcf_special" && (
+                <>
+                  <label className={labelClass}>Date de fin du test</label>
+                  <input
+                    type="date"
+                    value={dateFin}
+                    onChange={(e) => setDateFin(e.target.value)}
+                    className={champClass}
+                  />
+
+                  <label className={labelClass}>Montant négocié (FCFA)</label>
+                  <input
+                    type="number"
+                    value={montantNegocie}
+                    onChange={(e) => setMontantNegocie(e.target.value)}
+                    className={champClass}
+                  />
+                </>
+              )}
+
+              <label className={labelClass}>Mode de paiement</label>
               <select
-                value={regime}
-                onChange={(e) => setRegime(e.target.value)}
+                value={modePaiement}
+                onChange={(e) => setModePaiement(e.target.value)}
                 className={champClass}
               >
-                <option value="jour">Jour</option>
-                <option value="soir">Soir</option>
+                <option value="especes">Espèces</option>
+                <option value="orange_money">Orange Money</option>
+                <option value="mobile_money">Mobile Money</option>
+                <option value="mobile_especes">Mobile + Espèces</option>
               </select>
 
-              <label className={labelClass}>Date de début du test</label>
+              {modePaiement === "mobile_especes" ? (
+                <>
+                  <label className={labelClass}>Montant Mobile</label>
+                  <input
+                    type="number"
+                    value={montantMobile}
+                    onChange={(e) => setMontantMobile(e.target.value)}
+                    className={champClass}
+                  />
+                  <label className={labelClass}>Montant Espèces</label>
+                  <input
+                    type="number"
+                    value={montantEspeces}
+                    onChange={(e) => setMontantEspeces(e.target.value)}
+                    className={champClass}
+                  />
+                </>
+              ) : (
+                <>
+                  <label className={labelClass}>Montant payé</label>
+                  <input
+                    type="number"
+                    value={montantPaye}
+                    onChange={(e) => setMontantPaye(e.target.value)}
+                    className={champClass}
+                  />
+                </>
+              )}
+
+              <label className={labelClass}>Facturé par</label>
               <input
-                type="date"
-                value={dateDebutTest}
-                onChange={(e) => setDateDebutTest(e.target.value)}
+                value={facturePar}
+                disabled
+                className={`${champClass} cursor-not-allowed bg-paper text-ink-soft`}
+              />
+
+              <label className={labelClass}>Référence (optionnel)</label>
+              <input
+                value={reference}
+                onChange={(e) => setReference(e.target.value)}
                 className={champClass}
               />
+
+              <button
+                type="submit"
+                disabled={envoiEnCours}
+                className="w-full rounded-lg bg-accent py-2.5 font-medium text-white transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 hover:bg-accent-hover"
+              >
+                {envoiEnCours ? "Enregistrement..." : "Enregistrer l'inscription"}
+              </button>
             </>
           )}
-
-          {service === "tcf_special" && (
-            <>
-              <label className={labelClass}>Date de fin du test</label>
-              <input
-                type="date"
-                value={dateFin}
-                onChange={(e) => setDateFin(e.target.value)}
-                className={champClass}
-              />
-
-              <label className={labelClass}>Montant négocié (FCFA)</label>
-              <input
-                type="number"
-                value={montantNegocie}
-                onChange={(e) => setMontantNegocie(e.target.value)}
-                className={champClass}
-              />
-            </>
-          )}
-
-          <label className={labelClass}>Mode de paiement</label>
-          <select
-            value={modePaiement}
-            onChange={(e) => setModePaiement(e.target.value)}
-            className={champClass}
-          >
-            <option value="especes">Espèces</option>
-            <option value="orange_money">Orange Money</option>
-            <option value="mobile_money">Mobile Money</option>
-            <option value="mobile_especes">Mobile + Espèces</option>
-          </select>
-
-          {modePaiement === "mobile_especes" ? (
-            <>
-              <label className={labelClass}>Montant Mobile</label>
-              <input
-                type="number"
-                value={montantMobile}
-                onChange={(e) => setMontantMobile(e.target.value)}
-                className={champClass}
-              />
-              <label className={labelClass}>Montant Espèces</label>
-              <input
-                type="number"
-                value={montantEspeces}
-                onChange={(e) => setMontantEspeces(e.target.value)}
-                className={champClass}
-              />
-            </>
-          ) : (
-            <>
-              <label className={labelClass}>Montant payé</label>
-              <input
-                type="number"
-                value={montantPaye}
-                onChange={(e) => setMontantPaye(e.target.value)}
-                className={champClass}
-              />
-            </>
-          )}
-
-          <label className={labelClass}>Facturé par</label>
-          <input
-            value={facturePar}
-            disabled
-            className={`${champClass} cursor-not-allowed bg-paper text-ink-soft`}
-          />
-
-          <label className={labelClass}>Référence (optionnel)</label>
-          <input
-            value={reference}
-            onChange={(e) => setReference(e.target.value)}
-            className={champClass}
-          />
-
-          <button
-            type="submit"
-            disabled={envoiEnCours}
-            className="w-full rounded-lg bg-accent py-2.5 font-medium text-white transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 hover:bg-accent-hover"
-          >
-            {envoiEnCours ? "Enregistrement..." : "Enregistrer l'inscription"}
-          </button>
         </form>
       </div>
     </div>
