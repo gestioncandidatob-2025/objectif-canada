@@ -307,7 +307,7 @@ export default function EnregistrementPage() {
 
   return (
     <div className="px-4 py-10">
-      <div className="mx-auto max-w-xl">
+      <div className="mx-auto max-w-5xl">
         <h1
           className="mb-6 text-3xl text-ink"
           style={{ fontFamily: "var(--font-display)" }}
@@ -321,6 +321,82 @@ export default function EnregistrementPage() {
           </p>
         )}
 
+        <div className="grid gap-8 lg:grid-cols-[380px_1fr]">
+          {!detteInfo?.aUneDette && (
+            <div className="order-2 lg:order-1">
+              <div className="rounded-2xl border border-ink/10 bg-white p-6 shadow-sm lg:sticky lg:top-8">
+                <p className="mb-2 text-center text-xs font-semibold uppercase tracking-widest text-ink-soft">
+                  Aperçu du reçu
+                </p>
+                <div className="text-center text-sm leading-relaxed text-ink">
+                  <p className="mt-1">Centre de formation TCF/TEF</p>
+                  <p className="mt-2 tracking-widest text-ink-soft">
+                    ------------------------------------
+                  </p>
+                  <p className="font-bold">REÇU DE PAIEMENT</p>
+                  <p className="tracking-widest text-ink-soft">
+                    ------------------------------------
+                  </p>
+                </div>
+
+                <div className="mt-2 space-y-1 text-left text-sm text-ink">
+                  <p className="font-bold">Nom et Prénom :</p>
+                  <p>
+                    {candidatSelectionne
+                      ? `${candidatSelectionne.prenom} ${candidatSelectionne.nom}`
+                      : nouveauNom || nouveauPrenom
+                        ? `${nouveauPrenom} ${nouveauNom}`
+                        : "—"}
+                  </p>
+                  <p>
+                    <span className="font-bold">Téléphone :</span>{" "}
+                    {candidatSelectionne ? candidatSelectionne.telephone : nouveauTelephone || "—"}
+                  </p>
+                  {service !== "examen_blanc" && (
+                    <p>
+                      <span className="font-bold">Régime :</span> {regimeLabels[regime]}
+                    </p>
+                  )}
+                  <p>
+                    <span className="font-bold">Test :</span> {serviceLabels[service]}
+                  </p>
+                  {service !== "examen_blanc" && (
+                    <p>
+                      <span className="font-bold">📅 Fin du test :</span> {calculerDateFin()}
+                    </p>
+                  )}
+
+                  <p className="text-center tracking-widest text-ink-soft">
+                    ------------------------------------
+                  </p>
+
+                  <p className="font-bold">
+                    Montant : {calculerMontantTotal().toLocaleString("fr-FR")} FCFA
+                  </p>
+                  <p>Payé : {calculerMontantPaye().toLocaleString("fr-FR")} FCFA</p>
+                  <p>
+                    Reste :{" "}
+                    {(calculerMontantTotal() - calculerMontantPaye()).toLocaleString("fr-FR")} FCFA
+                  </p>
+                  <p>
+                    <span className="font-bold">Mode de paiement :</span>{" "}
+                    {modePaiementLabels[modePaiement]}
+                  </p>
+                  {reference && (
+                    <p>
+                      <span className="font-bold">Référence :</span> {reference}
+                    </p>
+                  )}
+
+                  <p className="text-center tracking-widest text-ink-soft">
+                    ------------------------------------
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className={detteInfo?.aUneDette ? "lg:col-span-2" : "order-1 lg:order-2"}>
         <form
           onSubmit={handleSubmit}
           className="space-y-3 rounded-2xl border border-ink/10 bg-white p-8 shadow-sm"
@@ -553,6 +629,8 @@ export default function EnregistrementPage() {
             </>
           )}
         </form>
+          </div>
+        </div>
       </div>
 
       {modalConfirmationOuvert && (
