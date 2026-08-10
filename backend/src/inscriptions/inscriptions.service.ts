@@ -135,6 +135,29 @@ export class InscriptionsService {
     return inscription.save();
   }
 
+  async verifierDette(telephone: string) {
+    const candidat = await this.candidatModel.findOne({ telephone }).exec();
+    if (!candidat) {
+      return { existe: false };
+    }
+
+    const inscriptionAvecDette = await this.inscriptionModel
+      .findOne({ candidatId: candidat._id, resteAPayer: { $gt: 0 } })
+      .sort({ createdAt: -1 })
+      .exec();
+
+    if (!inscriptionAvecDette) {
+      return { existe: true, aUneDette: false, candidat };
+    }
+
+    return {
+      existe: true,
+      aUneDette: true,
+      candidat,
+      inscription: inscriptionAvecDette,
+    };
+  }
+
   async findAll(filtres: { nom?: string; service?: string; regime?: string; candidatId?: string }) {
     const filtre: Record<string, any> = {};
 

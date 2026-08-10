@@ -35,6 +35,12 @@ export class InscriptionsController {
     return this.inscriptionsService.findAll({ nom, service, regime, candidatId });
   }
 
+  @ApiOperation({ summary: "Vérifier si un candidat (par téléphone) existe déjà et a une dette en cours" })
+  @Get('dette/:telephone')
+  verifierDette(@Param('telephone') telephone: string) {
+    return this.inscriptionsService.verifierDette(telephone);
+  }
+
   @ApiOperation({ summary: "Voir le détail d'une inscription précise" })
   @Get(':id')
   findOne(@Param('id') id: string) {
@@ -47,9 +53,7 @@ export class InscriptionsController {
     return this.inscriptionsService.findOne(id);
   }
 
-  @ApiOperation({ summary: "Ajouter un paiement complémentaire (réservé à l'administrateur)" })
-  @UseGuards(RolesGuard)
-  @Roles('admin')
+  @ApiOperation({ summary: 'Ajouter un paiement complémentaire' })
   @Patch(':id/payment')
   ajouterPaiement(@Param('id') id: string, @Body() dto: AjouterPaiementDto) {
     return this.inscriptionsService.ajouterPaiement(id, dto.montant);

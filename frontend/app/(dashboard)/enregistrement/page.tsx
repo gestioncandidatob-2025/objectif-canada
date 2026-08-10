@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect  } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "../../lib/api";
 
@@ -32,16 +32,16 @@ export default function EnregistrementPage() {
   const [montantPaye, setMontantPaye] = useState("");
   const [montantMobile, setMontantMobile] = useState("");
   const [montantEspeces, setMontantEspeces] = useState("");
-const [facturePar, setFacturePar] = useState("");
+  const [reference, setReference] = useState("");
+
+  const [facturePar, setFacturePar] = useState("");
 
   useEffect(() => {
     const userStr = localStorage.getItem("user");
     if (userStr) {
-      const user = JSON.parse(userStr);
-      setFacturePar(user.nom);
+      setFacturePar(JSON.parse(userStr).nom);
     }
   }, []);
-  const [reference, setReference] = useState("");
 
   const [erreur, setErreur] = useState("");
   const [envoiEnCours, setEnvoiEnCours] = useState(false);
@@ -123,12 +123,14 @@ const [facturePar, setFacturePar] = useState("");
       body.regime = regime;
       body.dateDebutTest = dateDebutTest;
     }
-    if (service === "tcf") {
+
+    // La date de fin n'est saisie manuellement QUE pour TCF SPECIAL.
+    // Pour tous les autres services, elle est calculée automatiquement côté backend.
+    if (service === "tcf_special") {
       body.dateFin = dateFin;
+      body.montantNegocie = Number(montantNegocie);
     }
-   if (service === "tcf_special") {
-      body.dateFin = dateFin;
-    }
+
     if (modePaiement === "mobile_especes") {
       body.montantMobile = Number(montantMobile);
       body.montantEspeces = Number(montantEspeces);
@@ -280,23 +282,19 @@ const [facturePar, setFacturePar] = useState("");
                 onChange={(e) => setDateDebutTest(e.target.value)}
                 className={champClass}
               />
-
-             {service === "tcf_special" && (
-                <>
-                  <label className={labelClass}>Date de fin du test</label>
-                  <input
-                    type="date"
-                    value={dateFin}
-                    onChange={(e) => setDateFin(e.target.value)}
-                    className={champClass}
-                  />
-                </>
-              )}
             </>
           )}
 
           {service === "tcf_special" && (
             <>
+              <label className={labelClass}>Date de fin du test</label>
+              <input
+                type="date"
+                value={dateFin}
+                onChange={(e) => setDateFin(e.target.value)}
+                className={champClass}
+              />
+
               <label className={labelClass}>Montant négocié (FCFA)</label>
               <input
                 type="number"
@@ -348,12 +346,13 @@ const [facturePar, setFacturePar] = useState("");
             </>
           )}
 
-         <label className={labelClass}>Facturé par</label>
+          <label className={labelClass}>Facturé par</label>
           <input
             value={facturePar}
-disabled
+            disabled
             className={`${champClass} cursor-not-allowed bg-paper text-ink-soft`}
           />
+
           <label className={labelClass}>Référence (optionnel)</label>
           <input
             value={reference}
