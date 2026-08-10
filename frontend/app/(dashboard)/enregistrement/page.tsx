@@ -63,6 +63,58 @@ export default function EnregistrementPage() {
 
   const [erreur, setErreur] = useState("");
   const [envoiEnCours, setEnvoiEnCours] = useState(false);
+  const [modalConfirmationOuvert, setModalConfirmationOuvert] = useState(false);
+
+  const serviceLabels: Record<string, string> = {
+    tcf: "TCF",
+    tcf_2mois: "TCF 2 mois",
+    examen_blanc: "Examen blanc",
+    tcf_special: "TCF SPECIAL",
+  };
+  const regimeLabels: Record<string, string> = { jour: "Jour", soir: "Soir" };
+  const modePaiementLabels: Record<string, string> = {
+    especes: "Espèces",
+    orange_money: "Orange Money",
+    mobile_money: "Mobile Money",
+    mobile_especes: "Mobile + Espèces",
+  };
+
+  function calculerMontantTotal(): number {
+    switch (service) {
+      case "tcf":
+        return 65000;
+      case "tcf_2mois":
+        return 120000;
+      case "examen_blanc":
+        return 5000;
+      case "tcf_special":
+        return Number(montantNegocie) || 0;
+      default:
+        return 0;
+    }
+  }
+
+  function calculerMontantPaye(): number {
+    if (modePaiement === "mobile_especes") {
+      return (Number(montantMobile) || 0) + (Number(montantEspeces) || 0);
+    }
+    return Number(montantPaye) || 0;
+  }
+
+  function calculerDateFin(): string {
+    if (service === "examen_blanc") {
+      return new Date().toLocaleDateString("fr-FR");
+    }
+    if (service === "tcf_special") {
+      return dateFin ? new Date(dateFin).toLocaleDateString("fr-FR") : "-";
+    }
+    if (!dateDebutTest) return "-";
+    const debut = new Date(dateDebutTest);
+    const jours = service === "tcf_2mois" ? 62 : 35;
+    const fin = new Date(debut);
+    fin.setDate(fin.getDate() + jours);
+    return fin.toLocaleDateString("fr-FR");
+  }
 
   function handleTelephoneChange(valeur: string) {
     const chiffresUniquement = valeur.replace(/\D/g, "").slice(0, 9);
@@ -155,7 +207,7 @@ export default function EnregistrementPage() {
     return res.json();
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErreur("");
 
@@ -164,24 +216,43 @@ export default function EnregistrementPage() {
       return;
     }
 
+    if (!candidatSelectionne) {
+      if (!nouveauNom || !nouveauPrenom || !nouveauTelephone) {
+        setErreur("Sélectionne un candidat existant ou remplis ses informations");
+        return;
+      }
+      if (nouveauTelephone.length !== 9) {
+        setErreurTelephone("Le téléphone doit contenir exactement 9 chiffres");
+        return;
+      }
+    }
+
+    if (service !== "examen_blanc" && !dateDebutTest) {
+      setErreur("La date de début du test est obligatoire");
+      return;
+    }
+
+    if (service === "tcf_special" && (!dateFin || !montantNegocie)) {
+      setErreur("La date de fin et le montant négocié sont obligatoires pour le TCF SPECIAL");
+      return;
+    }
+
+    // Toutes les validations sont bonnes : on ouvre le modal de récapitulatif
+    // avant d'envoyer quoi que ce soit au serveur.
+    setModalConfirmationOuvert(true);
+  }
+
+  async function confirmerEtEnregistrer() {
+    setErreur("");
     setEnvoiEnCours(true);
 
     let candidat = candidatSelectionne;
 
     if (!candidat) {
-      if (!nouveauNom || !nouveauPrenom || !nouveauTelephone) {
-        setErreur("Sélectionne un candidat existant ou remplis ses informations");
-        setEnvoiEnCours(false);
-        return;
-      }
-      if (nouveauTelephone.length !== 9) {
-        setErreurTelephone("Le téléphone doit contenir exactement 9 chiffres");
-        setEnvoiEnCours(false);
-        return;
-      }
       candidat = await creerNouveauCandidat();
       if (!candidat) {
         setEnvoiEnCours(false);
+        setModalConfirmationOuvert(false);
         return;
       }
     }
@@ -222,6 +293,7 @@ export default function EnregistrementPage() {
       const data = await res.json();
       setErreur(Array.isArray(data.message) ? data.message.join(", ") : data.message);
       setEnvoiEnCours(false);
+      setModalConfirmationOuvert(false);
       return;
     }
 
@@ -482,6 +554,92 @@ export default function EnregistrementPage() {
           )}
         </form>
       </div>
+
+      {modalConfirmationOuvert && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-lg">
+            <h2
+              className="mb-4 text-xl text-ink"
+              style={{ fontFamily: "var(--font-display)" }}
+            >
+              Confirmer l'enregistrement
+            </h2>
+            <div className="space-y-2 text-sm text-ink">
+              <p>
+                <span className="text-ink-soft">Candidat : </span>
+                {candidatSelectionne
+                  ? `${candidatSelectionne.nom} ${candidatSelectionne.prenom}`
+                  : `${nouveauNom} ${nouveauPrenom}`}
+              </p>
+              <p>
+                <span className="text-ink-soft">Téléphone : </span>
+                {candidatSelectionne ? candidatSelectionne.telephone : nouveauTelephone}
+              </p>
+              <p>
+                <span className="text-ink-soft">Service : </span>
+                {serviceLabels[service]}
+              </p>
+              {service !== "examen_blanc" && (
+                <>
+                  <p>
+                    <span className="text-ink-soft">Régime : </span>
+                    {regimeLabels[regime]}
+                  </p>
+                  <p>
+                    <span className="text-ink-soft">Date de fin de formation : </span>
+                    {calculerDateFin()}
+                  </p>
+                </>
+              )}
+              <p>
+                <span className="text-ink-soft">Montant total : </span>
+                {calculerMontantTotal().toLocaleString("fr-FR")} FCFA
+              </p>
+              <p>
+                <span className="text-ink-soft">Montant payé : </span>
+                {calculerMontantPaye().toLocaleString("fr-FR")} FCFA
+              </p>
+              <p>
+                <span className="text-ink-soft">Reste à payer : </span>
+                {(calculerMontantTotal() - calculerMontantPaye()).toLocaleString("fr-FR")} FCFA
+              </p>
+              <p>
+                <span className="text-ink-soft">Mode de paiement : </span>
+                {modePaiementLabels[modePaiement]}
+              </p>
+              <p>
+                <span className="text-ink-soft">Facturé par : </span>
+                {facturePar}
+              </p>
+              {reference && (
+                <p>
+                  <span className="text-ink-soft">Référence : </span>
+                  {reference}
+                </p>
+              )}
+            </div>
+
+            <div className="mt-6 flex gap-3">
+              <button
+                type="button"
+                onClick={() => setModalConfirmationOuvert(false)}
+                disabled={envoiEnCours}
+                className="flex-1 rounded-lg border border-ink/15 py-2.5 font-medium text-ink transition hover:bg-paper disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={confirmerEtEnregistrer}
+                disabled={envoiEnCours}
+                className="flex-1 rounded-lg bg-accent py-2.5 font-medium text-white transition active:scale-[0.98] hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {envoiEnCours ? "Enregistrement en cours..." : "Confirmer et enregistrer"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
