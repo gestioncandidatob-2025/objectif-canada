@@ -258,7 +258,7 @@ export default function EnregistrementPage() {
             <input
               value={recherche}
               onChange={(e) => setRecherche(e.target.value)}
-              placeholder="Nom ou prénom"
+              placeholder="Nom, prénom ou téléphone"
               className={champClass}
             />
             <button
