@@ -35,6 +35,11 @@ export class CreateInscriptionDto {
   @IsNumber()
   montantNegocie?: number;
 
+  @ApiPropertyOptional({ example: 5000, description: 'Remise accordée (uniquement pour le service TCF classique)' })
+  @IsOptional()
+  @IsNumber()
+  remise?: number;
+
   @ApiPropertyOptional({ example: 5000, description: 'Montant payé (si mode de paiement simple)' })
   @IsOptional()
   @IsNumber()

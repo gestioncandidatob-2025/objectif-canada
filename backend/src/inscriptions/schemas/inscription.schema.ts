@@ -42,8 +42,11 @@ export class Inscription {
   @Prop({ required: true })
   dateFin!: Date;
 
-  @Prop({ required: true })
+ @Prop({ required: true })
   montantTotal!: number;
+
+  @Prop({ default: 0 })
+  remise!: number;
 
   @Prop({ default: 0 })
   montantPaye!: number;

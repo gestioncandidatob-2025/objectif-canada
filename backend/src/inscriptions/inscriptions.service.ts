@@ -37,6 +37,21 @@ export class InscriptionsService {
         break;
     }
 
+    // 2.5 Appliquer une remise (uniquement pour le service TCF classique).
+    const remise =
+      createInscriptionDto.service === Service.TCF
+        ? (createInscriptionDto.remise ?? 0)
+        : 0;
+
+    if (remise < 0) {
+      throw new BadRequestException('La remise ne peut pas être négative');
+    }
+    if (remise > montantTotal) {
+      throw new BadRequestException('La remise ne peut pas dépasser le montant total');
+    }
+
+    montantTotal = montantTotal - remise;
+
     // 3. La date d'inscription est toujours aujourd'hui, générée par le système
     const dateInscription = new Date();
 
@@ -122,6 +137,7 @@ export class InscriptionsService {
       dateDebutTest,
       dateFin,
       montantTotal,
+      remise,
       montantPaye,
       resteAPayer,
       modePaiement: createInscriptionDto.modePaiement,

@@ -46,6 +46,7 @@ export default function EnregistrementPage() {
   const [dateDebutTest, setDateDebutTest] = useState("");
   const [dateFin, setDateFin] = useState("");
   const [montantNegocie, setMontantNegocie] = useState("");
+  const [remise, setRemise] = useState("");
   const [modePaiement, setModePaiement] = useState("especes");
   const [montantPaye, setMontantPaye] = useState("");
   const [montantMobile, setMontantMobile] = useState("");
@@ -80,18 +81,23 @@ export default function EnregistrementPage() {
   };
 
   function calculerMontantTotal(): number {
+    let base: number;
     switch (service) {
       case "tcf":
-        return 65000;
+        base = 65000;
+        return base - (Number(remise) || 0);
       case "tcf_2mois":
-        return 120000;
+        base = 120000;
+        break;
       case "examen_blanc":
-        return 5000;
+        base = 5000;
+        break;
       case "tcf_special":
         return Number(montantNegocie) || 0;
       default:
-        return 0;
+        base = 0;
     }
+    return base;
   }
 
   function calculerMontantPaye(): number {
@@ -275,6 +281,8 @@ export default function EnregistrementPage() {
     if (service === "tcf_special") {
       body.dateFin = dateFin;
       body.montantNegocie = Number(montantNegocie);
+    } else if (service === "tcf" && remise) {
+      body.remise = Number(remise);
     }
 
     if (modePaiement === "mobile_especes") {
@@ -564,6 +572,18 @@ export default function EnregistrementPage() {
                 </>
               )}
 
+              {service === "tcf" && (
+                <>
+                  <label className={labelClass}>Remise (FCFA, optionnel)</label>
+                  <input
+                    type="number"
+                    value={remise}
+                    onChange={(e) => setRemise(e.target.value)}
+                    className={champClass}
+                  />
+                </>
+              )}
+
               <label className={labelClass}>Mode de paiement</label>
               <select
                 value={modePaiement}
@@ -673,6 +693,12 @@ export default function EnregistrementPage() {
                 <span className="text-ink-soft">Montant total : </span>
                 {calculerMontantTotal().toLocaleString("fr-FR")} FCFA
               </p>
+              {service === "tcf" && Number(remise) > 0 && (
+                <p>
+                  <span className="text-ink-soft">Remise appliquée : </span>
+                  {Number(remise).toLocaleString("fr-FR")} FCFA
+                </p>
+              )}
               <p>
                 <span className="text-ink-soft">Montant payé : </span>
                 {calculerMontantPaye().toLocaleString("fr-FR")} FCFA
