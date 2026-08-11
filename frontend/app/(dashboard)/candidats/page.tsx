@@ -54,6 +54,8 @@ export default function CandidatsPage() {
   const [editFacturePar, setEditFacturePar] = useState("STEPHANE");
   const [editReference, setEditReference] = useState("");
   const [editRaison, setEditRaison] = useState("");
+  const [enregistrementEnCours, setEnregistrementEnCours] = useState(false);
+  const [suppressionEnCours, setSuppressionEnCours] = useState(false);
   useEffect(() => {
     const userStr = localStorage.getItem("user");
     if (userStr) {
@@ -102,6 +104,7 @@ export default function CandidatsPage() {
       setErreur("La raison de la modification est obligatoire");
       return;
     }
+    setEnregistrementEnCours(true);
     const body: Record<string, unknown> = {
       regime: editRegime,
       dateDebutTest: editDateDebutTest || undefined,
@@ -117,20 +120,25 @@ export default function CandidatsPage() {
     if (!res.ok) {
       const data = await res.json();
       setErreur(Array.isArray(data.message) ? data.message.join(", ") : data.message);
+      setEnregistrementEnCours(false);
       return;
     }
     setLigneEnEdition(null);
+    setEnregistrementEnCours(false);
     chargerInscriptions();
   }
 
   async function confirmerSuppression(id: string) {
+    setSuppressionEnCours(true);
     const res = await apiFetch(`/registrations/${id}`, { method: "DELETE" });
     if (!res.ok) {
       setErreur("Suppression impossible");
+      setSuppressionEnCours(false);
       return;
     }
     setLigneASupprimer(null);
     setLettreConfirmation("");
+    setSuppressionEnCours(false);
     chargerInscriptions();
   }
 
@@ -184,9 +192,10 @@ export default function CandidatsPage() {
 
         <button
           onClick={chargerInscriptions}
-          className="mb-4 rounded-lg bg-accent px-5 py-2.5 text-sm font-medium text-white transition active:scale-[0.97] hover:bg-accent-hover"
+          disabled={chargement}
+          className="mb-4 rounded-lg bg-accent px-5 py-2.5 text-sm font-medium text-white transition active:scale-[0.97] hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
         >
-          Chercher
+          {chargement ? "Recherche..." : "Chercher"}
         </button>
 
         <div className="overflow-x-auto rounded-2xl border border-ink/10 bg-white shadow-sm">
@@ -374,13 +383,15 @@ export default function CandidatsPage() {
                         <div className="flex gap-2 pt-1">
                           <button
                             onClick={() => enregistrerModification(insc._id)}
-                            className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition hover:bg-accent-hover"
+                            disabled={enregistrementEnCours}
+                            className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
                           >
-                            Enregistrer
+                            {enregistrementEnCours ? "Enregistrement..." : "Enregistrer"}
                           </button>
                           <button
                             onClick={() => setLigneEnEdition(null)}
-                            className="rounded-lg border border-ink/15 px-4 py-2 text-sm font-medium text-ink transition hover:bg-paper"
+                            disabled={enregistrementEnCours}
+                            className="rounded-lg border border-ink/15 px-4 py-2 text-sm font-medium text-ink transition hover:bg-paper disabled:cursor-not-allowed disabled:opacity-60"
                           >
                             Annuler
                           </button>
@@ -406,17 +417,18 @@ export default function CandidatsPage() {
                           />
                           <button
                             onClick={() => confirmerSuppression(insc._id)}
-                            disabled={lettreConfirmation !== "S"}
+                            disabled={lettreConfirmation !== "S" || suppressionEnCours}
                             className="rounded-lg bg-error px-4 py-2 text-sm font-medium text-white transition disabled:cursor-not-allowed disabled:opacity-40 hover:bg-red-700"
                           >
-                            Confirmer la suppression
+                            {suppressionEnCours ? "Suppression..." : "Confirmer la suppression"}
                           </button>
                           <button
                             onClick={() => {
                               setLigneASupprimer(null);
                               setLettreConfirmation("");
                             }}
-                            className="rounded-lg border border-ink/15 px-4 py-2 text-sm font-medium text-ink transition hover:bg-paper"
+                            disabled={suppressionEnCours}
+                            className="rounded-lg border border-ink/15 px-4 py-2 text-sm font-medium text-ink transition hover:bg-paper disabled:cursor-not-allowed disabled:opacity-60"
                           >
                             Annuler
                           </button>

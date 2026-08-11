@@ -31,6 +31,8 @@ export default function UtilisateursPage() {
   const [ligneEnEdition, setLigneEnEdition] = useState<string | null>(null);
   const [editNom, setEditNom] = useState("");
   const [editRole, setEditRole] = useState("secretariat");
+  const [enregistrementEnCours, setEnregistrementEnCours] = useState(false);
+  const [suppressionEnCours, setSuppressionEnCours] = useState<string | null>(null);
 
   async function chargerUsers() {
     setChargement(true);
@@ -83,6 +85,7 @@ export default function UtilisateursPage() {
   }
 
   async function enregistrerModification(id: string) {
+    setEnregistrementEnCours(true);
     const res = await apiFetch(`/users/${id}`, {
       method: "PATCH",
       body: JSON.stringify({ nom: editNom, role: editRole }),
@@ -90,19 +93,24 @@ export default function UtilisateursPage() {
     if (!res.ok) {
       const data = await res.json();
       setErreur(Array.isArray(data.message) ? data.message.join(", ") : data.message);
+      setEnregistrementEnCours(false);
       return;
     }
     setLigneEnEdition(null);
+    setEnregistrementEnCours(false);
     chargerUsers();
   }
 
   async function supprimer(id: string) {
     if (!window.confirm("Confirmer la suppression de cet utilisateur ?")) return;
+    setSuppressionEnCours(id);
     const res = await apiFetch(`/users/${id}`, { method: "DELETE" });
     if (!res.ok) {
       setErreur("Suppression impossible");
+      setSuppressionEnCours(null);
       return;
     }
+    setSuppressionEnCours(null);
     chargerUsers();
   }
 
@@ -215,9 +223,10 @@ export default function UtilisateursPage() {
                       </button>
                       <button
                         onClick={() => supprimer(u._id)}
-                        className="font-medium text-error hover:underline"
+                        disabled={suppressionEnCours === u._id}
+                        className="font-medium text-error hover:underline disabled:cursor-not-allowed disabled:opacity-60"
                       >
-                        Supprimer
+                        {suppressionEnCours === u._id ? "Suppression..." : "Supprimer"}
                       </button>
                     </td>
                   </tr>
@@ -253,13 +262,15 @@ export default function UtilisateursPage() {
                         <div className="flex gap-2">
                           <button
                             onClick={() => enregistrerModification(u._id)}
-                            className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition hover:bg-accent-hover"
+                            disabled={enregistrementEnCours}
+                            className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
                           >
-                            Enregistrer
+                            {enregistrementEnCours ? "Enregistrement..." : "Enregistrer"}
                           </button>
                           <button
                             onClick={() => setLigneEnEdition(null)}
-                            className="rounded-lg border border-ink/15 px-4 py-2 text-sm font-medium text-ink transition hover:bg-paper"
+                            disabled={enregistrementEnCours}
+                            className="rounded-lg border border-ink/15 px-4 py-2 text-sm font-medium text-ink transition hover:bg-paper disabled:cursor-not-allowed disabled:opacity-60"
                           >
                             Annuler
                           </button>

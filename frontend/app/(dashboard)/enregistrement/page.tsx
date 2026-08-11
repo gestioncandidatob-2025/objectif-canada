@@ -65,6 +65,7 @@ export default function EnregistrementPage() {
   const [erreur, setErreur] = useState("");
   const [envoiEnCours, setEnvoiEnCours] = useState(false);
   const [modalConfirmationOuvert, setModalConfirmationOuvert] = useState(false);
+  const [rechercheEnCours, setRechercheEnCours] = useState(false);
 
   const serviceLabels: Record<string, string> = {
     tcf: "TCF",
@@ -191,12 +192,13 @@ export default function EnregistrementPage() {
       setResultats([]);
       return;
     }
+    setRechercheEnCours(true);
     const res = await apiFetch(`/candidates?nom=${encodeURIComponent(recherche)}`);
     if (res.ok) {
       setResultats(await res.json());
     }
+    setRechercheEnCours(false);
   }
-
   async function creerNouveauCandidat(): Promise<Candidat | null> {
     const res = await apiFetch("/candidates", {
       method: "POST",
@@ -420,9 +422,10 @@ export default function EnregistrementPage() {
             <button
               type="button"
               onClick={rechercherCandidats}
-              className="whitespace-nowrap rounded-lg border border-ink/15 px-4 py-2.5 font-medium text-ink transition hover:bg-paper"
+              disabled={rechercheEnCours}
+              className="whitespace-nowrap rounded-lg border border-ink/15 px-4 py-2.5 font-medium text-ink transition hover:bg-paper disabled:cursor-not-allowed disabled:opacity-60"
             >
-              Chercher
+              {rechercheEnCours ? "Recherche..." : "Chercher"}
             </button>
           </div>
 

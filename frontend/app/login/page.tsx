@@ -7,11 +7,13 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [motDePasse, setMotDePasse] = useState("");
   const [erreur, setErreur] = useState("");
+  const [connexionEnCours, setConnexionEnCours] = useState(false);
   const router = useRouter();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErreur("");
+    setConnexionEnCours(true);
 
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/login`, {
@@ -22,6 +24,7 @@ export default function LoginPage() {
 
       if (!res.ok) {
         setErreur("Email ou mot de passe incorrect");
+        setConnexionEnCours(false);
         return;
       }
 
@@ -31,6 +34,7 @@ export default function LoginPage() {
       router.push("/bienvenue");
     } catch {
       setErreur("Impossible de contacter le serveur");
+      setConnexionEnCours(false);
     }
   }
 
@@ -81,9 +85,10 @@ export default function LoginPage() {
 
           <button
           type="submit"
-          className="w-full rounded-lg bg-accent py-2.5 font-medium text-white transition active:scale-[0.97] hover:bg-accent-hover"
+          disabled={connexionEnCours}
+          className="w-full rounded-lg bg-accent py-2.5 font-medium text-white transition active:scale-[0.97] hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
         >
-          Se connecter
+          {connexionEnCours ? "Connexion en cours..." : "Se connecter"}
         </button>
         </form>
       </div>
