@@ -174,7 +174,16 @@ export class InscriptionsService {
     };
   }
 
-  async findAll(filtres: { nom?: string; service?: string; regime?: string; candidatId?: string }) {
+  async findAll(filtres: {
+    nom?: string;
+    service?: string;
+    regime?: string;
+    candidatId?: string;
+    statut?: string;
+    dateInscriptionDebut?: string;
+    dateInscriptionFin?: string;
+    paiement?: string;
+  }) {
     const filtre: Record<string, any> = {};
 
     if (filtres.service) {
@@ -185,6 +194,34 @@ export class InscriptionsService {
     }
     if (filtres.candidatId && Types.ObjectId.isValid(filtres.candidatId)) {
       filtre.candidatId = new Types.ObjectId(filtres.candidatId);
+    }
+
+    // Statut : "en cours" si la date de fin de formation n'est pas encore passée,
+    // "terminé" si elle est déjà passée.
+    if (filtres.statut === 'en_cours') {
+      filtre.dateFin = { $gte: new Date() };
+    } else if (filtres.statut === 'termine') {
+      filtre.dateFin = { $lt: new Date() };
+    }
+
+    // Date d'inscription : filtre par plage (début et/ou fin)
+    if (filtres.dateInscriptionDebut || filtres.dateInscriptionFin) {
+      filtre.dateInscription = {};
+      if (filtres.dateInscriptionDebut) {
+        filtre.dateInscription.$gte = new Date(filtres.dateInscriptionDebut);
+      }
+      if (filtres.dateInscriptionFin) {
+        const fin = new Date(filtres.dateInscriptionFin);
+        fin.setHours(23, 59, 59, 999);
+        filtre.dateInscription.$lte = fin;
+      }
+    }
+
+    // Montant restant : avec dette en cours, ou entièrement soldé
+    if (filtres.paiement === 'avec_reste') {
+      filtre.resteAPayer = { $gt: 0 };
+    } else if (filtres.paiement === 'solde') {
+      filtre.resteAPayer = 0;
     }
 
     if (filtres.nom) {

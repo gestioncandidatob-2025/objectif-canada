@@ -20,19 +20,36 @@ export class InscriptionsController {
     return this.inscriptionsService.create(createInscriptionDto);
   }
 
- @ApiOperation({ summary: 'Lister les inscriptions, avec filtres optionnels par nom/service/régime/candidat' })
+ @ApiOperation({ summary: 'Lister les inscriptions, avec filtres optionnels par nom/service/régime/candidat/statut/dates/paiement' })
   @ApiQuery({ name: 'nom', required: false })
   @ApiQuery({ name: 'service', required: false })
   @ApiQuery({ name: 'regime', required: false })
   @ApiQuery({ name: 'candidatId', required: false })
+  @ApiQuery({ name: 'statut', required: false, description: "'en_cours' ou 'termine' (basé sur la date de fin de formation)" })
+  @ApiQuery({ name: 'dateInscriptionDebut', required: false, description: 'Filtrer les inscriptions à partir de cette date (YYYY-MM-DD)' })
+  @ApiQuery({ name: 'dateInscriptionFin', required: false, description: "Filtrer les inscriptions jusqu'à cette date (YYYY-MM-DD)" })
+  @ApiQuery({ name: 'paiement', required: false, description: "'avec_reste' ou 'solde'" })
   @Get()
   findAll(
     @Query('nom') nom?: string,
     @Query('service') service?: string,
     @Query('regime') regime?: string,
     @Query('candidatId') candidatId?: string,
+    @Query('statut') statut?: string,
+    @Query('dateInscriptionDebut') dateInscriptionDebut?: string,
+    @Query('dateInscriptionFin') dateInscriptionFin?: string,
+    @Query('paiement') paiement?: string,
   ) {
-    return this.inscriptionsService.findAll({ nom, service, regime, candidatId });
+    return this.inscriptionsService.findAll({
+      nom,
+      service,
+      regime,
+      candidatId,
+      statut,
+      dateInscriptionDebut,
+      dateInscriptionFin,
+      paiement,
+    });
   }
 
   @ApiOperation({ summary: "Vérifier si un candidat (par téléphone) existe déjà et a une dette en cours" })

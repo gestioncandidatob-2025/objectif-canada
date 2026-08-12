@@ -25,6 +25,7 @@ export default function UtilisateursPage() {
   const [nom, setNom] = useState("");
   const [email, setEmail] = useState("");
   const [motDePasse, setMotDePasse] = useState("");
+  const [motDePasseConfirmation, setMotDePasseConfirmation] = useState("");
   const [role, setRole] = useState("secretariat");
   const [envoiEnCours, setEnvoiEnCours] = useState(false);
 
@@ -54,6 +55,12 @@ export default function UtilisateursPage() {
     e.preventDefault();
     setErreur("");
     setMessage("");
+
+    if (motDePasse !== motDePasseConfirmation) {
+      setErreur("Les deux mots de passe ne correspondent pas");
+      return;
+    }
+
     setEnvoiEnCours(true);
 
     const res = await apiFetch("/users", {
@@ -72,6 +79,7 @@ export default function UtilisateursPage() {
     setNom("");
     setEmail("");
     setMotDePasse("");
+    setMotDePasseConfirmation("");
     setRole("secretariat");
     setAfficherFormulaire(false);
     setEnvoiEnCours(false);
@@ -172,6 +180,16 @@ export default function UtilisateursPage() {
               onChange={(e) => setMotDePasse(e.target.value)}
               className={champClass}
             />
+            <label className={labelClass}>Confirmer le mot de passe</label>
+            <input
+              type="password"
+              value={motDePasseConfirmation}
+              onChange={(e) => setMotDePasseConfirmation(e.target.value)}
+              className={champClass}
+            />
+            {motDePasseConfirmation && motDePasse !== motDePasseConfirmation && (
+              <p className="text-sm text-error">Les mots de passe ne correspondent pas</p>
+            )}
             <label className={labelClass}>Rôle</label>
             <select
               value={role}
