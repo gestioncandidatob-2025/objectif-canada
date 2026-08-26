@@ -24,6 +24,36 @@ type DetteInfo = {
   };
 };
 
+type Tarif = {
+  _id: string;
+  service: string;
+  regimes?: string[];
+  prix?: number;
+  dureeJours?: number;
+  actif: boolean;
+  dateFinNecessaire: boolean;
+  remiseActive: boolean;
+  regimeActif: boolean;
+  montantNegociable: boolean;
+};
+
+const LABEL_SERVICE: Record<string, string> = {
+  tcf: "TCF",
+  tcf_2mois: "TCF 2 mois",
+  examen_blanc: "Examen blanc",
+  tcf_special: "TCF SPECIAL",
+};
+
+function formaterNomService(service: string): string {
+  if (!service) return "";
+  if (LABEL_SERVICE[service]) return LABEL_SERVICE[service];
+  return service
+    .split(/[_\s]+/)
+    .filter(Boolean)
+    .map((mot) => mot.charAt(0).toUpperCase() + mot.slice(1))
+    .join(" ");
+}
+
 export default function EnregistrementPage() {
   const router = useRouter();
 
@@ -41,8 +71,8 @@ export default function EnregistrementPage() {
   const [nouveauTelephone, setNouveauTelephone] = useState("");
   const [erreurTelephone, setErreurTelephone] = useState("");
 
-  const [service, setService] = useState("tcf");
-  const [regime, setRegime] = useState("jour");
+  const [service, setService] = useState("");
+  const [regime, setRegime] = useState("");
   const [dateDebutTest, setDateDebutTest] = useState("");
   const [dateFin, setDateFin] = useState("");
   const [montantNegocie, setMontantNegocie] = useState("");
@@ -53,7 +83,9 @@ export default function EnregistrementPage() {
   const [montantEspeces, setMontantEspeces] = useState("");
   const [reference, setReference] = useState("");
 
-  const [facturePar, setFacturePar] = useState("");
+ const [facturePar, setFacturePar] = useState("");
+
+  const [tarifsActifs, setTarifsActifs] = useState<Tarif[]>([]);
 
   useEffect(() => {
     const userStr = localStorage.getItem("user");
@@ -62,18 +94,51 @@ export default function EnregistrementPage() {
     }
   }, []);
 
+ useEffect(() => {
+    async function chargerTarifsActifs() {
+      const res = await apiFetch("/tarifs");
+      if (res.ok) {
+        const data: Tarif[] = await res.json();
+        setTarifsActifs(data.filter((t) => t.actif));
+      }
+    }
+    chargerTarifsActifs();
+  }, []);
+
+  // Il n'y a qu'une seule offre active par service (elle porte elle-même
+  // sa liste de régimes le cas échéant).
+  function configDuService(svc: string): Tarif | undefined {
+    return tarifsActifs.find((t) => t.service === svc);
+  }
+
+  const configActuelle = configDuService(service);
+
+  const servicesDisponibles = Array.from(new Set(tarifsActifs.map((t) => t.service)));
+  const regimesDisponibles = configActuelle?.regimes ?? [];
+
+  // Dès que les offres actives sont chargées, on sélectionne automatiquement
+  // le premier service disponible si aucun n'est encore choisi.
+  useEffect(() => {
+    if (!service && servicesDisponibles.length > 0) {
+      setService(servicesDisponibles[0]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tarifsActifs]);
+
+  // Dès que le service change, on sélectionne automatiquement le premier
+  // régime disponible pour ce service.
+  useEffect(() => {
+    if (regimesDisponibles.length > 0 && !regimesDisponibles.includes(regime)) {
+      setRegime(regimesDisponibles[0]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [service, tarifsActifs]);
+
   const [erreur, setErreur] = useState("");
   const [envoiEnCours, setEnvoiEnCours] = useState(false);
   const [modalConfirmationOuvert, setModalConfirmationOuvert] = useState(false);
   const [rechercheEnCours, setRechercheEnCours] = useState(false);
 
-  const serviceLabels: Record<string, string> = {
-    tcf: "TCF",
-    tcf_2mois: "TCF 2 mois",
-    examen_blanc: "Examen blanc",
-    tcf_special: "TCF SPECIAL",
-  };
-  const regimeLabels: Record<string, string> = { jour: "Jour", soir: "Soir" };
   const modePaiementLabels: Record<string, string> = {
     especes: "Espèces",
     orange_money: "Orange Money",
@@ -82,21 +147,13 @@ export default function EnregistrementPage() {
   };
 
   function calculerMontantTotal(): number {
-    let base: number;
-    switch (service) {
-      case "tcf":
-        base = 65000;
-        return base - (Number(remise) || 0);
-      case "tcf_2mois":
-        base = 120000;
-        break;
-      case "examen_blanc":
-        base = 5000;
-        break;
-      case "tcf_special":
-        return Number(montantNegocie) || 0;
-      default:
-        base = 0;
+    const config = configActuelle;
+    if (config?.montantNegociable) {
+      return Number(montantNegocie) || 0;
+    }
+    const base = config?.prix ?? 0;
+    if (config?.remiseActive) {
+      return base - (Number(remise) || 0);
     }
     return base;
   }
@@ -109,20 +166,16 @@ export default function EnregistrementPage() {
   }
 
   function calculerDateFin(): string {
-    if (service === "examen_blanc") {
-      return new Date().toLocaleDateString("fr-FR");
-    }
-    if (service === "tcf_special") {
+    const config = configActuelle;
+    if (config?.dateFinNecessaire) {
       return dateFin ? new Date(dateFin).toLocaleDateString("fr-FR") : "-";
     }
-    if (!dateDebutTest) return "-";
-    const debut = new Date(dateDebutTest);
-    const jours = service === "tcf_2mois" ? 62 : 35;
+    const jours = config?.dureeJours ?? 0;
+    const debut = dateDebutTest ? new Date(dateDebutTest) : new Date();
     const fin = new Date(debut);
     fin.setDate(fin.getDate() + jours);
     return fin.toLocaleDateString("fr-FR");
   }
-
   function handleTelephoneChange(valeur: string) {
     const chiffresUniquement = valeur.replace(/\D/g, "").slice(0, 9);
     setNouveauTelephone(chiffresUniquement);
@@ -235,18 +288,35 @@ export default function EnregistrementPage() {
       }
     }
 
-    if (service !== "examen_blanc" && !dateDebutTest) {
+    const config = configActuelle;
+    if (!config) {
+      setErreur(
+        "Aucune offre active n'est configurée pour ce service. Va dans la page Tarifs pour créer ou activer cette offre.",
+      );
+      return;
+    }
+
+    if (config.regimeActif && !regime) {
+      setErreur("Le régime est obligatoire pour ce service");
+      return;
+    }
+
+    if (config.regimeActif && !dateDebutTest) {
       setErreur("La date de début du test est obligatoire");
       return;
     }
 
-    if (service === "tcf_special" && (!dateFin || !montantNegocie)) {
-      setErreur("La date de fin et le montant négocié sont obligatoires pour le TCF SPECIAL");
+    if (config.dateFinNecessaire && !dateFin) {
+      setErreur("La date de fin est obligatoire pour ce service");
+      return;
+    }
+
+    if (config.montantNegociable && !montantNegocie) {
+      setErreur("Le montant négocié est obligatoire pour ce service");
       return;
     }
 
     // Toutes les validations sont bonnes : on ouvre le modal de récapitulatif
-    // avant d'envoyer quoi que ce soit au serveur.
     setModalConfirmationOuvert(true);
   }
 
@@ -265,6 +335,8 @@ export default function EnregistrementPage() {
       }
     }
 
+    const config = configActuelle;
+
     const body: Record<string, unknown> = {
       candidatId: candidat._id,
       service,
@@ -273,17 +345,20 @@ export default function EnregistrementPage() {
       reference: reference || undefined,
     };
 
-    if (service !== "examen_blanc") {
+    if (config?.regimeActif) {
       body.regime = regime;
       body.dateDebutTest = dateDebutTest;
     }
 
-    // La date de fin n'est saisie manuellement QUE pour TCF SPECIAL.
-    // Pour tous les autres services, elle est calculée automatiquement côté backend.
-    if (service === "tcf_special") {
+    if (config?.dateFinNecessaire) {
       body.dateFin = dateFin;
+    }
+
+    if (config?.montantNegociable) {
       body.montantNegocie = Number(montantNegocie);
-    } else if (service === "tcf" && remise) {
+    }
+
+    if (config?.remiseActive && remise) {
       body.remise = Number(remise);
     }
 
@@ -362,19 +437,17 @@ export default function EnregistrementPage() {
                     <span className="font-bold">Téléphone :</span>{" "}
                     {candidatSelectionne ? candidatSelectionne.telephone : nouveauTelephone || "—"}
                   </p>
-                  {service !== "examen_blanc" && (
+                  {configActuelle?.regimeActif && (
                     <p>
-                      <span className="font-bold">Régime :</span> {regimeLabels[regime]}
+                      <span className="font-bold">Régime :</span> {regime || "—"}
                     </p>
                   )}
                   <p>
-                    <span className="font-bold">Test :</span> {serviceLabels[service]}
+                    <span className="font-bold">Test :</span> {formaterNomService(service)}
                   </p>
-                  {service !== "examen_blanc" && (
-                    <p>
-                      <span className="font-bold">📅 Fin du test :</span> {calculerDateFin()}
-                    </p>
-                  )}
+                  <p>
+                    <span className="font-bold">📅 Fin du test :</span> {calculerDateFin()}
+                  </p>
 
                   <p className="text-center tracking-widest text-ink-soft">
                     ------------------------------------
@@ -526,14 +599,18 @@ export default function EnregistrementPage() {
                   onChange={(e) => setService(e.target.value)}
                   className={champClass}
                 >
-                  <option value="tcf">TCF</option>
-                  <option value="tcf_2mois">TCF 2 mois</option>
-                  <option value="examen_blanc">Examen blanc</option>
-                  <option value="tcf_special">TCF SPECIAL</option>
+                  {servicesDisponibles.length === 0 && (
+                    <option value="">Aucune offre active — crée-en une dans Tarifs</option>
+                  )}
+                  {servicesDisponibles.map((s) => (
+                    <option key={s} value={s}>
+                      {formaterNomService(s)}
+                    </option>
+                  ))}
                 </select>
               </div>
 
-              {service !== "examen_blanc" && (
+              {configActuelle?.regimeActif && (
                 <>
                   <label className={labelClass}>Régime</label>
                   <select
@@ -541,8 +618,14 @@ export default function EnregistrementPage() {
                     onChange={(e) => setRegime(e.target.value)}
                     className={champClass}
                   >
-                    <option value="jour">Jour</option>
-                    <option value="soir">Soir</option>
+                    {regimesDisponibles.length === 0 && (
+                      <option value="">Aucun régime disponible pour ce service</option>
+                    )}
+                    {regimesDisponibles.map((r) => (
+                      <option key={r} value={r}>
+                        {r}
+                      </option>
+                    ))}
                   </select>
 
                   <label className={labelClass}>Date de début du test</label>
@@ -555,7 +638,7 @@ export default function EnregistrementPage() {
                 </>
               )}
 
-              {service === "tcf_special" && (
+              {configActuelle?.dateFinNecessaire && (
                 <>
                   <label className={labelClass}>Date de fin du test</label>
                   <input
@@ -564,7 +647,11 @@ export default function EnregistrementPage() {
                     onChange={(e) => setDateFin(e.target.value)}
                     className={champClass}
                   />
+                </>
+              )}
 
+              {configActuelle?.montantNegociable && (
+                <>
                   <label className={labelClass}>Montant négocié (FCFA)</label>
                   <input
                     type="number"
@@ -575,7 +662,7 @@ export default function EnregistrementPage() {
                 </>
               )}
 
-              {service === "tcf" && (
+              {configActuelle?.remiseActive && (
                 <>
                   <label className={labelClass}>Remise (FCFA, optionnel)</label>
                   <input
@@ -678,25 +765,23 @@ export default function EnregistrementPage() {
               </p>
               <p>
                 <span className="text-ink-soft">Service : </span>
-                {serviceLabels[service]}
+                {formaterNomService(service)}
               </p>
-              {service !== "examen_blanc" && (
-                <>
-                  <p>
-                    <span className="text-ink-soft">Régime : </span>
-                    {regimeLabels[regime]}
-                  </p>
-                  <p>
-                    <span className="text-ink-soft">Date de fin de formation : </span>
-                    {calculerDateFin()}
-                  </p>
-                </>
+              {configActuelle?.regimeActif && (
+                <p>
+                  <span className="text-ink-soft">Régime : </span>
+                  {regime}
+                </p>
               )}
+              <p>
+                <span className="text-ink-soft">Date de fin de formation : </span>
+                {calculerDateFin()}
+              </p>
               <p>
                 <span className="text-ink-soft">Montant total : </span>
                 {calculerMontantTotal().toLocaleString("fr-FR")} FCFA
               </p>
-              {service === "tcf" && Number(remise) > 0 && (
+              {configActuelle?.remiseActive && Number(remise) > 0 && (
                 <p>
                   <span className="text-ink-soft">Remise appliquée : </span>
                   {Number(remise).toLocaleString("fr-FR")} FCFA

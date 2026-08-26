@@ -1,7 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Fragment } from "react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { apiFetch } from "../../lib/api";
+import { CodeClasse, NOM_CLASSE, classeDe } from "../../lib/classes";
 
 type Candidat = {
   _id: string;
@@ -34,7 +37,7 @@ const LABEL_SERVICE: Record<string, string> = {
   tcf_special: "TCF SPECIAL",
 };
 
-type ColonneTri = "nom" | "prenom" | "service" | "regime" | "resteAPayer" | "dateFin";
+type ColonneTri = "nom" | "service" | "regime" | "resteAPayer" | "dateFin";
 type OrdreTri = "asc" | "desc";
 
 function EnTeteTriable({
@@ -52,7 +55,7 @@ function EnTeteTriable({
 }) {
   const actif = triColonne === colonne;
   return (
-    <th className="px-4 py-3 font-medium">
+    <th className="whitespace-nowrap px-4 py-3 font-medium">
       <button
         onClick={() => onClick(colonne)}
         className="flex items-center gap-1 transition hover:text-ink"
@@ -82,8 +85,6 @@ function valeurTri(insc: Inscription, colonne: ColonneTri): string | number {
   switch (colonne) {
     case "nom":
       return insc.candidatId?.nom?.toLowerCase() ?? "";
-    case "prenom":
-      return insc.candidatId?.prenom?.toLowerCase() ?? "";
     case "service":
       return LABEL_SERVICE[insc.service] ?? insc.service ?? "";
     case "regime":
@@ -97,14 +98,22 @@ function valeurTri(insc: Inscription, colonne: ColonneTri): string | number {
   }
 }
 
+function statutDeInscription(insc: Inscription): "termine" | "en_cours" {
+  if (!insc.dateFin) return "en_cours";
+  return new Date(insc.dateFin) < new Date() ? "termine" : "en_cours";
+}
+
 export default function CandidatsPage() {
+  const searchParams = useSearchParams();
+  const classeParam = searchParams.get("classe") as CodeClasse | null;
+
   const [role, setRole] = useState<string>("");
 
   const [inscriptions, setInscriptions] = useState<Inscription[]>([]);
   const [recherche, setRecherche] = useState("");
   const [filtreService, setFiltreService] = useState("");
   const [filtreRegime, setFiltreRegime] = useState("");
-  const [filtreStatut, setFiltreStatut] = useState("");
+  const [filtreStatut, setFiltreStatut] = useState(classeParam ? "en_cours" : "");
   const [filtreDateDebut, setFiltreDateDebut] = useState("");
   const [filtreDateFin, setFiltreDateFin] = useState("");
   const [filtrePaiement, setFiltrePaiement] = useState("");
@@ -230,8 +239,12 @@ export default function CandidatsPage() {
   const champClass =
     "w-full rounded-lg border border-ink/15 px-3 py-2 text-sm text-ink outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20";
 
+  const inscriptionsDeLaClasse = classeParam
+    ? inscriptions.filter((insc) => classeDe(insc) === classeParam)
+    : inscriptions;
+
   const inscriptionsTriees = triColonne
-    ? [...inscriptions].sort((a, b) => {
+    ? [...inscriptionsDeLaClasse].sort((a, b) => {
         const va = valeurTri(a, triColonne);
         const vb = valeurTri(b, triColonne);
         let resultat = 0;
@@ -242,17 +255,28 @@ export default function CandidatsPage() {
         }
         return triOrdre === "asc" ? resultat : -resultat;
       })
-    : inscriptions;
+    : inscriptionsDeLaClasse;
 
   return (
     <div className="px-4 py-10">
-      <div className="mx-auto max-w-5xl">
+      <div className="mx-auto max-w-7xl">
         <h1
           className="mb-6 text-3xl text-ink"
           style={{ fontFamily: "var(--font-display)" }}
         >
           Liste des candidats
         </h1>
+
+        {classeParam && (
+          <div className="mb-4 flex items-center justify-between rounded-lg bg-accent/10 px-4 py-2.5 text-sm text-accent">
+            <span>
+              Filtré par classe : <strong>{NOM_CLASSE[classeParam]}</strong>
+            </span>
+            <Link href="/candidats" className="font-medium underline hover:no-underline">
+              Retirer le filtre
+            </Link>
+          </div>
+        )}
 
         {erreur && (
           <p className="mb-4 rounded-lg bg-error/10 px-3 py-2.5 text-sm text-error">
@@ -340,36 +364,37 @@ export default function CandidatsPage() {
           <table className="w-full min-w-[700px] border-collapse text-sm">
             <thead>
               <tr className="border-b border-ink/10 bg-paper text-left text-ink-soft">
-                <th className="px-4 py-3 font-medium">N°</th>
+                <th className="whitespace-nowrap px-4 py-3 font-medium">N°</th>
                 <EnTeteTriable colonne="nom" label="Nom" triColonne={triColonne} triOrdre={triOrdre} onClick={basculerTri} />
-                <EnTeteTriable colonne="prenom" label="Prénom" triColonne={triColonne} triOrdre={triOrdre} onClick={basculerTri} />
                 <EnTeteTriable colonne="service" label="Service" triColonne={triColonne} triOrdre={triOrdre} onClick={basculerTri} />
                 <EnTeteTriable colonne="regime" label="Régime" triColonne={triColonne} triOrdre={triOrdre} onClick={basculerTri} />
                 <EnTeteTriable colonne="resteAPayer" label="Reste à payer" triColonne={triColonne} triOrdre={triOrdre} onClick={basculerTri} />
                 <EnTeteTriable colonne="dateFin" label="Date de fin" triColonne={triColonne} triOrdre={triOrdre} onClick={basculerTri} />
-                <th className="px-4 py-3 font-medium">Reçu</th>
-                <th className="px-4 py-3 font-medium">Action</th>
+                <th className="whitespace-nowrap px-4 py-3 font-medium">Statut</th>
+                <th className="whitespace-nowrap px-4 py-3 font-medium">Reçu</th>
+                <th className="sticky right-0 z-10 whitespace-nowrap bg-paper px-4 py-3 font-medium">
+                  Action
+                </th>
               </tr>
             </thead>
             <tbody>
               {inscriptionsTriees.map((insc, index) => (
-                <>
-                  <tr key={insc._id} className="border-b border-ink/5">
-                    <td className="px-4 py-3 text-ink-soft">{index + 1}</td>
-                    <td className="px-4 py-3">
-                      <a
+                <Fragment key={insc._id}>
+                  <tr className="border-b border-ink/5">
+                    <td className="whitespace-nowrap px-4 py-3 text-ink-soft">{index + 1}</td>
+                    <td className="whitespace-nowrap px-4 py-3">
+                      <Link
                         href={`/candidats/${insc.candidatId?._id}`}
                         className="font-medium text-ink underline-offset-2 hover:underline"
                       >
                         {insc.candidatId?.nom}
-                      </a>
+                      </Link>
                     </td>
-                    <td className="px-4 py-3">{insc.candidatId?.prenom}</td>
-                    <td className="px-4 py-3">
+                    <td className="whitespace-nowrap px-4 py-3">
                       {LABEL_SERVICE[insc.service] ?? insc.service}
                     </td>
-                    <td className="px-4 py-3">{insc.regime ?? "—"}</td>
-                    <td className="px-4 py-3">
+                    <td className="whitespace-nowrap px-4 py-3">{insc.regime ?? "—"}</td>
+                    <td className="whitespace-nowrap px-4 py-3">
                       <span
                         className={
                           insc.resteAPayer > 0
@@ -380,10 +405,21 @@ export default function CandidatsPage() {
                         {insc.resteAPayer.toLocaleString("fr-FR")} FCFA
                       </span>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="whitespace-nowrap px-4 py-3">
                       {insc.dateFin ? insc.dateFin.slice(0, 10) : "—"}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="whitespace-nowrap px-4 py-3">
+                      <span
+                        className={
+                          statutDeInscription(insc) === "termine"
+                            ? "rounded-full bg-error/10 px-3 py-1 text-xs font-medium text-error"
+                            : "rounded-full bg-accent/10 px-3 py-1 text-xs font-medium text-accent"
+                        }
+                      >
+                        {statutDeInscription(insc) === "termine" ? "Terminée" : "En cours"}
+                      </span>
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3">
                       <a
                         href={`/recu/${insc._id}`}
                         target="_blank"
@@ -392,7 +428,7 @@ export default function CandidatsPage() {
                         N° {insc.numeroRecu}
                       </a>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="sticky right-0 z-10 whitespace-nowrap bg-white px-4 py-3 shadow-[-4px_0_6px_-4px_rgba(0,0,0,0.15)]">
                       <div className="flex items-center gap-3">
                         <button
                           onClick={() =>
@@ -456,6 +492,7 @@ export default function CandidatsPage() {
                     <tr className="border-b border-ink/5 bg-paper">
                       <td colSpan={9} className="px-4 py-4 text-sm text-ink-soft">
                         <div className="grid grid-cols-2 gap-x-8 gap-y-1">
+                          <p>Prénom : {insc.candidatId?.prenom}</p>
                           <p>Téléphone : {insc.candidatId?.telephone}</p>
                           <p>Date d'inscription : {insc.dateInscription?.slice(0, 10)}</p>
                           <p>Début du test : {insc.dateDebutTest?.slice(0, 10) ?? "—"}</p>
@@ -558,7 +595,7 @@ export default function CandidatsPage() {
 
                   {ligneASupprimer === insc._id && (
                     <tr className="border-b border-ink/5 bg-error/5">
-                      <td colSpan={9} className="px-4 py-4">
+                      <td  className="px-4 py-4">
                         <p className="mb-2 text-sm font-medium text-error">
                           Pour confirmer la suppression de {insc.candidatId?.nom}{" "}
                           {insc.candidatId?.prenom}, tape la lettre <strong>S</strong> majuscule
@@ -592,12 +629,12 @@ export default function CandidatsPage() {
                       </td>
                     </tr>
                   )}
-                </>
+                </Fragment>
               ))}
             </tbody>
           </table>
 
-          {inscriptions.length === 0 && !chargement && (
+          {inscriptionsDeLaClasse.length === 0 && !chargement && (
             <p className="px-4 py-8 text-center text-ink-soft">
               Aucun candidat trouvé.
             </p>

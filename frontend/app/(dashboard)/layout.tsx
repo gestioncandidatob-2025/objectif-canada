@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import Link from "next/link";
 
 type User = {
   nom: string;
@@ -45,6 +46,8 @@ export default function DashboardLayout({
     { href: "/bienvenue", label: "Accueil", visible: true },
     { href: "/enregistrement", label: "Enregistrement", visible: true },
     { href: "/candidats", label: "Liste des candidats", visible: true },
+    { href: "/classes", label: "Classes", visible: true },
+    { href: "/tarifs", label: "Tarifs", visible: estAdmin },
     { href: "/tableau-de-bord", label: "Tableau de bord", visible: estAdmin },
     { href: "/utilisateurs", label: "Utilisateurs", visible: estAdmin },
   ];
@@ -52,13 +55,13 @@ export default function DashboardLayout({
   return (
     <div className="flex min-h-screen bg-paper">
       <aside className="flex w-64 shrink-0 flex-col border-r border-ink/10 bg-white px-5 py-6">
-        <a href="/bienvenue" className="mb-8 block">
+        <Link href="/bienvenue" className="mb-8 block">
           <img
             src="/logo.jpeg"
             alt="Logo"
             className="h-14 w-auto object-contain"
           />
-        </a>
+        </Link>
 
         <nav className="flex flex-1 flex-col gap-1">
           {liens
@@ -66,7 +69,7 @@ export default function DashboardLayout({
             .map((lien) => {
               const actif = pathname === lien.href;
               return (
-                <a
+                <Link
                   key={lien.href}
                   href={lien.href}
                   className={
@@ -77,7 +80,7 @@ export default function DashboardLayout({
                   }
                 >
                   {lien.label}
-                </a>
+                </Link>
               );
             })}
         </nav>

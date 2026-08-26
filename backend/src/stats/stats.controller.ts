@@ -35,4 +35,10 @@ export class StatsController {
   graphiques() {
     return this.statsService.graphiques();
   }
+
+  @ApiOperation({ summary: "Données mensuelles de l'année en cours, pour un graphique annuel montrant l'évolution mois par mois" })
+  @Get('annual')
+  annuelles() {
+    return this.statsService.annuelles();
+  }
 }

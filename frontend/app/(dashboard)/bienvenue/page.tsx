@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 
 type User = {
   nom: string;
@@ -43,18 +44,18 @@ export default function BienvenuePage() {
           </span>
 
           <div className="mt-8 flex flex-col gap-3">
-            <a
+           <Link
               href="/enregistrement"
               className="rounded-lg bg-accent py-2.5 font-medium text-white transition hover:bg-accent-hover"
             >
               Enregistrer un candidat
-            </a>
-            <a
+            </Link>
+            <Link
               href="/candidats"
               className="rounded-lg border border-ink/15 py-2.5 font-medium text-ink transition hover:bg-paper"
             >
               Voir la liste des candidats
-            </a>
+            </Link>
           </div>
         </div>
       </div>

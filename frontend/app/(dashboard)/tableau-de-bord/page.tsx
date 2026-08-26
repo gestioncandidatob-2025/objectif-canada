@@ -20,8 +20,9 @@ type StatsMois = {
 };
 
 type StatsJournalieres = Record<string, { inscriptions: number; montant: number }>;
+type StatsAnnuelles = Record<string, { inscriptions: number; montant: number }>;
 
-type SousGraphique = "mensuel" | "hebdomadaire" | null;
+type SousGraphique = "mensuel" | "hebdomadaire" | "annuel" | null;
 
 function debutSemaineCourante() {
   const d = new Date();
@@ -37,6 +38,21 @@ function semaineDuMois(dateStr: string) {
   const numeroSemaine = Math.ceil(jourDuMois / 7);
   return `Semaine ${numeroSemaine}`;
 }
+
+const LABEL_MOIS: Record<string, string> = {
+  "01": "Jan",
+  "02": "Fév",
+  "03": "Mar",
+  "04": "Avr",
+  "05": "Mai",
+  "06": "Juin",
+  "07": "Juil",
+  "08": "Août",
+  "09": "Sep",
+  "10": "Oct",
+  "11": "Nov",
+  "12": "Déc",
+};
 
 const ICONES: Record<string, ReactNode> = {
   jour: (
@@ -80,6 +96,7 @@ export default function TableauDeBordPage() {
   const [semaine, setSemaine] = useState<StatsSemaine | null>(null);
   const [mois, setMois] = useState<StatsMois | null>(null);
   const [graphique, setGraphique] = useState<StatsJournalieres>({});
+  const [annuel, setAnnuel] = useState<StatsAnnuelles>({});
   const [erreur, setErreur] = useState("");
   const [chargement, setChargement] = useState(false);
 
@@ -90,14 +107,15 @@ export default function TableauDeBordPage() {
     async function charger() {
       setChargement(true);
       setErreur("");
-      const [rJour, rSemaine, rMois, rGraph] = await Promise.all([
+      const [rJour, rSemaine, rMois, rGraph, rAnnuel] = await Promise.all([
         apiFetch("/stats/daily"),
         apiFetch("/stats/weekly"),
         apiFetch("/stats/monthly"),
         apiFetch("/stats/charts"),
+        apiFetch("/stats/annual"),
       ]);
 
-      if (!rJour.ok || !rSemaine.ok || !rMois.ok || !rGraph.ok) {
+      if (!rJour.ok || !rSemaine.ok || !rMois.ok || !rGraph.ok || !rAnnuel.ok) {
         setErreur("Impossible de charger les statistiques");
         setChargement(false);
         return;
@@ -107,6 +125,7 @@ export default function TableauDeBordPage() {
       setSemaine(await rSemaine.json());
       setMois(await rMois.json());
       setGraphique(await rGraph.json());
+      setAnnuel(await rAnnuel.json());
       setChargement(false);
     }
 
@@ -135,8 +154,14 @@ export default function TableauDeBordPage() {
     (entree) => new Date(entree[0]) >= debutSemaine,
   );
 
+  const donneesAnnuelles = Object.entries(annuel).sort(([a], [b]) => a.localeCompare(b));
+
   const donneesGraphActif =
-    sousGraphique === "hebdomadaire" ? donneesHebdomadaires : donneesMensuellesParSemaine;
+    sousGraphique === "hebdomadaire"
+      ? donneesHebdomadaires
+      : sousGraphique === "annuel"
+        ? donneesAnnuelles
+        : donneesMensuellesParSemaine;
   const maxInscriptions = Math.max(1, ...donneesGraphActif.map((entree) => entree[1].inscriptions));
   const totalEncaisseGraphique = donneesGraphActif.reduce(
     (somme, entree) => somme + entree[1].montant,
@@ -270,6 +295,12 @@ export default function TableauDeBordPage() {
                 >
                   Graphique hebdomadaire
                 </button>
+                <button
+                  onClick={() => setSousGraphique("annuel")}
+                  className={sousBoutonClass(sousGraphique === "annuel")}
+                >
+                  Graphique annuel
+                </button>
               </div>
 
               {sousGraphique && (
@@ -278,7 +309,9 @@ export default function TableauDeBordPage() {
                     <p className="text-lg font-semibold text-ink">
                       {sousGraphique === "mensuel"
                         ? "Inscriptions par semaine — ce mois"
-                        : "Inscriptions par jour — cette semaine"}
+                        : sousGraphique === "annuel"
+                          ? "Inscriptions par mois — année en cours"
+                          : "Inscriptions par jour — cette semaine"}
                     </p>
                     <p className="rounded-full bg-seal/10 px-4 py-2 text-base font-semibold text-seal">
                       Total : {totalEncaisseGraphique.toLocaleString("fr-FR")} FCFA
@@ -288,15 +321,24 @@ export default function TableauDeBordPage() {
                   {donneesGraphActif.length === 0 ? (
                     <p className="text-base text-ink-soft">Aucune donnée pour le moment.</p>
                   ) : (
-                    <div className="flex h-64 items-end gap-3">
+                                        <div className="flex items-end gap-3">
                       {donneesGraphActif.map((entree) => {
                         const label = entree[0];
                         const valeurs = entree[1];
-                        const hauteur = (valeurs.inscriptions / maxInscriptions) * 100;
+                        const HAUTEUR_PISTE_PX = 180;
+                        const hauteurBarrePx =
+                          valeurs.inscriptions > 0
+                            ? Math.max(
+                                Math.round((valeurs.inscriptions / maxInscriptions) * HAUTEUR_PISTE_PX),
+                                6,
+                              )
+                            : 0;
                         const labelAffiche =
                           sousGraphique === "mensuel"
                             ? label
-                            : label.slice(8, 10) + "/" + label.slice(5, 7);
+                            : sousGraphique === "annuel"
+                              ? LABEL_MOIS[label] ?? label
+                              : label.slice(8, 10) + "/" + label.slice(5, 7);
 
                         return (
                           <div key={label} className="flex flex-1 flex-col items-center gap-2">
@@ -304,12 +346,14 @@ export default function TableauDeBordPage() {
                               {valeurs.inscriptions}
                             </span>
                             <div
-                              className="w-full rounded-t-lg bg-accent"
-                              style={{
-                                height: hauteur + "%",
-                                minHeight: valeurs.inscriptions > 0 ? "6px" : "0",
-                              }}
-                            />
+                              className="flex w-full items-end"
+                              style={{ height: HAUTEUR_PISTE_PX }}
+                            >
+                              <div
+                                className="w-full rounded-t-lg bg-accent transition-[height]"
+                                style={{ height: hauteurBarrePx }}
+                              />
+                            </div>
                             <span className="text-sm text-ink-soft">{labelAffiche}</span>
                             <span className="text-sm font-semibold text-seal">
                               {valeurs.montant.toLocaleString("fr-FR")} F

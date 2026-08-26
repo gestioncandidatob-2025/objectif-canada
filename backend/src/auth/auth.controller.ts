@@ -2,6 +2,10 @@ import { Controller, Post, Body, Get, UseGuards, Req } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
+import { VerifyEmailDto } from './dto/verify-email.dto';
+import { ResendVerificationDto } from './dto/resend-verification.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import { JwtAuthGuard } from './jwt-auth.guard';
 
 @Controller('auth')
@@ -28,5 +32,33 @@ export class AuthController {
   @Post('logout')
   logout() {
     return { message: 'Déconnecté avec succès' };
+  }
+
+  @ApiOperation({ summary: "Vérifier l'email avec le code à 6 chiffres reçu par email" })
+  @Post('verify-email')
+  verifyEmail(@Body() dto: VerifyEmailDto) {
+    return this.authService.verifierEmail(dto.email, dto.code);
+  }
+
+  @ApiOperation({ summary: "Renvoyer un nouveau code de vérification d'email" })
+  @Post('resend-verification')
+  resendVerification(@Body() dto: ResendVerificationDto) {
+    return this.authService.renvoyerCodeVerification(dto.email);
+  }
+
+  @ApiOperation({ summary: 'Demander un code de réinitialisation de mot de passe par email' })
+  @Post('forgot-password')
+  forgotPassword(@Body() dto: ForgotPasswordDto) {
+    return this.authService.demanderReinitialisationMotDePasse(dto.email);
+  }
+
+  @ApiOperation({ summary: 'Réinitialiser le mot de passe avec le code reçu par email' })
+  @Post('reset-password')
+  resetPassword(@Body() dto: ResetPasswordDto) {
+    return this.authService.reinitialiserMotDePasse(
+      dto.email,
+      dto.code,
+      dto.nouveauMotDePasse,
+    );
   }
 }

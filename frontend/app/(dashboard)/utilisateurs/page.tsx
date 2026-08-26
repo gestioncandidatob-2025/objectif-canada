@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Fragment } from "react";
 import { apiFetch } from "../../lib/api";
 
 type User = {
@@ -223,8 +223,8 @@ export default function UtilisateursPage() {
             </thead>
             <tbody>
               {users.map((u) => (
-                <>
-                  <tr key={u._id} className="border-b border-ink/5">
+                <Fragment key={u._id}>
+                  <tr className="border-b border-ink/5">
                     <td className="px-4 py-3">{u.nom}</td>
                     <td className="px-4 py-3">{u.email}</td>
                     <td className="px-4 py-3">
@@ -296,7 +296,7 @@ export default function UtilisateursPage() {
                       </td>
                     </tr>
                   )}
-                </>
+                </Fragment>
               ))}
             </tbody>
           </table>

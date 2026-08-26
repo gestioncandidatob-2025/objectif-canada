@@ -3,18 +3,6 @@ import { HydratedDocument, Types } from 'mongoose';
 
 export type InscriptionDocument = HydratedDocument<Inscription>;
 
-export enum Service {
-  TCF = 'tcf',
-  TCF_2MOIS = 'tcf_2mois',
-  EXAMEN_BLANC = 'examen_blanc',
-  TCF_SPECIAL = 'tcf_special',
-}
-
-export enum Regime {
-  JOUR = 'jour',
-  SOIR = 'soir',
-}
-
 export enum ModePaiement {
   ORANGE_MONEY = 'orange_money',
   MOBILE_MONEY = 'mobile_money',
@@ -27,18 +15,19 @@ export class Inscription {
   @Prop({ type: Types.ObjectId, ref: 'Candidat', required: true })
   candidatId!: Types.ObjectId;
 
-  @Prop({ type: String, enum: Service, required: true })
-  service!: Service;
+  // Nom du service tel que défini dans /tarifs (libre, plus limité à un enum figé).
+  @Prop({ required: true })
+  service!: string;
 
-  @Prop({ type: String, enum: Regime })
-  regime?: Regime;
-    
+  @Prop()
+  regime?: string;
+
   @Prop({ required: true })
   dateInscription!: Date;
 
   @Prop()
   dateDebutTest?: Date;
-  
+
   @Prop({ required: true })
   dateFin!: Date;
 
@@ -71,6 +60,10 @@ export class Inscription {
 
   @Prop({ required: true, unique: true })
   numeroRecu!: string;
+
+  // Empêche d'envoyer plusieurs fois la notification "formation terminée"
+  @Prop({ default: false })
+  formationTermineeNotifiee!: boolean;
 }
 
 export const InscriptionSchema = SchemaFactory.createForClass(Inscription);

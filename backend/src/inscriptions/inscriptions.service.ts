@@ -1,16 +1,22 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { Inscription, InscriptionDocument, Service, ModePaiement } from './schemas/inscription.schema';
+import { Inscription, InscriptionDocument, ModePaiement } from './schemas/inscription.schema';
 import { Candidat, CandidatDocument } from '../candidats/schemas/candidat.schema';
 import { CreateInscriptionDto } from './dto/create-inscription.dto';
 import { UpdateInscriptionDto } from './dto/update-inscription.dto';
+import { TarifsService } from '../tarifs/tarifs.service';
+import { MailService } from '../mail/mail.service';
+import { UsersService } from '../users/users.service';
 
 @Injectable()
 export class InscriptionsService {
   constructor(
     @InjectModel(Inscription.name) private inscriptionModel: Model<InscriptionDocument>,
     @InjectModel(Candidat.name) private candidatModel: Model<CandidatDocument>,
+    private tarifsService: TarifsService,
+    private mailService: MailService,
+    private usersService: UsersService,
   ) {}
 
   async create(createInscriptionDto: CreateInscriptionDto) {
@@ -20,28 +26,45 @@ export class InscriptionsService {
       throw new NotFoundException('Candidat introuvable');
     }
 
-    // 2. Déterminer le montant total selon le service choisi
-    let montantTotal: number;
-    switch (createInscriptionDto.service) {
-      case Service.TCF:
-        montantTotal = 65000;
-        break;
-      case Service.TCF_2MOIS:
-        montantTotal = 120000;
-        break;
-      case Service.EXAMEN_BLANC:
-        montantTotal = 5000;
-        break;
-      case Service.TCF_SPECIAL:
-        montantTotal = createInscriptionDto.montantNegocie ?? 0;
-        break;
+    // 2. Charger l'offre active du service (définie dans /tarifs). Il n'y a
+    //    désormais qu'une seule offre par service, qui porte elle-même la
+    //    liste de ses régimes possibles.
+    const offre = await this.tarifsService.findActifParService(
+      createInscriptionDto.service,
+    );
+
+    if (!offre) {
+      throw new BadRequestException(
+        "Aucune offre active n'est configurée pour ce service. Va dans la page Tarifs pour créer ou activer cette offre.",
+      );
     }
 
-    // 2.5 Appliquer une remise (uniquement pour le service TCF classique).
-    const remise =
-      createInscriptionDto.service === Service.TCF
-        ? (createInscriptionDto.remise ?? 0)
-        : 0;
+    // 3. Vérifier le régime, si ce service en a besoin.
+    if (offre.regimeActif) {
+      if (!createInscriptionDto.regime) {
+        throw new BadRequestException('Le régime est obligatoire pour ce service');
+      }
+      if (!offre.regimes?.includes(createInscriptionDto.regime)) {
+        throw new BadRequestException(
+          `Le régime "${createInscriptionDto.regime}" n'existe pas pour ce service.`,
+        );
+      }
+    }
+
+    // 4. Déterminer le montant total : prix fixe de l'offre, ou montant
+    //    négocié librement si le service l'autorise.
+    let montantTotal: number;
+    if (offre.montantNegociable) {
+      if (createInscriptionDto.montantNegocie === undefined) {
+        throw new BadRequestException('Le montant négocié est obligatoire pour ce service');
+      }
+      montantTotal = createInscriptionDto.montantNegocie;
+    } else {
+      montantTotal = offre.prix ?? 0;
+    }
+
+    // 4.5 Appliquer une remise, uniquement si le service l'autorise.
+    const remise = offre.remiseActive ? (createInscriptionDto.remise ?? 0) : 0;
 
     if (remise < 0) {
       throw new BadRequestException('La remise ne peut pas être négative');
@@ -52,49 +75,27 @@ export class InscriptionsService {
 
     montantTotal = montantTotal - remise;
 
-    // 3. La date d'inscription est toujours aujourd'hui, générée par le système
+    // 5. La date d'inscription est toujours aujourd'hui, générée par le système
     const dateInscription = new Date();
 
-    // 4. Calculer dateDebutTest / dateFin selon le service
-    let dateDebutTest: Date;
+    // 6. Calculer dateDebutTest / dateFin selon la configuration du service
+    const dateDebutTest = createInscriptionDto.dateDebutTest
+      ? new Date(createInscriptionDto.dateDebutTest)
+      : dateInscription;
+
     let dateFin: Date;
-
-    if (createInscriptionDto.service === Service.EXAMEN_BLANC) {
-      dateDebutTest = dateInscription;
-      dateFin = dateInscription;
+    if (offre.dateFinNecessaire) {
+      if (!createInscriptionDto.dateFin) {
+        throw new BadRequestException('La date de fin est obligatoire pour ce service');
+      }
+      dateFin = new Date(createInscriptionDto.dateFin);
     } else {
-      if (!createInscriptionDto.regime) {
-        throw new BadRequestException(
-          'Le régime (jour/soir) est obligatoire pour ce service',
-        );
-      }
-      if (!createInscriptionDto.dateDebutTest) {
-        throw new BadRequestException(
-          'La date de début du test est obligatoire pour ce service',
-        );
-      }
-      dateDebutTest = new Date(createInscriptionDto.dateDebutTest);
-
-      if (createInscriptionDto.service === Service.TCF_SPECIAL) {
-        // TCF SPECIAL : date de fin saisie manuellement
-        if (!createInscriptionDto.dateFin) {
-          throw new BadRequestException(
-            'La date de fin est obligatoire pour le TCF SPECIAL',
-          );
-        }
-        dateFin = new Date(createInscriptionDto.dateFin);
-      } else if (createInscriptionDto.service === Service.TCF_2MOIS) {
-        // TCF 2 mois : date de fin calculée automatiquement (+62 jours)
-        dateFin = new Date(dateDebutTest);
-        dateFin.setDate(dateFin.getDate() + 62);
-      } else {
-        // TCF classique : date de fin calculée automatiquement (+35 jours)
-        dateFin = new Date(dateDebutTest);
-        dateFin.setDate(dateFin.getDate() + 35);
-      }
+      dateFin = new Date(dateDebutTest);
+      dateFin.setDate(dateFin.getDate() + (offre.dureeJours ?? 0));
     }
 
-    // 5. Calculer le montant payé selon le mode de paiement
+
+    // 7. Calculer le montant payé selon le mode de paiement
     let montantPaye: number;
     if (createInscriptionDto.modePaiement === ModePaiement.MOBILE_ESPECES) {
       montantPaye =
@@ -104,7 +105,7 @@ export class InscriptionsService {
       montantPaye = createInscriptionDto.montantPaye ?? 0;
     }
 
-    // 5.5 Vérifier que le montant payé est cohérent
+    // 7.5 Vérifier que le montant payé est cohérent
     if (montantPaye < 0) {
       throw new BadRequestException('Le montant payé ne peut pas être négatif');
     }
@@ -112,10 +113,10 @@ export class InscriptionsService {
       throw new BadRequestException('Le montant payé ne peut pas dépasser le montant total');
     }
 
-    // 6. Calculer le reste à payer
+    // 8. Calculer le reste à payer
     const resteAPayer = montantTotal - montantPaye;
 
-    // 7. Générer un numéro de reçu unique (vérifié pour éviter tout conflit)
+    // 9. Générer un numéro de reçu unique (vérifié pour éviter tout conflit)
     const jour = String(dateInscription.getDate()).padStart(2, '0');
     const mois = String(dateInscription.getMonth() + 1).padStart(2, '0');
     const annee = dateInscription.getFullYear();
@@ -128,11 +129,11 @@ export class InscriptionsService {
       numeroRecu = `${jour}${mois}${annee}${String(compteur).padStart(4, '0')}`;
     }
 
-    // 8. Assembler et sauvegarder l'inscription
+    // 10. Assembler et sauvegarder l'inscription
     const inscription = new this.inscriptionModel({
       candidatId: new Types.ObjectId(createInscriptionDto.candidatId),
       service: createInscriptionDto.service,
-      regime: createInscriptionDto.regime,
+      regime: offre.regimeActif ? createInscriptionDto.regime : undefined,
       dateInscription,
       dateDebutTest,
       dateFin,
@@ -148,7 +149,74 @@ export class InscriptionsService {
       numeroRecu,
     });
 
-    return inscription.save();
+    await inscription.save();
+
+    // Notifier les administrateurs de cette nouvelle inscription (sans bloquer la réponse si l'email échoue)
+    this.notifierAdminsNouvelleInscription(inscription, candidat).catch(() => undefined);
+
+    return inscription;
+  }
+
+  private async notifierAdminsNouvelleInscription(
+    inscription: InscriptionDocument,
+    candidat: CandidatDocument,
+  ) {
+    const emailsAdmins = await this.usersService.emailsAdmins();
+    if (emailsAdmins.length === 0) return;
+
+    await this.mailService.envoyer({
+      to: emailsAdmins,
+      subject: `Nouvelle inscription — ${candidat.nom} ${candidat.prenom}`,
+      htmlContent: `
+        <p>Une nouvelle inscription vient d'être enregistrée :</p>
+        <ul>
+          <li><strong>Candidat :</strong> ${candidat.nom} ${candidat.prenom}</li>
+          <li><strong>Téléphone :</strong> ${candidat.telephone}</li>
+          <li><strong>Service :</strong> ${inscription.service}${inscription.regime ? ' — ' + inscription.regime : ''}</li>
+          <li><strong>Montant total :</strong> ${inscription.montantTotal.toLocaleString('fr-FR')} FCFA</li>
+          <li><strong>Montant payé :</strong> ${inscription.montantPaye.toLocaleString('fr-FR')} FCFA</li>
+          <li><strong>Reste à payer :</strong> ${inscription.resteAPayer.toLocaleString('fr-FR')} FCFA</li>
+          <li><strong>Mode de paiement :</strong> ${inscription.modePaiement}</li>
+          <li><strong>Facturé par :</strong> ${inscription.facturePar}</li>
+          <li><strong>Reçu N° :</strong> ${inscription.numeroRecu}</li>
+        </ul>
+      `,
+    });
+  }
+
+  /** Inscriptions dont la date de fin est aujourd'hui ou déjà passée, pas encore notifiées */
+  async trouverFormationsTermineesNonNotifiees() {
+    const finDeJournee = new Date();
+    finDeJournee.setHours(23, 59, 59, 999);
+
+    return this.inscriptionModel
+      .find({
+        dateFin: { $lte: finDeJournee },
+        formationTermineeNotifiee: { $ne: true },
+      })
+      .populate('candidatId')
+      .exec();
+  }
+
+  async marquerFormationNotifiee(id: string) {
+    await this.inscriptionModel
+      .findByIdAndUpdate(id, { formationTermineeNotifiee: true })
+      .exec();
+  }
+
+  /** Inscriptions avec un reste à payer, enregistrées depuis au moins `joursMin` jours */
+  async trouverEnRetardDePaiement(joursMin: number) {
+    const seuil = new Date();
+    seuil.setDate(seuil.getDate() - joursMin);
+    seuil.setHours(23, 59, 59, 999);
+
+    return this.inscriptionModel
+      .find({
+        resteAPayer: { $gt: 0 },
+        dateInscription: { $lte: seuil },
+      })
+      .populate('candidatId')
+      .exec();
   }
 
   async verifierDette(telephone: string) {

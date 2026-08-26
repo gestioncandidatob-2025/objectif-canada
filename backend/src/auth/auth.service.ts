@@ -34,7 +34,24 @@ export class AuthService {
         nom: user.nom,
         email: user.email,
         role: user.role,
+        emailVerifie: user.emailVerifie,
       },
     };
+  }
+
+  verifierEmail(email: string, code: string) {
+    return this.usersService.verifierEmail(email, code);
+  }
+
+  renvoyerCodeVerification(email: string) {
+    return this.usersService.renvoyerCodeVerification(email);
+  }
+
+  demanderReinitialisationMotDePasse(email: string) {
+    return this.usersService.demanderReinitialisationMotDePasse(email);
+  }
+
+  reinitialiserMotDePasse(email: string, code: string, nouveauMotDePasse: string) {
+    return this.usersService.reinitialiserMotDePasse(email, code, nouveauMotDePasse);
   }
 }

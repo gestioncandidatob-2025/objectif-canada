@@ -86,4 +86,32 @@ export class StatsService {
 
     return parJour;
   }
+
+  /**
+   * Agrège les inscriptions mois par mois sur l'année civile en cours
+   * (janvier à décembre), pour un graphique annuel montrant la vraie
+   * évolution d'un mois à l'autre.
+   */
+  async annuelles() {
+    const anneeActuelle = new Date().getFullYear();
+    const debut = new Date(anneeActuelle, 0, 1);
+    const fin = new Date(anneeActuelle, 11, 31, 23, 59, 59, 999);
+
+    const inscriptions = await this.inscriptionModel.find({
+      dateInscription: { $gte: debut, $lte: fin },
+    });
+
+    const parMois: Record<string, { inscriptions: number; montant: number }> = {};
+    for (let m = 1; m <= 12; m++) {
+      parMois[String(m).padStart(2, '0')] = { inscriptions: 0, montant: 0 };
+    }
+
+    for (const insc of inscriptions) {
+      const cle = String(insc.dateInscription.getMonth() + 1).padStart(2, '0');
+      parMois[cle].inscriptions += 1;
+      parMois[cle].montant += insc.montantPaye;
+    }
+
+    return parMois;
+  }
 }

@@ -21,6 +21,23 @@ export class User {
 
   @Prop({ type: String, enum: Role, required: true, default: Role.SECRETARIAT })
   role!: Role;
+
+  // Vérification d'email (code à 6 chiffres envoyé à la création du compte)
+  @Prop({ default: false })
+  emailVerifie!: boolean;
+
+  @Prop()
+  codeVerificationEmail?: string;
+
+  @Prop()
+  codeVerificationExpiration?: Date;
+
+  // Réinitialisation de mot de passe (code à 6 chiffres, valable 1h)
+  @Prop()
+  codeReinitialisation?: string;
+
+  @Prop()
+  codeReinitialisationExpiration?: Date;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

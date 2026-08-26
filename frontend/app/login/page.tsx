@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -31,6 +32,13 @@ export default function LoginPage() {
       const data = await res.json();
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
+
+      // Si l'email n'est pas encore vérifié, on redirige vers la page de vérification
+      if (!data.user.emailVerifie) {
+        router.push(`/verifier-email?email=${encodeURIComponent(data.user.email)}`);
+        return;
+      }
+
       router.push("/bienvenue");
     } catch {
       setErreur("Impossible de contacter le serveur");
@@ -80,8 +88,14 @@ export default function LoginPage() {
             type="password"
             value={motDePasse}
             onChange={(e) => setMotDePasse(e.target.value)}
-            className="mb-6 w-full rounded-lg border border-ink/15 px-3 py-2.5 text-ink outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20"
+            className="mb-2 w-full rounded-lg border border-ink/15 px-3 py-2.5 text-ink outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20"
           />
+
+          <div className="mb-6 text-right">
+            <Link href="/mot-de-passe-oublie" className="text-sm text-seal hover:underline">
+              Mot de passe oublié ?
+            </Link>
+          </div>
 
           <button
           type="submit"
