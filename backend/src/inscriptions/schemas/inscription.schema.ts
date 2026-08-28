@@ -64,6 +64,10 @@ export class Inscription {
   // Empêche d'envoyer plusieurs fois la notification "formation terminée"
   @Prop({ default: false })
   formationTermineeNotifiee!: boolean;
+
+  // Clé S3 du PDF de la facture stockée sur AWS (pour la compta/les impôts)
+  @Prop()
+  factureS3Key?: string;
 }
 
 export const InscriptionSchema = SchemaFactory.createForClass(Inscription);

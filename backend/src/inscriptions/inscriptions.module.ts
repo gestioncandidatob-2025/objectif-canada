@@ -7,6 +7,7 @@ import { Candidat, CandidatSchema } from '../candidats/schemas/candidat.schema';
 import { TarifsModule } from '../tarifs/tarifs.module';
 import { MailModule } from '../mail/mail.module';
 import { UsersModule } from '../users/users.module';
+import { FacturesModule } from '../factures/factures.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { UsersModule } from '../users/users.module';
     TarifsModule,
     MailModule,
     UsersModule,
+    FacturesModule,
   ],
   controllers: [InscriptionsController],
   providers: [InscriptionsService],

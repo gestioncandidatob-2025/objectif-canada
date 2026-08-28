@@ -70,6 +70,22 @@ export class InscriptionsController {
     return this.inscriptionsService.findOne(id);
   }
 
+  @ApiOperation({ summary: "Lister toutes les factures stockées sur AWS S3, de la plus récente à la plus ancienne (réservé à l'administrateur)" })
+  @UseGuards(RolesGuard)
+  @Roles('admin')
+  @Get('factures/liste')
+  listerFactures() {
+    return this.inscriptionsService.listerFactures();
+  }
+
+  @ApiOperation({ summary: "Obtenir un lien temporaire pour consulter/réimprimer la facture PDF stockée sur AWS S3 (réservé à l'administrateur)" })
+  @UseGuards(RolesGuard)
+  @Roles('admin')
+  @Get(':id/facture')
+  urlFacture(@Param('id') id: string) {
+    return this.inscriptionsService.urlFacture(id);
+  }
+
   @ApiOperation({ summary: 'Ajouter un paiement complémentaire' })
   @Patch(':id/payment')
   ajouterPaiement(@Param('id') id: string, @Body() dto: AjouterPaiementDto) {

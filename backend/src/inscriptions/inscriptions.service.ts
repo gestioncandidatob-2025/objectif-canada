@@ -8,6 +8,8 @@ import { UpdateInscriptionDto } from './dto/update-inscription.dto';
 import { TarifsService } from '../tarifs/tarifs.service';
 import { MailService } from '../mail/mail.service';
 import { UsersService } from '../users/users.service';
+import { PdfService } from '../factures/pdf.service';
+import { S3Service } from '../factures/s3.service';
 
 @Injectable()
 export class InscriptionsService {
@@ -17,6 +19,8 @@ export class InscriptionsService {
     private tarifsService: TarifsService,
     private mailService: MailService,
     private usersService: UsersService,
+    private pdfService: PdfService,
+    private s3Service: S3Service,
   ) {}
 
   async create(createInscriptionDto: CreateInscriptionDto) {
@@ -150,6 +154,11 @@ export class InscriptionsService {
     });
 
     await inscription.save();
+
+    // Génère la facture PDF et la stocke sur AWS S3 (pour la compta/les impôts).
+    // Non bloquant : si ça échoue, l'inscription reste valide, la facture
+    // pourra être régénérée plus tard via regenererFacture().
+    this.genererEtStockerFacture(inscription, candidat).catch(() => undefined);
 
     // Notifier les administrateurs de cette nouvelle inscription (sans bloquer la réponse si l'email échoue)
     this.notifierAdminsNouvelleInscription(inscription, candidat).catch(() => undefined);
@@ -347,6 +356,61 @@ export class InscriptionsService {
     }
     inscription.montantPaye = nouveauMontantPaye;
     inscription.resteAPayer = inscription.montantTotal - inscription.montantPaye;
-    return inscription.save();
+    await inscription.save();
+
+    return inscription;
+  }
+
+  private async genererEtStockerFacture(
+    inscription: InscriptionDocument,
+    candidat: CandidatDocument,
+  ) {
+    const pdfBuffer = await this.pdfService.genererFacturePdf(inscription, candidat);
+    const cle = `factures/${inscription.numeroRecu}.pdf`;
+    const succes = await this.s3Service.televerserFacture(cle, pdfBuffer);
+    if (succes) {
+      inscription.factureS3Key = cle;
+      await inscription.save();
+    }
+  }
+
+  /** Régénère et re-stocke la facture PDF d'une inscription existante (ex: si elle manquait) */
+  async regenererFacture(id: string) {
+    const inscription = await this.inscriptionModel.findById(id).populate('candidatId');
+    if (!inscription) {
+      throw new NotFoundException('Inscription introuvable');
+    }
+    const candidat = inscription.candidatId as unknown as CandidatDocument;
+    await this.genererEtStockerFacture(inscription, candidat);
+    return inscription;
+  }
+
+  /** URL temporaire (5 min) pour consulter/réimprimer la facture stockée sur S3 */
+  async urlFacture(id: string) {
+    const inscription = await this.inscriptionModel.findById(id);
+    if (!inscription) {
+      throw new NotFoundException('Inscription introuvable');
+    }
+    if (!inscription.factureS3Key) {
+      await this.regenererFacture(id);
+    }
+    const inscriptionAJour = await this.inscriptionModel.findById(id);
+    if (!inscriptionAJour?.factureS3Key) {
+      throw new NotFoundException("La facture n'a pas pu être générée ou stockée");
+    }
+    const url = await this.s3Service.urlSigneeFacture(inscriptionAJour.factureS3Key);
+    if (!url) {
+      throw new NotFoundException("Impossible de générer le lien de la facture (vérifie la configuration AWS)");
+    }
+    return { url };
+  }
+
+  /** Liste des factures disponibles, de la plus récente à la plus ancienne */
+  async listerFactures() {
+    return this.inscriptionModel
+      .find({ factureS3Key: { $exists: true, $ne: null } })
+      .sort({ dateInscription: -1 })
+      .populate('candidatId')
+      .exec();
   }
 }
