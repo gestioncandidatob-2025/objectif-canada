@@ -3,12 +3,20 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "../../lib/api";
-import { CodeClasse, NOM_CLASSE, DESCRIPTION_CLASSE, classeDe } from "../../lib/classes";
+import {
+  CodeClasse,
+  NOM_CLASSE,
+  DESCRIPTION_CLASSE,
+  classeDe,
+  raisonNonClasse,
+} from "../../lib/classes";
 
 type Inscription = {
   _id: string;
   regime?: string;
   dateDebutTest?: string;
+  service?: string;
+  candidatId?: { _id: string; nom: string; prenom: string } | string;
 };
 
 export default function ClassesPage() {
@@ -43,6 +51,14 @@ export default function ClassesPage() {
     if (c) compteurs[c] += 1;
   }
 
+  // Candidats inscrits en régime jour/soir mais qui, à cause d'une donnée
+  // incohérente (régime mal saisi, date de test manquante...), ne tombent
+  // dans aucune des 4 classes. Affichés explicitement pour ne plus jamais
+  // les perdre silencieusement.
+  const nonClasses = inscriptions
+    .map((insc) => ({ insc, raison: raisonNonClasse(insc) }))
+    .filter((x): x is { insc: Inscription; raison: string } => x.raison !== null);
+
   return (
     <div className="px-4 py-10">
       <div className="mx-auto max-w-5xl">
@@ -75,6 +91,50 @@ export default function ClassesPage() {
                 <p className="text-xs text-ink-soft">candidat(s)</p>
               </button>
             ))}
+          </div>
+        )}
+
+        {!chargement && nonClasses.length > 0 && (
+          <div className="mt-6 rounded-2xl border border-error/30 bg-error/5 p-6">
+            <p className="text-lg font-semibold text-error">
+              ⚠ {nonClasses.length} candidat(s) non classé(s)
+            </p>
+            <p className="mt-1 text-sm text-ink-soft">
+              Ces candidats sont inscrits en régime jour/soir mais
+              n&apos;apparaissent dans aucune classe ci-dessus à cause d&apos;une
+              donnée incohérente. Corrige l&apos;inscription pour qu&apos;ils
+              soient pris en compte.
+            </p>
+            <ul className="mt-4 divide-y divide-ink/10">
+              {nonClasses.map(({ insc, raison }) => {
+                const candidat =
+                  typeof insc.candidatId === "object" ? insc.candidatId : null;
+                return (
+                  <li
+                    key={insc._id}
+                    className="flex flex-wrap items-center justify-between gap-2 py-3"
+                  >
+                    <div>
+                      <span className="font-medium text-ink">
+                        {candidat ? `${candidat.prenom} ${candidat.nom}` : "Candidat"}
+                      </span>
+                      {insc.service && (
+                        <span className="ml-2 text-xs text-ink-soft">
+                          {insc.service}
+                        </span>
+                      )}
+                      <p className="text-xs text-error">{raison}</p>
+                    </div>
+                    <button
+                      onClick={() => router.push(`/candidats/${candidat?._id ?? ""}`)}
+                      className="rounded-lg border border-ink/15 px-3 py-1.5 text-xs font-medium text-ink transition hover:bg-white"
+                    >
+                      Corriger
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
           </div>
         )}
       </div>
