@@ -137,6 +137,9 @@ export default function CandidatsPage() {
   const [triColonne, setTriColonne] = useState<ColonneTri | null>(null);
   const [triOrdre, setTriOrdre] = useState<OrdreTri>("asc");
 
+  const CANDIDATS_PAR_PAGE = 10;
+  const [page, setPage] = useState(1);
+
   function basculerTri(colonne: ColonneTri) {
     if (triColonne === colonne) {
       setTriOrdre(triOrdre === "asc" ? "desc" : "asc");
@@ -256,6 +259,30 @@ export default function CandidatsPage() {
         return triOrdre === "asc" ? resultat : -resultat;
       })
     : inscriptionsDeLaClasse;
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(inscriptionsTriees.length / CANDIDATS_PAR_PAGE)
+  );
+  useEffect(() => {
+    setPage(1);
+  }, [
+    recherche,
+    filtreService,
+    filtreRegime,
+    filtreStatut,
+    filtreDateDebut,
+    filtreDateFin,
+    filtrePaiement,
+    classeParam,
+    inscriptions,
+  ]);
+
+  const pageEffective = Math.min(page, totalPages);
+  const inscriptionsPage = inscriptionsTriees.slice(
+    (pageEffective - 1) * CANDIDATS_PAR_PAGE,
+    pageEffective * CANDIDATS_PAR_PAGE
+  );
 
   return (
     <div className="px-4 py-10">
@@ -378,10 +405,12 @@ export default function CandidatsPage() {
               </tr>
             </thead>
             <tbody>
-              {inscriptionsTriees.map((insc, index) => (
+              {inscriptionsPage.map((insc, index) => (
                 <Fragment key={insc._id}>
                   <tr className="border-b border-ink/5">
-                    <td className="whitespace-nowrap px-4 py-3 text-ink-soft">{index + 1}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-ink-soft">
+                      {(pageEffective - 1) * CANDIDATS_PAR_PAGE + index + 1}
+                    </td>
                     <td className="whitespace-nowrap px-4 py-3">
                       <Link
                         href={`/candidats/${insc.candidatId?._id}`}
@@ -640,6 +669,58 @@ export default function CandidatsPage() {
             </p>
           )}
         </div>
+
+        {inscriptionsTriees.length > 0 && (
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-ink-soft">
+            <p>
+              Page {pageEffective} sur {totalPages} — {inscriptionsTriees.length}{" "}
+              candidat{inscriptionsTriees.length > 1 ? "s" : ""}
+            </p>
+            <div className="flex flex-wrap items-center gap-1">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={pageEffective <= 1}
+                className="rounded-lg border border-ink/15 px-3 py-2 font-medium text-ink transition hover:bg-paper disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Précédent
+              </button>
+
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter(
+                  (n) =>
+                    n === 1 ||
+                    n === totalPages ||
+                    Math.abs(n - pageEffective) <= 1
+                )
+                .map((n, i, arr) => (
+                  <Fragment key={n}>
+                    {i > 0 && arr[i - 1] !== n - 1 && (
+                      <span className="px-1 text-ink-soft">…</span>
+                    )}
+                    <button
+                      onClick={() => setPage(n)}
+                      className={
+                        "rounded-lg px-3 py-2 font-medium transition " +
+                        (n === pageEffective
+                          ? "bg-accent text-white"
+                          : "border border-ink/15 text-ink hover:bg-paper")
+                      }
+                    >
+                      {n}
+                    </button>
+                  </Fragment>
+                ))}
+
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={pageEffective >= totalPages}
+                className="rounded-lg bg-accent px-4 py-2 font-medium text-white transition disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Page suivante
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
