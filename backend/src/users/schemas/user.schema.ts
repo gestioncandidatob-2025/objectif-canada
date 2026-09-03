@@ -38,6 +38,10 @@ export class User {
 
   @Prop()
   codeReinitialisationExpiration?: Date;
+
+  // Historique des mots de passe déjà utilisés (empêche la réutilisation)
+  @Prop({ type: [String], default: [] })
+  historiqueMotsDePasse!: string[];
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

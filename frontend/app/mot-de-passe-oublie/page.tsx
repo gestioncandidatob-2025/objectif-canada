@@ -1,16 +1,30 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { apiFetch } from "../lib/api";
 
-export default function MotDePasseOubliePage() {
+function MotDePasseOublieForm() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  const searchParams = useSearchParams();
+
+  const [email, setEmail] = useState(searchParams.get("email") ?? "");
   const [erreur, setErreur] = useState("");
   const [message, setMessage] = useState("");
   const [envoiEnCours, setEnvoiEnCours] = useState(false);
+
+  useEffect(() => {
+    if (searchParams.get("email")) return;
+    const userStr = localStorage.getItem("user");
+    if (userStr) {
+      const dernierUtilisateur = JSON.parse(userStr);
+      if (dernierUtilisateur?.email) {
+        setEmail(dernierUtilisateur.email);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const champClass =
     "w-full rounded-lg border border-ink/15 px-3 py-2.5 text-ink outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20";
@@ -98,5 +112,13 @@ export default function MotDePasseOubliePage() {
         </form>
       </div>
     </div>
+  );
+}
+
+export default function MotDePasseOubliePage() {
+  return (
+    <Suspense fallback={null}>
+      <MotDePasseOublieForm />
+    </Suspense>
   );
 }

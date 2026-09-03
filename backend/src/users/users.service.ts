@@ -23,6 +23,26 @@ export class UsersService {
     private mailService: MailService,
   ) {}
 
+  /**
+   * Vérifie qu'un mot de passe en clair ne correspond à aucun des mots de passe
+   * déjà utilisés par cet utilisateur (mot de passe actuel + historique).
+   */
+  private async motDePasseDejaUtilise(
+    motDePasseClair: string,
+    user: UserDocument,
+  ): Promise<boolean> {
+    const hachesAVerifier = [user.motDePasse, ...(user.historiqueMotsDePasse || [])];
+    for (const hache of hachesAVerifier) {
+      if (hache && (await bcrypt.compare(motDePasseClair, hache))) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /** Nombre de mots de passe précédents conservés dans l'historique */
+  private readonly TAILLE_HISTORIQUE_MOT_DE_PASSE = 5;
+
   async create(createUserDto: CreateUserDto) {
     const existant = await this.userModel.findOne({ email: createUserDto.email });
     if (existant) {
@@ -72,8 +92,31 @@ export class UsersService {
   }
 
   async update(id: string, updateUserDto: UpdateUserDto) {
+    const { motDePasse, ...autresChamps } = updateUserDto;
+
+    if (motDePasse) {
+      const user = await this.userModel.findById(id);
+      if (!user) {
+        throw new NotFoundException('Utilisateur introuvable');
+      }
+      if (await this.motDePasseDejaUtilise(motDePasse, user)) {
+        throw new ConflictException(
+          'Ce mot de passe a déjà été utilisé. Choisis-en un différent.',
+        );
+      }
+      user.historiqueMotsDePasse = [
+        user.motDePasse,
+        ...(user.historiqueMotsDePasse || []),
+      ].slice(0, this.TAILLE_HISTORIQUE_MOT_DE_PASSE);
+      user.motDePasse = await bcrypt.hash(motDePasse, 10);
+      Object.assign(user, autresChamps);
+      await user.save();
+      const { motDePasse: _omis, ...userSansMotDePasse } = user.toObject();
+      return userSansMotDePasse;
+    }
+
     const user = await this.userModel
-      .findByIdAndUpdate(id, updateUserDto, { new: true })
+      .findByIdAndUpdate(id, autresChamps, { new: true })
       .select('-motDePasse')
       .exec();
     if (!user) {
@@ -192,6 +235,16 @@ export class UsersService {
       throw new BadRequestException('Code de réinitialisation invalide');
     }
 
+    if (await this.motDePasseDejaUtilise(nouveauMotDePasse, user)) {
+      throw new ConflictException(
+        'Ce mot de passe a déjà été utilisé. Choisis-en un différent.',
+      );
+    }
+
+    user.historiqueMotsDePasse = [
+      user.motDePasse,
+      ...(user.historiqueMotsDePasse || []),
+    ].slice(0, this.TAILLE_HISTORIQUE_MOT_DE_PASSE);
     user.motDePasse = await bcrypt.hash(nouveauMotDePasse, 10);
     user.codeReinitialisation = undefined;
     user.codeReinitialisationExpiration = undefined;

@@ -106,6 +106,9 @@ function ReinitialiserMotDePasseForm() {
             onChange={(e) => setNouveauMotDePasse(e.target.value)}
             className={champClass}
           />
+          <p className="text-xs text-ink-soft">
+            Au moins 8 caractères, avec 1 majuscule, 1 minuscule, 1 chiffre et 1 caractère spécial.
+          </p>
 
           <label className={labelClass}>Confirmer le nouveau mot de passe</label>
           <input

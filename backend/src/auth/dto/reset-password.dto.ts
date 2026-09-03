@@ -1,5 +1,6 @@
-import { IsEmail, IsNotEmpty, IsString, Length, MinLength } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsString, Length, Matches, MinLength } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { REGEX_MOT_DE_PASSE, MESSAGE_MOT_DE_PASSE } from '../../users/dto/create-user.dto';
 
 export class ResetPasswordDto {
   @ApiProperty({ example: 'secretaire1@objectifcanada.com' })
@@ -12,9 +13,10 @@ export class ResetPasswordDto {
   @Length(6, 6, { message: 'Le code doit contenir 6 chiffres' })
   code!: string;
 
-  @ApiProperty({ example: 'NouveauMotDePasse123' })
+  @ApiProperty({ example: 'NouveauMotDePasse123!' })
   @IsNotEmpty({ message: 'Le nouveau mot de passe est obligatoire' })
   @IsString()
-  @MinLength(6, { message: 'Le mot de passe doit contenir au moins 6 caractères' })
+  @MinLength(8, { message: MESSAGE_MOT_DE_PASSE })
+  @Matches(REGEX_MOT_DE_PASSE, { message: MESSAGE_MOT_DE_PASSE })
   nouveauMotDePasse!: string;
 }

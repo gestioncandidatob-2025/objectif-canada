@@ -92,7 +92,10 @@ export default function LoginPage() {
           />
 
           <div className="mb-6 text-right">
-            <Link href="/mot-de-passe-oublie" className="text-sm text-seal hover:underline">
+            <Link
+              href={`/mot-de-passe-oublie${email ? `?email=${encodeURIComponent(email)}` : ""}`}
+              className="text-sm text-seal hover:underline"
+            >
               Mot de passe oublié ?
             </Link>
           </div>
