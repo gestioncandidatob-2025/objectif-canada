@@ -12,12 +12,11 @@ import { StatsModule } from './stats/stats.module';
 import { TarifsModule } from './tarifs/tarifs.module';
 import { MailModule } from './mail/mail.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { HistoriqueModule } from './historique/historique.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({
-      isGlobal: true,
-    }),
+    ConfigModule.forRoot({ isGlobal: true }),
     MongooseModule.forRoot(process.env.MONGODB_URI as string),
     ScheduleModule.forRoot(),
     CandidatsModule,
@@ -28,6 +27,7 @@ import { NotificationsModule } from './notifications/notifications.module';
     TarifsModule,
     MailModule,
     NotificationsModule,
+    HistoriqueModule,   
   ],
   controllers: [AppController],
   providers: [AppService],

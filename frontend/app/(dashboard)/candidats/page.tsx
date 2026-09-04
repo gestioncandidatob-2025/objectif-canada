@@ -13,6 +13,14 @@ type Candidat = {
   telephone: string;
 };
 
+type Tarif = {
+  _id: string;
+  service: string;
+  actif: boolean;
+  regimes?: string[];
+  regimeActif?: boolean;
+};
+
 type Inscription = {
   _id: string;
   candidatId: Candidat;
@@ -110,6 +118,7 @@ export default function CandidatsPage() {
   const [role, setRole] = useState<string>("");
 
   const [inscriptions, setInscriptions] = useState<Inscription[]>([]);
+  const [tarifsActifs, setTarifsActifs] = useState<Tarif[]>([]);
   const [recherche, setRecherche] = useState("");
   const [filtreService, setFiltreService] = useState("");
   const [filtreRegime, setFiltreRegime] = useState("");
@@ -138,7 +147,7 @@ export default function CandidatsPage() {
   const [triColonne, setTriColonne] = useState<ColonneTri | null>(null);
   const [triOrdre, setTriOrdre] = useState<OrdreTri>("asc");
 
-  const CANDIDATS_PAR_PAGE = 25;
+  const CANDIDATS_PAR_PAGE = 10;
   const [page, setPage] = useState(1);
 
   function basculerTri(colonne: ColonneTri) {
@@ -183,6 +192,21 @@ export default function CandidatsPage() {
     chargerInscriptions();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    async function chargerTarifsActifs() {
+      const res = await apiFetch("/tarifs");
+      if (res.ok) {
+        const data: Tarif[] = await res.json();
+        setTarifsActifs(data.filter((t) => t.actif));
+      }
+    }
+    chargerTarifsActifs();
+  }, []);
+
+  const servicesDisponibles = Array.from(new Set(tarifsActifs.map((t) => t.service)));
+  const configEditService = tarifsActifs.find((t) => t.service === editService);
+  const regimesDisponibles = configEditService?.regimes ?? [];
 
  function ouvrirEdition(insc: Inscription) {
     setLigneEnEdition(insc._id);
@@ -565,9 +589,14 @@ export default function CandidatsPage() {
                               onChange={(e) => setEditService(e.target.value)}
                               className={`${champClass} bg-white`}
                             >
-                              <option value="tcf">TCF</option>
-                              <option value="examen_blanc">Examen blanc</option>
-                              <option value="tcf_special">TCF SPECIAL</option>
+                              {Array.from(
+                                new Set([...servicesDisponibles, editService].filter(Boolean))
+                              ).map((svc) => (
+                                <option key={svc} value={svc}>
+                                  {svc}
+                                  {!servicesDisponibles.includes(svc) ? " (offre inactive)" : ""}
+                                </option>
+                              ))}
                             </select>
                           </div>
                           <div>
@@ -578,9 +607,19 @@ export default function CandidatsPage() {
                               value={editRegime}
                               onChange={(e) => setEditRegime(e.target.value)}
                               className={`${champClass} bg-white`}
+                              disabled={configEditService && !configEditService.regimeActif}
                             >
-                              <option value="jour">Jour</option>
-                              <option value="soir">Soir</option>
+                              {regimesDisponibles.length === 0 && !editRegime && (
+                                <option value="">Aucun régime pour ce service</option>
+                              )}
+                              {Array.from(
+                                new Set([...regimesDisponibles, editRegime].filter(Boolean))
+                              ).map((reg) => (
+                                <option key={reg} value={reg}>
+                                  {reg}
+                                  {!regimesDisponibles.includes(reg) ? " (indisponible pour ce service)" : ""}
+                                </option>
+                              ))}
                             </select>
                           </div>
                           <div>
