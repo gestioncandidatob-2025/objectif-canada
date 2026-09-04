@@ -117,6 +117,20 @@ export class InscriptionsService {
       throw new BadRequestException('Le montant payé ne peut pas dépasser le montant total');
     }
 
+    // 7.6 Montant minimum exigé à l'inscription : 25 000 FCFA
+    // (sauf si le montant total dû est lui-même inférieur — dans ce cas, il doit être payé intégralement)
+    const MONTANT_MINIMUM_INSCRIPTION = 25000;
+    if (montantTotal > MONTANT_MINIMUM_INSCRIPTION && montantPaye <= MONTANT_MINIMUM_INSCRIPTION) {
+      throw new BadRequestException(
+        `Le montant payé doit être supérieur à ${MONTANT_MINIMUM_INSCRIPTION.toLocaleString('fr-FR')} FCFA pour enregistrer une inscription`,
+      );
+    }
+    if (montantTotal <= MONTANT_MINIMUM_INSCRIPTION && montantPaye < montantTotal) {
+      throw new BadRequestException(
+        `Ce service coûte ${montantTotal.toLocaleString('fr-FR')} FCFA (moins de ${MONTANT_MINIMUM_INSCRIPTION.toLocaleString('fr-FR')} FCFA) : il doit être payé intégralement à l'inscription`,
+      );
+    }
+
     // 8. Calculer le reste à payer
     const resteAPayer = montantTotal - montantPaye;
 
@@ -319,10 +333,126 @@ export class InscriptionsService {
     return this.inscriptionModel.findById(id).populate('candidatId').exec();
   }
 
-  update(id: string, updateInscriptionDto: UpdateInscriptionDto) {
-    return this.inscriptionModel
-      .findByIdAndUpdate(id, updateInscriptionDto, { new: true })
-      .exec();
+  async update(id: string, dto: UpdateInscriptionDto) {
+    const inscription = await this.inscriptionModel.findById(id);
+    if (!inscription) {
+      throw new NotFoundException('Inscription introuvable');
+    }
+
+    // 1. Déterminer le service final (nouveau si fourni, sinon on garde l'ancien)
+    //    et recharger l'offre tarifaire correspondante, car changer de service
+    //    change les règles (régime, montant, date de fin...).
+    const service = dto.service ?? inscription.service;
+    const offre = await this.tarifsService.findActifParService(service);
+    if (!offre) {
+      throw new BadRequestException(
+        "Aucune offre active n'est configurée pour ce service. Va dans la page Tarifs pour créer ou activer cette offre.",
+      );
+    }
+
+    // 2. Régime
+    const regime = dto.regime ?? inscription.regime;
+    if (offre.regimeActif) {
+      if (!regime) {
+        throw new BadRequestException('Le régime est obligatoire pour ce service');
+      }
+      if (!offre.regimes?.includes(regime)) {
+        throw new BadRequestException(
+          `Le régime "${regime}" n'existe pas pour ce service.`,
+        );
+      }
+    }
+
+    // 3. Montant total (prix fixe ou négocié) + remise
+    let montantTotal: number;
+    if (offre.montantNegociable) {
+      const montantNegocie = dto.montantNegocie ?? inscription.montantTotal + (inscription.remise ?? 0);
+      if (montantNegocie === undefined) {
+        throw new BadRequestException('Le montant négocié est obligatoire pour ce service');
+      }
+      montantTotal = montantNegocie;
+    } else {
+      montantTotal = offre.prix ?? 0;
+    }
+
+    const remise = offre.remiseActive ? (dto.remise ?? inscription.remise ?? 0) : 0;
+    if (remise < 0) {
+      throw new BadRequestException('La remise ne peut pas être négative');
+    }
+    if (remise > montantTotal) {
+      throw new BadRequestException('La remise ne peut pas dépasser le montant total');
+    }
+    montantTotal = montantTotal - remise;
+
+    // 4. Date de début / fin
+    const dateDebutTest = dto.dateDebutTest
+      ? new Date(dto.dateDebutTest)
+      : inscription.dateDebutTest ?? inscription.dateInscription;
+
+    let dateFin: Date | undefined;
+    if (offre.dateFinNecessaire) {
+      const dateFinFournie = dto.dateFin ?? inscription.dateFin;
+      if (!dateFinFournie) {
+        throw new BadRequestException('La date de fin est obligatoire pour ce service');
+      }
+      dateFin = new Date(dateFinFournie);
+    } else if (dto.service && dto.service !== inscription.service) {
+      // Le service a changé et ne nécessite pas de date de fin explicite : on la
+      // recalcule à partir de la durée de la nouvelle offre.
+      dateFin = new Date(dateDebutTest);
+      dateFin.setDate(dateFin.getDate() + (offre.dureeJours ?? 0));
+    } else {
+      dateFin = dto.dateFin ? new Date(dto.dateFin) : inscription.dateFin;
+    }
+
+    // 5. Montant payé
+    let montantPaye: number;
+    if (dto.modePaiement === ModePaiement.MOBILE_ESPECES || (!dto.modePaiement && inscription.modePaiement === ModePaiement.MOBILE_ESPECES)) {
+      montantPaye =
+        (dto.montantMobile ?? inscription.montantMobile ?? 0) +
+        (dto.montantEspeces ?? inscription.montantEspeces ?? 0);
+    } else {
+      montantPaye = dto.montantPaye ?? inscription.montantPaye;
+    }
+
+    if (montantPaye < 0) {
+      throw new BadRequestException('Le montant payé ne peut pas être négatif');
+    }
+    if (montantPaye > montantTotal) {
+      throw new BadRequestException('Le montant payé ne peut pas dépasser le montant total');
+    }
+
+    const MONTANT_MINIMUM_INSCRIPTION = 25000;
+    if (montantTotal > MONTANT_MINIMUM_INSCRIPTION && montantPaye <= MONTANT_MINIMUM_INSCRIPTION) {
+      throw new BadRequestException(
+        `Le montant payé doit être supérieur à ${MONTANT_MINIMUM_INSCRIPTION.toLocaleString('fr-FR')} FCFA`,
+      );
+    }
+    if (montantTotal <= MONTANT_MINIMUM_INSCRIPTION && montantPaye < montantTotal) {
+      throw new BadRequestException(
+        `Ce service coûte ${montantTotal.toLocaleString('fr-FR')} FCFA : il doit être payé intégralement`,
+      );
+    }
+
+    const resteAPayer = montantTotal - montantPaye;
+
+    // 6. Appliquer les changements et sauvegarder
+    inscription.service = service;
+    inscription.regime = offre.regimeActif ? regime : undefined;
+    inscription.dateDebutTest = dateDebutTest;
+    inscription.dateFin = dateFin;
+    inscription.montantTotal = montantTotal;
+    inscription.remise = remise;
+    inscription.montantPaye = montantPaye;
+    inscription.resteAPayer = resteAPayer;
+    if (dto.modePaiement) inscription.modePaiement = dto.modePaiement;
+    if (dto.montantMobile !== undefined) inscription.montantMobile = dto.montantMobile;
+    if (dto.montantEspeces !== undefined) inscription.montantEspeces = dto.montantEspeces;
+    if (dto.facturePar) inscription.facturePar = dto.facturePar;
+    if (dto.reference !== undefined) inscription.reference = dto.reference;
+
+    await inscription.save();
+    return this.inscriptionModel.findById(id).populate('candidatId').exec();
   }
 
   async remove(id: string) {

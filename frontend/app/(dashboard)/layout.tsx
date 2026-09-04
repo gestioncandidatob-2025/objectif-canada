@@ -50,7 +50,8 @@ export default function DashboardLayout({
     { href: "/tarifs", label: "Tarifs", visible: estAdmin },
     { href: "/tableau-de-bord", label: "Tableau de bord", visible: estAdmin },
     { href: "/utilisateurs", label: "Utilisateurs", visible: estAdmin },
-    { href: "/factures", label: "Factures", visible: estAdmin },
+    { href: "/factures", label: "Factures", visible: true },
+    { href: "/historique", label: "Historique", visible: estAdmin },
   ];
 
   return (

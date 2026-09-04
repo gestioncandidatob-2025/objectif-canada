@@ -316,6 +316,23 @@ export default function EnregistrementPage() {
       return;
     }
 
+    const MONTANT_MINIMUM_INSCRIPTION = 25000;
+    const montantTotal = calculerMontantTotal();
+    const montantPayeCalcule = calculerMontantPaye();
+
+    if (montantTotal > MONTANT_MINIMUM_INSCRIPTION && montantPayeCalcule <= MONTANT_MINIMUM_INSCRIPTION) {
+      setErreur(
+        `Le montant payé doit être supérieur à ${MONTANT_MINIMUM_INSCRIPTION.toLocaleString("fr-FR")} FCFA pour enregistrer une inscription`,
+      );
+      return;
+    }
+    if (montantTotal <= MONTANT_MINIMUM_INSCRIPTION && montantPayeCalcule < montantTotal) {
+      setErreur(
+        `Ce service coûte ${montantTotal.toLocaleString("fr-FR")} FCFA (moins de ${MONTANT_MINIMUM_INSCRIPTION.toLocaleString("fr-FR")} FCFA) : il doit être payé intégralement à l'inscription`,
+      );
+      return;
+    }
+
     // Toutes les validations sont bonnes : on ouvre le modal de récapitulatif
     setModalConfirmationOuvert(true);
   }

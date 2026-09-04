@@ -125,6 +125,7 @@ export default function CandidatsPage() {
   const [ligneASupprimer, setLigneASupprimer] = useState<string | null>(null);
   const [lettreConfirmation, setLettreConfirmation] = useState("");
 
+  const [editService, setEditService] = useState("tcf");
   const [editRegime, setEditRegime] = useState("jour");
   const [editDateDebutTest, setEditDateDebutTest] = useState("");
   const [editMontantPaye, setEditMontantPaye] = useState("");
@@ -137,7 +138,7 @@ export default function CandidatsPage() {
   const [triColonne, setTriColonne] = useState<ColonneTri | null>(null);
   const [triOrdre, setTriOrdre] = useState<OrdreTri>("asc");
 
-  const CANDIDATS_PAR_PAGE = 10;
+  const CANDIDATS_PAR_PAGE = 25;
   const [page, setPage] = useState(1);
 
   function basculerTri(colonne: ColonneTri) {
@@ -187,6 +188,7 @@ export default function CandidatsPage() {
     setLigneEnEdition(insc._id);
     setLigneOuverte(null);
     setLigneASupprimer(null);
+    setEditService(insc.service);
     setEditRegime(insc.regime ?? "jour");
     setEditDateDebutTest(insc.dateDebutTest ? insc.dateDebutTest.slice(0, 10) : "");
     setEditMontantPaye(String(insc.montantPaye));
@@ -202,6 +204,7 @@ export default function CandidatsPage() {
     }
     setEnregistrementEnCours(true);
     const body: Record<string, unknown> = {
+      service: editService,
       regime: editRegime,
       dateDebutTest: editDateDebutTest || undefined,
       montantPaye: Number(editMontantPaye),
@@ -475,22 +478,22 @@ export default function CandidatsPage() {
                             <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.8" />
                           </svg>
                         </button>
+                        <button
+                          onClick={() => ouvrirEdition(insc)}
+                          title="Modifier"
+                          className="text-blue-900 transition hover:scale-110 active:scale-95"
+                        >
+                          <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
+                            <path
+                              d="M4 20h4L18.5 9.5a2.1 2.1 0 0 0-3-3L5.5 16.5 4 20Z"
+                              stroke="currentColor"
+                              strokeWidth="1.8"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        </button>
                         {estAdmin && (
                           <>
-                            <button
-                              onClick={() => ouvrirEdition(insc)}
-                              title="Modifier"
-                              className="text-blue-900 transition hover:scale-110 active:scale-95"
-                            >
-                              <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
-                                <path
-                                  d="M4 20h4L18.5 9.5a2.1 2.1 0 0 0-3-3L5.5 16.5 4 20Z"
-                                  stroke="currentColor"
-                                  strokeWidth="1.8"
-                                  strokeLinejoin="round"
-                                />
-                              </svg>
-                            </button>
                             <button
                               onClick={() => {
                                 setLigneASupprimer(insc._id);
@@ -541,6 +544,32 @@ export default function CandidatsPage() {
                     <tr className="border-b border-ink/5 bg-accent/5">
                       <td colSpan={9} className="space-y-3 px-4 py-4">
                         <div className="grid grid-cols-2 gap-3">
+                          <div className="col-span-2">
+                            <label className="mb-1 block text-xs font-medium text-ink-soft">
+                              Raison de la modification <span className="text-error">*</span>
+                            </label>
+                            <textarea
+                              value={editRaison}
+                              onChange={(e) => setEditRaison(e.target.value)}
+                              rows={2}
+                              placeholder="Explique pourquoi tu modifies cette inscription (obligatoire)"
+                              className={`${champClass} bg-white`}
+                            />
+                          </div>
+                          <div>
+                            <label className="mb-1 block text-xs font-medium text-ink-soft">
+                              Service
+                            </label>
+                            <select
+                              value={editService}
+                              onChange={(e) => setEditService(e.target.value)}
+                              className={`${champClass} bg-white`}
+                            >
+                              <option value="tcf">TCF</option>
+                              <option value="examen_blanc">Examen blanc</option>
+                              <option value="tcf_special">TCF SPECIAL</option>
+                            </select>
+                          </div>
                           <div>
                             <label className="mb-1 block text-xs font-medium text-ink-soft">
                               Régime
@@ -618,6 +647,9 @@ export default function CandidatsPage() {
                             Annuler
                           </button>
                         </div>
+                        {erreur && (
+                          <p className="text-sm text-error">{erreur}</p>
+                        )}
                       </td>
                     </tr>
                   )}

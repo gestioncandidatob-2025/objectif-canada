@@ -70,17 +70,17 @@ export class InscriptionsController {
     return this.inscriptionsService.findOne(id);
   }
 
-  @ApiOperation({ summary: "Lister toutes les factures stockées sur AWS S3, de la plus récente à la plus ancienne (réservé à l'administrateur)" })
+  @ApiOperation({ summary: "Lister toutes les factures stockées sur AWS S3, de la plus récente à la plus ancienne" })
   @UseGuards(RolesGuard)
-  @Roles('admin')
+  @Roles('admin', 'secretariat')
   @Get('factures/liste')
   listerFactures() {
     return this.inscriptionsService.listerFactures();
   }
 
-  @ApiOperation({ summary: "Obtenir un lien temporaire pour consulter/réimprimer la facture PDF stockée sur AWS S3 (réservé à l'administrateur)" })
+  @ApiOperation({ summary: "Obtenir un lien temporaire pour consulter/réimprimer la facture PDF stockée sur AWS S3" })
   @UseGuards(RolesGuard)
-  @Roles('admin')
+  @Roles('admin', 'secretariat')
   @Get(':id/facture')
   urlFacture(@Param('id') id: string) {
     return this.inscriptionsService.urlFacture(id);
@@ -92,9 +92,9 @@ export class InscriptionsController {
     return this.inscriptionsService.ajouterPaiement(id, dto.montant);
   }
 
-  @ApiOperation({ summary: "Modifier une inscription (réservé à l'administrateur)" })
+  @ApiOperation({ summary: "Modifier une inscription (justification obligatoire)" })
   @UseGuards(RolesGuard)
-  @Roles('admin')
+  @Roles('admin', 'secretariat')
   @Patch(':id')
   update(@Param('id') id: string, @Body() updateInscriptionDto: UpdateInscriptionDto) {
     return this.inscriptionsService.update(id, updateInscriptionDto);
