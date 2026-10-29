@@ -3,7 +3,7 @@ import { Cron } from '@nestjs/schedule';
 import { InscriptionsService } from '../inscriptions/inscriptions.service';
 import { UsersService } from '../users/users.service';
 import { MailService } from '../mail/mail.service';
-
+import { ConfigService } from '@nestjs/config';
 @Injectable()
 export class NotificationsCronService {
   private readonly logger = new Logger(NotificationsCronService.name);
@@ -12,7 +12,13 @@ export class NotificationsCronService {
     private inscriptionsService: InscriptionsService,
     private usersService: UsersService,
     private mailService: MailService,
+      private configService: ConfigService,
   ) {}
+
+  private cronsActifs(): boolean {
+    return this.configService.get<boolean>('ENABLE_CRONS') === true;
+  }
+
 
   /**
    * Tous les jours à 7h : prévient tous les opérateurs des formations dont

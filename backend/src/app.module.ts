@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ScheduleModule } from '@nestjs/schedule';
 import { AppController } from './app.controller';
@@ -13,11 +13,22 @@ import { TarifsModule } from './tarifs/tarifs.module';
 import { MailModule } from './mail/mail.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { HistoriqueModule } from './historique/historique.module';
+import { validerEnvironnement } from './config/environnement';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
-    MongooseModule.forRoot(process.env.MONGODB_URI as string),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: ['.env.local', '.env'],
+      validate: validerEnvironnement,
+    }),
+    MongooseModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        uri: config.get<string>('MONGODB_URI'),
+        dbName: config.get<string>('MONGODB_DB_NAME'),
+      }),
+    }),
     ScheduleModule.forRoot(),
     CandidatsModule,
     InscriptionsModule,
@@ -27,7 +38,7 @@ import { HistoriqueModule } from './historique/historique.module';
     TarifsModule,
     MailModule,
     NotificationsModule,
-    HistoriqueModule,   
+    HistoriqueModule,
   ],
   controllers: [AppController],
   providers: [AppService],

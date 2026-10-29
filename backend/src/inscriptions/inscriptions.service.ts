@@ -496,9 +496,11 @@ export class InscriptionsService {
     candidat: CandidatDocument,
   ) {
     const pdfBuffer = await this.pdfService.genererFacturePdf(inscription, candidat);
-    const cle = `factures/${inscription.numeroRecu}.pdf`;
-    const succes = await this.s3Service.televerserFacture(cle, pdfBuffer);
-    if (succes) {
+        const cle = await this.s3Service.televerserFacture(
+      `factures/${inscription.numeroRecu}.pdf`,
+      pdfBuffer,
+    );
+    if (cle) {
       inscription.factureS3Key = cle;
       await inscription.save();
     }

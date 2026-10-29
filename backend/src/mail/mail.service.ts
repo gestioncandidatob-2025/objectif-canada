@@ -7,39 +7,47 @@ interface OptionsEnvoiEmail {
   htmlContent: string;
 }
 
-/**
- * Service générique d'envoi d'email via l'API de Resend
- * (https://api.resend.com/emails). Nécessite la variable d'environnement
- * RESEND_API_KEY. MAIL_FROM_EMAIL et MAIL_FROM_NAME sont optionnelles :
- * sans domaine vérifié sur Resend, on peut envoyer depuis
- * "onboarding@resend.dev" (valeur par défaut ci-dessous).
- */
 @Injectable()
 export class MailService {
   private readonly logger = new Logger(MailService.name);
   private readonly apiKey: string;
   private readonly fromEmail: string;
   private readonly fromName: string;
+  private readonly appEnv: string;
+  private readonly redirection: string[];
 
   constructor(private configService: ConfigService) {
     this.apiKey = this.configService.get<string>('RESEND_API_KEY') ?? '';
-    this.fromEmail =
-      this.configService.get<string>('MAIL_FROM_EMAIL') ?? 'onboarding@resend.dev';
-    this.fromName =
-      this.configService.get<string>('MAIL_FROM_NAME') ?? 'Objectif Canada';
+    this.fromEmail = this.configService.get<string>('MAIL_FROM_EMAIL') ?? 'onboarding@resend.dev';
+    this.fromName = this.configService.get<string>('MAIL_FROM_NAME') ?? 'Objectif Canada';
+    this.appEnv = this.configService.get<string>('APP_ENV') ?? 'development';
+    // Hors prod : tous les emails partent vers MAIL_REDIRECT_TO
+    this.redirection =
+      this.appEnv === 'production'
+        ? []
+        : (this.configService.get<string>('MAIL_REDIRECT_TO') ?? '')
+            .split(',')
+            .map((e) => e.trim())
+            .filter(Boolean);
   }
 
   async envoyer({ to, subject, htmlContent }: OptionsEnvoiEmail): Promise<void> {
     if (!this.apiKey) {
-      this.logger.warn(
-        `RESEND_API_KEY manquant dans le .env : email "${subject}" non envoyé`,
-      );
+      this.logger.warn(`RESEND_API_KEY manquant : email "${subject}" non envoyé`);
       return;
     }
 
-    const destinataires = (Array.isArray(to) ? to : [to]).filter(Boolean);
-    if (destinataires.length === 0) {
-      return;
+    const destinatairesReels = (Array.isArray(to) ? to : [to]).filter(Boolean);
+    if (destinatairesReels.length === 0) return;
+
+    const destinataires = this.redirection.length > 0 ? this.redirection : destinatairesReels;
+    if (this.appEnv !== 'production') {
+      subject = `[${this.appEnv.toUpperCase()}] ${subject}`;
+      if (this.redirection.length > 0) {
+        htmlContent =
+          `<p style="color:#b45309"><em>Email de test redirigé — destinataires d'origine : ` +
+          `${destinatairesReels.join(', ')}</em></p>` + htmlContent;
+      }
     }
 
     try {
@@ -56,17 +64,11 @@ export class MailService {
           html: htmlContent,
         }),
       });
-
       if (!res.ok) {
-        const texte = await res.text();
-        this.logger.error(
-          `Échec de l'envoi d'email Resend (${res.status}) pour "${subject}" : ${texte}`,
-        );
+        this.logger.error(`Échec Resend (${res.status}) pour "${subject}" : ${await res.text()}`);
       }
     } catch (erreur) {
-      this.logger.error(
-        `Erreur lors de l'envoi d'email "${subject}" : ${(erreur as Error).message}`,
-      );
+      this.logger.error(`Erreur d'envoi "${subject}" : ${(erreur as Error).message}`);
     }
   }
 }
