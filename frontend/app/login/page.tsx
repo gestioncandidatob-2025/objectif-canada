@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import ChampMotDePasse from "../components/ChampMotDePasse";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -84,11 +85,11 @@ export default function LoginPage() {
           <label className="mb-1 block text-sm font-medium text-ink-soft">
             Mot de passe
           </label>
-          <input
-            type="password"
+                   <ChampMotDePasse
             value={motDePasse}
             onChange={(e) => setMotDePasse(e.target.value)}
-            className="mb-2 w-full rounded-lg border border-ink/15 px-3 py-2.5 text-ink outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20"
+            wrapperClassName="mb-2"
+            className="w-full rounded-lg border border-ink/15 px-3 py-2.5 text-ink outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20"
           />
 
           <div className="mb-6 text-right">

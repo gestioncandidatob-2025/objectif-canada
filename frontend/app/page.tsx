@@ -1,12 +1,18 @@
+"use client";
+
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+
+// Page d'accueil : plus de bouton, on redirige directement.
+// - déjà connecté (jeton présent)  -> tableau de bord
+// - pas connecté                    -> page de connexion
 export default function Home() {
-  return (
-    <div className="flex min-h-screen items-center justify-center">
-      <a
-        href="/login"
-        className="rounded-lg bg-blue-600 px-6 py-3 text-white hover:bg-blue-700"
-      >
-        Se connecter
-      </a>
-    </div>
-  );
+  const router = useRouter();
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    router.replace(token ? "/bienvenue" : "/login");
+  }, [router]);
+
+  return null;
 }
