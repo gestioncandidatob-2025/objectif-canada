@@ -33,8 +33,9 @@ export class StatsService {
     return d;
   }
 
-  private async agregerDepuis(dateDebut: Date) {
+  private async agregerDepuis(centreId: string, dateDebut: Date) {
     const inscriptions = await this.inscriptionModel.find({
+      centreId,
       dateInscription: { $gte: dateDebut },
     });
     const nombreInscriptions = inscriptions.length;
@@ -42,9 +43,12 @@ export class StatsService {
     return { nombreInscriptions, montantEncaisse };
   }
 
-  async journalieres() {
-    const nombreCandidatsTotal = await this.candidatModel.countDocuments();
-    const { nombreInscriptions, montantEncaisse } = await this.agregerDepuis(this.debutAujourdhui());
+  async journalieres(centreId: string) {
+    const nombreCandidatsTotal = await this.candidatModel.countDocuments({ centreId });
+    const { nombreInscriptions, montantEncaisse } = await this.agregerDepuis(
+      centreId,
+      this.debutAujourdhui(),
+    );
     return {
       nombreCandidatsTotal,
       nombreInscriptionsJour: nombreInscriptions,
@@ -52,25 +56,32 @@ export class StatsService {
     };
   }
 
-  async hebdomadaires() {
-    const { nombreInscriptions, montantEncaisse } = await this.agregerDepuis(this.debutSemaine());
+  async hebdomadaires(centreId: string) {
+    const { nombreInscriptions, montantEncaisse } = await this.agregerDepuis(
+      centreId,
+      this.debutSemaine(),
+    );
     return {
       nombreInscriptionsSemaine: nombreInscriptions,
       montantEncaisseSemaine: montantEncaisse,
     };
   }
 
-  async mensuelles() {
-    const { nombreInscriptions, montantEncaisse } = await this.agregerDepuis(this.debutMois());
+  async mensuelles(centreId: string) {
+    const { nombreInscriptions, montantEncaisse } = await this.agregerDepuis(
+      centreId,
+      this.debutMois(),
+    );
     return {
       nombreInscriptionsMois: nombreInscriptions,
       montantEncaisseMois: montantEncaisse,
     };
   }
 
- async graphiques() {
+  async graphiques(centreId: string) {
     const debut = this.debutMois();
     const inscriptions = await this.inscriptionModel.find({
+      centreId,
       dateInscription: { $gte: debut },
     });
 
@@ -92,12 +103,13 @@ export class StatsService {
    * (janvier à décembre), pour un graphique annuel montrant la vraie
    * évolution d'un mois à l'autre.
    */
-  async annuelles() {
+  async annuelles(centreId: string) {
     const anneeActuelle = new Date().getFullYear();
     const debut = new Date(anneeActuelle, 0, 1);
     const fin = new Date(anneeActuelle, 11, 31, 23, 59, 59, 999);
 
     const inscriptions = await this.inscriptionModel.find({
+      centreId,
       dateInscription: { $gte: debut, $lte: fin },
     });
 

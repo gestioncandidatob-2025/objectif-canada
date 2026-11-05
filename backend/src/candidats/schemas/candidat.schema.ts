@@ -1,5 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument } from 'mongoose';
+import { HydratedDocument, Schema as MongooseSchema, Types } from 'mongoose';
+import { centrePlugin } from '../../common/centre.plugin';
 
 @Schema({ _id: false })
 export class ModificationHistorique {
@@ -22,6 +23,10 @@ export type CandidatDocument = HydratedDocument<Candidat>;
 
 @Schema({ timestamps: true })
 export class Candidat {
+  // Centre auquel appartient ce document (multi-centres)
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Centre', required: true, index: true })
+  centreId!: Types.ObjectId;
+
   @Prop({ required: true })
   nom!: string;
 
@@ -36,3 +41,4 @@ export class Candidat {
 }
 
 export const CandidatSchema = SchemaFactory.createForClass(Candidat);
+CandidatSchema.plugin(centrePlugin);

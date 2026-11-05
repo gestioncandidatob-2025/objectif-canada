@@ -24,7 +24,14 @@ export class AuthService {
     }
 
     // 3. Générer le jeton JWT
-    const payload = { sub: user._id, email: user.email, role: user.role };
+    // Le centre est inscrit dans le jeton : toutes les requêtes suivantes
+    // seront limitées à ce centre (absent pour le super administrateur).
+    const payload = {
+      sub: user._id,
+      email: user.email,
+      role: user.role,
+      centreId: user.centreId ? String(user.centreId) : undefined,
+    };
     const token = await this.jwtService.signAsync(payload);
 
     return {
@@ -34,6 +41,7 @@ export class AuthService {
         nom: user.nom,
         email: user.email,
         role: user.role,
+        centreId: user.centreId,
         emailVerifie: user.emailVerifie,
       },
     };

@@ -1,5 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument, Types } from 'mongoose';
+import { HydratedDocument, Schema as MongooseSchema, Types } from 'mongoose';
+import { centrePlugin } from '../../common/centre.plugin';
 
 export type InscriptionDocument = HydratedDocument<Inscription>;
 
@@ -12,6 +13,10 @@ export enum ModePaiement {
 
 @Schema({ timestamps: true })
 export class Inscription {
+  // Centre auquel appartient ce document (multi-centres)
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Centre', required: true, index: true })
+  centreId!: Types.ObjectId;
+
   @Prop({ type: Types.ObjectId, ref: 'Candidat', required: true })
   candidatId!: Types.ObjectId;
 
@@ -31,7 +36,7 @@ export class Inscription {
   @Prop({ required: true })
   dateFin!: Date;
 
- @Prop({ required: true })
+  @Prop({ required: true })
   montantTotal!: number;
 
   @Prop({ default: 0 })
@@ -58,7 +63,9 @@ export class Inscription {
   @Prop()
   reference?: string;
 
-  @Prop({ required: true, unique: true })
+  // Unique PAR CENTRE (voir l'index composé en bas du fichier) : deux
+  // centres peuvent avoir chacun un reçu n°06112026-0001.
+  @Prop({ required: true })
   numeroRecu!: string;
 
   // Empêche d'envoyer plusieurs fois la notification "formation terminée"
@@ -71,3 +78,5 @@ export class Inscription {
 }
 
 export const InscriptionSchema = SchemaFactory.createForClass(Inscription);
+InscriptionSchema.index({ centreId: 1, numeroRecu: 1 }, { unique: true });
+InscriptionSchema.plugin(centrePlugin);
