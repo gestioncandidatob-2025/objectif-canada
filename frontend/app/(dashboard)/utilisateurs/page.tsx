@@ -2,6 +2,7 @@
 
 import { useEffect, useState, Fragment } from "react";
 import { apiFetch } from "../../lib/api";
+import ChampMotDePasse from "../../components/ChampMotDePasse";
 
 type User = {
   _id: string;
@@ -174,8 +175,7 @@ export default function UtilisateursPage() {
               className={champClass}
             />
             <label className={labelClass}>Mot de passe</label>
-            <input
-              type="password"
+                        <ChampMotDePasse
               value={motDePasse}
               onChange={(e) => setMotDePasse(e.target.value)}
               className={champClass}
@@ -184,8 +184,7 @@ export default function UtilisateursPage() {
               Au moins 8 caractères, avec 1 majuscule, 1 minuscule, 1 chiffre et 1 caractère spécial.
             </p>
             <label className={labelClass}>Confirmer le mot de passe</label>
-            <input
-              type="password"
+                        <ChampMotDePasse
               value={motDePasseConfirmation}
               onChange={(e) => setMotDePasseConfirmation(e.target.value)}
               className={champClass}

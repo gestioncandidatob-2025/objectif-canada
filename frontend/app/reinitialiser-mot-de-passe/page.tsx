@@ -4,6 +4,7 @@ import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { apiFetch } from "../lib/api";
+import ChampMotDePasse from "../components/ChampMotDePasse";
 
 function ReinitialiserMotDePasseForm() {
   const router = useRouter();
@@ -100,8 +101,7 @@ function ReinitialiserMotDePasseForm() {
           />
 
           <label className={labelClass}>Nouveau mot de passe</label>
-          <input
-            type="password"
+                    <ChampMotDePasse
             value={nouveauMotDePasse}
             onChange={(e) => setNouveauMotDePasse(e.target.value)}
             className={champClass}
@@ -111,8 +111,7 @@ function ReinitialiserMotDePasseForm() {
           </p>
 
           <label className={labelClass}>Confirmer le nouveau mot de passe</label>
-          <input
-            type="password"
+                    <ChampMotDePasse
             value={confirmationMotDePasse}
             onChange={(e) => setConfirmationMotDePasse(e.target.value)}
             className={champClass}
