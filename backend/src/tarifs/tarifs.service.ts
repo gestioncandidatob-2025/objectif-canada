@@ -11,17 +11,17 @@ export class TarifsService {
     @InjectModel(Tarif.name) private tarifModel: Model<TarifDocument>,
   ) {}
 
-  create(createTarifDto: CreateTarifDto) {
-    const tarif = new this.tarifModel(createTarifDto);
+  create(createTarifDto: CreateTarifDto, centreId: string) {
+    const tarif = new this.tarifModel({ ...createTarifDto, centreId });
     return tarif.save();
   }
 
-  findAll() {
-    return this.tarifModel.find().sort({ createdAt: 1 }).exec();
+  findAll(centreId: string) {
+    return this.tarifModel.find({ centreId }).sort({ createdAt: 1 }).exec();
   }
 
-  findOne(id: string) {
-    return this.tarifModel.findById(id).exec();
+  findOne(id: string, centreId: string) {
+    return this.tarifModel.findOne({ _id: id, centreId }).exec();
   }
 
   /**
@@ -29,11 +29,11 @@ export class TarifsService {
    * elle contient son propre tableau de régimes le cas échéant).
    * Utilisé par le module Inscriptions.
    */
-  findActifParService(service: string) {
-    return this.tarifModel.findOne({ service, actif: true }).exec();
+  findActifParService(service: string, centreId: string) {
+    return this.tarifModel.findOne({ centreId, service, actif: true }).exec();
   }
 
-  async update(id: string, updateTarifDto: UpdateTarifDto) {
+  async update(id: string, updateTarifDto: UpdateTarifDto, centreId: string) {
     // Quand un champ devient inutile (ex: montantNegociable passe à true),
     // sa valeur est envoyée comme "undefined" par le frontend, ce qui la
     // fait disparaître du JSON. Pour éviter qu'une ancienne valeur ne reste
@@ -66,7 +66,7 @@ export class TarifsService {
     }
 
     const tarif = await this.tarifModel
-      .findByIdAndUpdate(id, operation, { new: true })
+      .findOneAndUpdate({ _id: id, centreId }, operation, { new: true })
       .exec();
 
     if (!tarif) {
@@ -75,8 +75,8 @@ export class TarifsService {
     return tarif;
   }
 
-  async remove(id: string) {
-    const tarif = await this.tarifModel.findByIdAndDelete(id).exec();
+  async remove(id: string, centreId: string) {
+    const tarif = await this.tarifModel.findOneAndDelete({ _id: id, centreId }).exec();
     if (!tarif) {
       throw new NotFoundException('Offre introuvable');
     }

@@ -43,8 +43,15 @@ export class UsersService {
   /** Nombre de mots de passe précédents conservés dans l'historique */
   private readonly TAILLE_HISTORIQUE_MOT_DE_PASSE = 5;
 
-  async create(createUserDto: CreateUserDto) {
-    const existant = await this.userModel.findOne({ email: createUserDto.email });
+  /**
+   * Crée un utilisateur dans le centre de l'administrateur connecté.
+   * L'email reste unique sur toute la plateforme (un email = un compte = un
+   * centre), d'où la recherche "sansCentre".
+   */
+  async create(createUserDto: CreateUserDto, centreId: string) {
+    const existant = await this.userModel
+      .findOne({ email: createUserDto.email })
+      .setOptions({ sansCentre: true });
     if (existant) {
       throw new ConflictException('Un utilisateur avec cet email existe déjà');
     }
@@ -54,6 +61,7 @@ export class UsersService {
     const user = new this.userModel({
       ...createUserDto,
       motDePasse: motDePasseHache,
+      centreId,
     });
 
     await user.save();
@@ -64,38 +72,39 @@ export class UsersService {
     return user;
   }
 
-  findAll() {
-    return this.userModel.find().select('-motDePasse').exec();
+  findAll(centreId: string) {
+    return this.userModel.find({ centreId }).select('-motDePasse').exec();
   }
 
-  findOne(id: string) {
-    return this.userModel.findById(id).select('-motDePasse').exec();
+  findOne(id: string, centreId: string) {
+    return this.userModel.findOne({ _id: id, centreId }).select('-motDePasse').exec();
   }
 
+  /** Utilisé à la connexion : on ne connaît pas encore le centre */
   findByEmail(email: string) {
-    return this.userModel.findOne({ email }).exec();
+    return this.userModel.findOne({ email }).setOptions({ sansCentre: true }).exec();
   }
 
-  /** Liste des emails de tous les utilisateurs (admins + secrétariat confondus) */
-  async emailsTousLesUtilisateurs(): Promise<string[]> {
-    const users = await this.userModel.find().select('email').exec();
+  /** Emails de tous les utilisateurs d'un centre (admins + secrétariat) */
+  async emailsTousLesUtilisateurs(centreId: string): Promise<string[]> {
+    const users = await this.userModel.find({ centreId }).select('email').exec();
     return users.map((u) => u.email);
   }
 
-  /** Liste des emails des seuls administrateurs */
-  async emailsAdmins(): Promise<string[]> {
+  /** Emails des seuls administrateurs d'un centre */
+  async emailsAdmins(centreId: string): Promise<string[]> {
     const users = await this.userModel
-      .find({ role: Role.ADMIN })
+      .find({ centreId, role: Role.ADMIN })
       .select('email')
       .exec();
     return users.map((u) => u.email);
   }
 
-  async update(id: string, updateUserDto: UpdateUserDto) {
+  async update(id: string, updateUserDto: UpdateUserDto, centreId: string) {
     const { motDePasse, ...autresChamps } = updateUserDto;
 
     if (motDePasse) {
-      const user = await this.userModel.findById(id);
+      const user = await this.userModel.findOne({ _id: id, centreId });
       if (!user) {
         throw new NotFoundException('Utilisateur introuvable');
       }
@@ -116,7 +125,7 @@ export class UsersService {
     }
 
     const user = await this.userModel
-      .findByIdAndUpdate(id, autresChamps, { new: true })
+      .findOneAndUpdate({ _id: id, centreId }, autresChamps, { new: true })
       .select('-motDePasse')
       .exec();
     if (!user) {
@@ -125,8 +134,8 @@ export class UsersService {
     return user;
   }
 
-  async remove(id: string) {
-    const user = await this.userModel.findByIdAndDelete(id).exec();
+  async remove(id: string, centreId: string) {
+    const user = await this.userModel.findOneAndDelete({ _id: id, centreId }).exec();
     if (!user) {
       throw new NotFoundException('Utilisateur introuvable');
     }
@@ -143,7 +152,7 @@ export class UsersService {
 
     await this.mailService.envoyer({
       to: user.email,
-      subject: 'Vérifie ton adresse email — Objectif Canada',
+      subject: 'Vérifie ton adresse email',
       htmlContent: `
         <p>Bonjour ${user.nom},</p>
         <p>Ton compte opérateur vient d'être créé. Voici ton code de vérification d'email :</p>
@@ -154,7 +163,7 @@ export class UsersService {
   }
 
   async renvoyerCodeVerification(email: string) {
-    const user = await this.userModel.findOne({ email });
+    const user = await this.userModel.findOne({ email }).setOptions({ sansCentre: true });
     if (!user) {
       throw new NotFoundException('Utilisateur introuvable');
     }
@@ -166,7 +175,7 @@ export class UsersService {
   }
 
   async verifierEmail(email: string, code: string) {
-    const user = await this.userModel.findOne({ email });
+    const user = await this.userModel.findOne({ email }).setOptions({ sansCentre: true });
     if (!user || !user.codeVerificationEmail || !user.codeVerificationExpiration) {
       throw new BadRequestException('Code de vérification invalide');
     }
@@ -189,7 +198,7 @@ export class UsersService {
   // ---- Réinitialisation de mot de passe ----
 
   async demanderReinitialisationMotDePasse(email: string) {
-    const user = await this.userModel.findOne({ email });
+    const user = await this.userModel.findOne({ email }).setOptions({ sansCentre: true });
     // On ne révèle jamais si l'email existe ou non (sécurité)
     if (!user) {
       return {
@@ -204,7 +213,7 @@ export class UsersService {
 
     await this.mailService.envoyer({
       to: user.email,
-      subject: 'Réinitialisation de ton mot de passe — Objectif Canada',
+      subject: 'Réinitialisation de ton mot de passe',
       htmlContent: `
         <p>Bonjour ${user.nom},</p>
         <p>Voici ton code de réinitialisation de mot de passe :</p>
@@ -223,7 +232,7 @@ export class UsersService {
     code: string,
     nouveauMotDePasse: string,
   ) {
-    const user = await this.userModel.findOne({ email });
+    const user = await this.userModel.findOne({ email }).setOptions({ sansCentre: true });
     if (!user || !user.codeReinitialisation || !user.codeReinitialisationExpiration) {
       throw new BadRequestException('Code de réinitialisation invalide');
     }

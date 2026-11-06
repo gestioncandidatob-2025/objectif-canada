@@ -4,6 +4,7 @@ import { Model } from 'mongoose';
 import { Historique, HistoriqueDocument } from './schemas/historique.schema';
 
 export interface EnregistrerActionParams {
+  centreId: string;
   utilisateurEmail: string;
   utilisateurNom?: string;
   role?: string;
@@ -48,12 +49,12 @@ export class HistoriqueService {
     }
   }
 
-  async findAll(filtres: FiltresHistorique) {
+  async findAll(centreId: string, filtres: FiltresHistorique) {
     const { utilisateur, module, dateDebut, dateFin } = filtres;
     const page = filtres.page && filtres.page > 0 ? filtres.page : 1;
     const limite = filtres.limite && filtres.limite > 0 ? filtres.limite : 50;
 
-    const requete: Record<string, any> = {};
+    const requete: Record<string, any> = { centreId };
 
     if (utilisateur) {
       requete.$or = [

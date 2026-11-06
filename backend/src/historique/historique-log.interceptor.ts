@@ -126,10 +126,12 @@ export class HistoriqueLogInterceptor implements NestInterceptor {
     }
 
     const utilisateur = req.user as
-      | { email?: string; nom?: string; role?: string }
+      | { email?: string; nom?: string; role?: string; centreId?: string }
       | undefined;
 
-    if (!utilisateur?.email) {
+    // Seules les actions faites dans un centre sont journalisées (le journal
+    // est consulté par l'administrateur du centre).
+    if (!utilisateur?.email || !utilisateur.centreId) {
       return next.handle();
     }
 
@@ -142,6 +144,7 @@ export class HistoriqueLogInterceptor implements NestInterceptor {
         const elementTouche = decrireElementTouche(methode, req.body, reponse);
         const raison = typeof req.body?.raison === 'string' ? req.body.raison : undefined;
         void this.historiqueService.enregistrer({
+          centreId: utilisateur.centreId!,
           utilisateurEmail: utilisateur.email!,
           utilisateurNom: utilisateur.nom,
           role: utilisateur.role,
@@ -155,6 +158,7 @@ export class HistoriqueLogInterceptor implements NestInterceptor {
       catchError((erreur) => {
         const elementTouche = decrireElementTouche(methode, req.body, undefined);
         void this.historiqueService.enregistrer({
+          centreId: utilisateur.centreId!,
           utilisateurEmail: utilisateur.email!,
           utilisateurNom: utilisateur.nom,
           role: utilisateur.role,

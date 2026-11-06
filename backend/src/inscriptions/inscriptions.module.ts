@@ -8,6 +8,7 @@ import { TarifsModule } from '../tarifs/tarifs.module';
 import { MailModule } from '../mail/mail.module';
 import { UsersModule } from '../users/users.module';
 import { FacturesModule } from '../factures/factures.module';
+import { CentresModule } from '../centres/centres.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { FacturesModule } from '../factures/factures.module';
     MailModule,
     UsersModule,
     FacturesModule,
+    CentresModule,
   ],
   controllers: [InscriptionsController],
   providers: [InscriptionsService],

@@ -1,15 +1,23 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument } from 'mongoose';
+import { HydratedDocument, Schema as MongooseSchema, Types } from 'mongoose';
+import { centrePlugin } from '../../common/centre.plugin';
 
 export type UserDocument = HydratedDocument<User>;
 
 export enum Role {
   SECRETARIAT = 'secretariat',
   ADMIN = 'admin',
+  // Équipe de la plateforme : gère les centres, n'appartient à aucun centre
+  SUPER_ADMIN = 'super_admin',
 }
 
 @Schema({ timestamps: true })
 export class User {
+  // Centre de l'utilisateur. Absent uniquement pour le super administrateur.
+  // Un email = un compte = un centre (l'email reste unique sur toute la plateforme).
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Centre', index: true })
+  centreId?: Types.ObjectId;
+
   @Prop({ required: true })
   nom!: string;
 
@@ -45,3 +53,6 @@ export class User {
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
+UserSchema.plugin(centrePlugin, {
+  sansCentreAutorise: (doc) => doc.role === Role.SUPER_ADMIN,
+});

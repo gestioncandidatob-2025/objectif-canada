@@ -10,6 +10,15 @@ import { MailService } from '../mail/mail.service';
 import { UsersService } from '../users/users.service';
 import { PdfService } from '../factures/pdf.service';
 import { S3Service } from '../factures/s3.service';
+import { CentresService } from '../centres/centres.service';
+
+/**
+ * Charge le candidat lié à une inscription, en restant dans le centre.
+ * (Le garde-fou multi-centres refuse un populate qui ne filtre pas par centre.)
+ */
+function candidatDuCentre(centreId: string) {
+  return { path: 'candidatId', match: { centreId } };
+}
 
 @Injectable()
 export class InscriptionsService {
@@ -21,11 +30,15 @@ export class InscriptionsService {
     private usersService: UsersService,
     private pdfService: PdfService,
     private s3Service: S3Service,
+    private centresService: CentresService,
   ) {}
 
-  async create(createInscriptionDto: CreateInscriptionDto) {
-    // 1. Vérifier que le candidat existe
-    const candidat = await this.candidatModel.findById(createInscriptionDto.candidatId);
+  async create(createInscriptionDto: CreateInscriptionDto, centreId: string) {
+    // 1. Vérifier que le candidat existe dans ce centre
+    const candidat = await this.candidatModel.findOne({
+      _id: createInscriptionDto.candidatId,
+      centreId,
+    });
     if (!candidat) {
       throw new NotFoundException('Candidat introuvable');
     }
@@ -35,6 +48,7 @@ export class InscriptionsService {
     //    liste de ses régimes possibles.
     const offre = await this.tarifsService.findActifParService(
       createInscriptionDto.service,
+      centreId,
     );
 
     if (!offre) {
@@ -134,21 +148,23 @@ export class InscriptionsService {
     // 8. Calculer le reste à payer
     const resteAPayer = montantTotal - montantPaye;
 
-    // 9. Générer un numéro de reçu unique (vérifié pour éviter tout conflit)
+    // 9. Numéro de reçu : date du jour + compteur propre au centre
+    //    (ex : 05112026 + 0042). Le compteur est réservé de façon atomique
+    //    dans la fiche du centre ; la vérification d'existence reste en
+    //    sécurité (ex : anciennes factures numérotées autrement).
     const jour = String(dateInscription.getDate()).padStart(2, '0');
     const mois = String(dateInscription.getMonth() + 1).padStart(2, '0');
     const annee = dateInscription.getFullYear();
+    const formater = (n: number) => `${jour}${mois}${annee}${String(n).padStart(4, '0')}`;
 
-    let compteur = (await this.inscriptionModel.countDocuments()) + 1;
-    let numeroRecu = `${jour}${mois}${annee}${String(compteur).padStart(4, '0')}`;
-
-    while (await this.inscriptionModel.exists({ numeroRecu })) {
-      compteur += 1;
-      numeroRecu = `${jour}${mois}${annee}${String(compteur).padStart(4, '0')}`;
+    let numeroRecu = formater(await this.centresService.prochainNumeroRecu(centreId));
+    while (await this.inscriptionModel.exists({ centreId, numeroRecu })) {
+      numeroRecu = formater(await this.centresService.prochainNumeroRecu(centreId));
     }
 
     // 10. Assembler et sauvegarder l'inscription
     const inscription = new this.inscriptionModel({
+      centreId,
       candidatId: new Types.ObjectId(createInscriptionDto.candidatId),
       service: createInscriptionDto.service,
       regime: offre.regimeActif ? createInscriptionDto.regime : undefined,
@@ -184,7 +200,7 @@ export class InscriptionsService {
     inscription: InscriptionDocument,
     candidat: CandidatDocument,
   ) {
-    const emailsAdmins = await this.usersService.emailsAdmins();
+    const emailsAdmins = await this.usersService.emailsAdmins(String(inscription.centreId));
     if (emailsAdmins.length === 0) return;
 
     await this.mailService.envoyer({
@@ -208,48 +224,50 @@ export class InscriptionsService {
   }
 
   /** Inscriptions dont la date de fin est aujourd'hui ou déjà passée, pas encore notifiées */
-  async trouverFormationsTermineesNonNotifiees() {
+  async trouverFormationsTermineesNonNotifiees(centreId: string) {
     const finDeJournee = new Date();
     finDeJournee.setHours(23, 59, 59, 999);
 
     return this.inscriptionModel
       .find({
+        centreId,
         dateFin: { $lte: finDeJournee },
         formationTermineeNotifiee: { $ne: true },
       })
-      .populate('candidatId')
+      .populate(candidatDuCentre(centreId))
       .exec();
   }
 
-  async marquerFormationNotifiee(id: string) {
+  async marquerFormationNotifiee(id: string, centreId: string) {
     await this.inscriptionModel
-      .findByIdAndUpdate(id, { formationTermineeNotifiee: true })
+      .findOneAndUpdate({ _id: id, centreId }, { formationTermineeNotifiee: true })
       .exec();
   }
 
   /** Inscriptions avec un reste à payer, enregistrées depuis au moins `joursMin` jours */
-  async trouverEnRetardDePaiement(joursMin: number) {
+  async trouverEnRetardDePaiement(joursMin: number, centreId: string) {
     const seuil = new Date();
     seuil.setDate(seuil.getDate() - joursMin);
     seuil.setHours(23, 59, 59, 999);
 
     return this.inscriptionModel
       .find({
+        centreId,
         resteAPayer: { $gt: 0 },
         dateInscription: { $lte: seuil },
       })
-      .populate('candidatId')
+      .populate(candidatDuCentre(centreId))
       .exec();
   }
 
-  async verifierDette(telephone: string) {
-    const candidat = await this.candidatModel.findOne({ telephone }).exec();
+  async verifierDette(telephone: string, centreId: string) {
+    const candidat = await this.candidatModel.findOne({ centreId, telephone }).exec();
     if (!candidat) {
       return { existe: false };
     }
 
     const inscriptionAvecDette = await this.inscriptionModel
-      .findOne({ candidatId: candidat._id, resteAPayer: { $gt: 0 } })
+      .findOne({ centreId, candidatId: candidat._id, resteAPayer: { $gt: 0 } })
       .sort({ createdAt: -1 })
       .exec();
 
@@ -265,7 +283,9 @@ export class InscriptionsService {
     };
   }
 
-  async findAll(filtres: {
+  async findAll(
+    centreId: string,
+    filtres: {
     nom?: string;
     service?: string;
     regime?: string;
@@ -274,8 +294,9 @@ export class InscriptionsService {
     dateInscriptionDebut?: string;
     dateInscriptionFin?: string;
     paiement?: string;
-  }) {
-    const filtre: Record<string, any> = {};
+  },
+  ) {
+    const filtre: Record<string, any> = { centreId };
 
     if (filtres.service) {
       filtre.service = filtres.service;
@@ -317,6 +338,7 @@ export class InscriptionsService {
 
     if (filtres.nom) {
       const candidats = await this.candidatModel.find({
+        centreId,
         $or: [
           { nom: { $regex: filtres.nom, $options: 'i' } },
           { prenom: { $regex: filtres.nom, $options: 'i' } },
@@ -326,15 +348,18 @@ export class InscriptionsService {
       filtre.candidatId = { $in: idsCandidats };
     }
 
-    return this.inscriptionModel.find(filtre).populate('candidatId').exec();
+    return this.inscriptionModel.find(filtre).populate(candidatDuCentre(centreId)).exec();
   }
 
-  findOne(id: string) {
-    return this.inscriptionModel.findById(id).populate('candidatId').exec();
+  findOne(id: string, centreId: string) {
+    return this.inscriptionModel
+      .findOne({ _id: id, centreId })
+      .populate(candidatDuCentre(centreId))
+      .exec();
   }
 
-  async update(id: string, dto: UpdateInscriptionDto) {
-    const inscription = await this.inscriptionModel.findById(id);
+  async update(id: string, dto: UpdateInscriptionDto, centreId: string) {
+    const inscription = await this.inscriptionModel.findOne({ _id: id, centreId });
     if (!inscription) {
       throw new NotFoundException('Inscription introuvable');
     }
@@ -343,7 +368,7 @@ export class InscriptionsService {
     //    et recharger l'offre tarifaire correspondante, car changer de service
     //    change les règles (régime, montant, date de fin...).
     const service = dto.service ?? inscription.service;
-    const offre = await this.tarifsService.findActifParService(service);
+    const offre = await this.tarifsService.findActifParService(service, centreId);
     if (!offre) {
       throw new BadRequestException(
         "Aucune offre active n'est configurée pour ce service. Va dans la page Tarifs pour créer ou activer cette offre.",
@@ -452,28 +477,31 @@ export class InscriptionsService {
     if (dto.reference !== undefined) inscription.reference = dto.reference;
 
     await inscription.save();
-    return this.inscriptionModel.findById(id).populate('candidatId').exec();
+    return this.findOne(id, centreId);
   }
 
-  async remove(id: string) {
-    const inscription = await this.inscriptionModel.findByIdAndDelete(id).exec();
+  async remove(id: string, centreId: string) {
+    const inscription = await this.inscriptionModel.findOneAndDelete({ _id: id, centreId }).exec();
     if (!inscription) {
       throw new NotFoundException('Inscription introuvable');
     }
 
     const inscriptionsRestantes = await this.inscriptionModel.countDocuments({
+      centreId,
       candidatId: inscription.candidatId,
     });
 
     if (inscriptionsRestantes === 0) {
-      await this.candidatModel.findByIdAndDelete(inscription.candidatId).exec();
+      await this.candidatModel
+        .findOneAndDelete({ _id: inscription.candidatId, centreId })
+        .exec();
     }
 
     return inscription;
   }
 
-  async ajouterPaiement(id: string, montant: number) {
-    const inscription = await this.inscriptionModel.findById(id);
+  async ajouterPaiement(id: string, montant: number, centreId: string) {
+    const inscription = await this.inscriptionModel.findOne({ _id: id, centreId });
     if (!inscription) {
       throw new NotFoundException('Inscription introuvable');
     }
@@ -496,8 +524,9 @@ export class InscriptionsService {
     candidat: CandidatDocument,
   ) {
     const pdfBuffer = await this.pdfService.genererFacturePdf(inscription, candidat);
-        const cle = await this.s3Service.televerserFacture(
-      `factures/${inscription.numeroRecu}.pdf`,
+    // Un dossier par centre : deux centres peuvent avoir le même numéro de reçu
+    const cle = await this.s3Service.televerserFacture(
+      `factures/${String(inscription.centreId)}/${inscription.numeroRecu}.pdf`,
       pdfBuffer,
     );
     if (cle) {
@@ -507,8 +536,10 @@ export class InscriptionsService {
   }
 
   /** Régénère et re-stocke la facture PDF d'une inscription existante (ex: si elle manquait) */
-  async regenererFacture(id: string) {
-    const inscription = await this.inscriptionModel.findById(id).populate('candidatId');
+  async regenererFacture(id: string, centreId: string) {
+    const inscription = await this.inscriptionModel
+      .findOne({ _id: id, centreId })
+      .populate(candidatDuCentre(centreId));
     if (!inscription) {
       throw new NotFoundException('Inscription introuvable');
     }
@@ -518,15 +549,15 @@ export class InscriptionsService {
   }
 
   /** URL temporaire (5 min) pour consulter/réimprimer la facture stockée sur S3 */
-  async urlFacture(id: string) {
-    const inscription = await this.inscriptionModel.findById(id);
+  async urlFacture(id: string, centreId: string) {
+    const inscription = await this.inscriptionModel.findOne({ _id: id, centreId });
     if (!inscription) {
       throw new NotFoundException('Inscription introuvable');
     }
     if (!inscription.factureS3Key) {
-      await this.regenererFacture(id);
+      await this.regenererFacture(id, centreId);
     }
-    const inscriptionAJour = await this.inscriptionModel.findById(id);
+    const inscriptionAJour = await this.inscriptionModel.findOne({ _id: id, centreId });
     if (!inscriptionAJour?.factureS3Key) {
       throw new NotFoundException("La facture n'a pas pu être générée ou stockée");
     }
@@ -538,11 +569,11 @@ export class InscriptionsService {
   }
 
   /** Liste des factures disponibles, de la plus récente à la plus ancienne */
-  async listerFactures() {
+  async listerFactures(centreId: string) {
     return this.inscriptionModel
-      .find({ factureS3Key: { $exists: true, $ne: null } })
+      .find({ centreId, factureS3Key: { $exists: true, $ne: null } })
       .sort({ dateInscription: -1 })
-      .populate('candidatId')
+      .populate(candidatDuCentre(centreId))
       .exec();
   }
 }

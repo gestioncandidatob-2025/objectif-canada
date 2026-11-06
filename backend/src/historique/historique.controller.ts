@@ -4,6 +4,7 @@ import { HistoriqueService } from './historique.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
+import { CentreId } from '../common/centre-id.decorator';
 
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -14,7 +15,7 @@ export class HistoriqueController {
 
   @ApiOperation({
     summary:
-      "Lister le journal des actions des utilisateurs — réservé à l'administrateur",
+      "Lister le journal des actions des utilisateurs du centre — réservé à l'administrateur",
   })
   @ApiQuery({ name: 'utilisateur', required: false, description: 'Recherche par nom ou email' })
   @ApiQuery({ name: 'module', required: false })
@@ -24,6 +25,7 @@ export class HistoriqueController {
   @ApiQuery({ name: 'limite', required: false })
   @Get()
   findAll(
+    @CentreId() centreId: string,
     @Query('utilisateur') utilisateur?: string,
     @Query('module') module?: string,
     @Query('dateDebut') dateDebut?: string,
@@ -31,7 +33,7 @@ export class HistoriqueController {
     @Query('page') page?: string,
     @Query('limite') limite?: string,
   ) {
-    return this.historiqueService.findAll({
+    return this.historiqueService.findAll(centreId, {
       utilisateur,
       module,
       dateDebut,
