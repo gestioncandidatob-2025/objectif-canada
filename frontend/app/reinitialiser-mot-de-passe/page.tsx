@@ -55,7 +55,7 @@ function ReinitialiserMotDePasseForm() {
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-seal">
-            Objectif Canada
+            Espace de gestion
           </p>
           <h1
             className="mt-2 text-3xl text-ink"

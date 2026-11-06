@@ -51,14 +51,15 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-paper px-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
+          {/* Nom neutre : on ne sait pas encore de quel centre il s'agit */}
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-seal">
-            Objectif Canada
+            Espace de gestion
           </p>
           <h1
             className="mt-2 text-3xl text-ink"
             style={{ fontFamily: "var(--font-display)" }}
           >
-            Espace de gestion
+            Connexion
           </h1>
         </div>
 
