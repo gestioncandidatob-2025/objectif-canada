@@ -50,6 +50,16 @@ export class GroupesController {
   }
 
   @ApiOperation({
+    summary:
+      'Appliquer tout de suite les passages au groupe suivant (fait aussi chaque nuit automatiquement) — administrateur',
+  })
+  @Roles(Role.ADMIN)
+  @Post('apply-transfers')
+  applyTransfers(@CentreId() centreId: string) {
+    return this.groupesService.appliquerPassages(centreId);
+  }
+
+  @ApiOperation({
     summary: "Candidats en cours d'un groupe et ce qu'ils doivent — tous les utilisateurs",
   })
   @Get(':id/candidates')

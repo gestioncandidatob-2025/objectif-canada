@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
@@ -14,8 +15,16 @@ import { UpdateGroupeDto } from './dto/update-groupe.dto';
 // Comparaison des noms sans tenir compte des majuscules ("Soir 1" = "soir 1")
 const COLLATION_NOM = { locale: 'fr', strength: 2 };
 
+// Nombre maximal de passages enchaînés en une seule fois (ex : un candidat
+// en retard de 30 jours peut passer Soir 1 → Soir 2 → Soir 3 d'un coup)
+const MAX_TOURS_DE_PASSAGE = 10;
+
+const UN_JOUR_MS = 24 * 60 * 60 * 1000;
+
 @Injectable()
 export class GroupesService {
+  private readonly logger = new Logger(GroupesService.name);
+
   constructor(
     @InjectModel(Groupe.name) private groupeModel: Model<GroupeDocument>,
     @InjectModel(Inscription.name) private inscriptionModel: Model<InscriptionDocument>,
@@ -246,5 +255,84 @@ export class GroupesService {
     return this.groupeModel
       .findOne({ centreId, regimeEntree: regimeNormalise, actif: true })
       .exec();
+  }
+
+  /**
+   * Passage automatique au groupe suivant, pour un centre.
+   *
+   * Un candidat (inscription en cours) qui est depuis au moins N jours dans un
+   * groupe réglé « passer dans X après N jours » passe dans le groupe X. Sa
+   * date d'entrée dans X = date d'entrée dans l'ancien groupe + N jours : un
+   * passage fait en retard ne décale donc pas les passages suivants.
+   *
+   * Lancé chaque nuit par GroupesCronService, ou à la demande par l'admin.
+   * Renvoie le nombre de candidats déplacés.
+   */
+  async appliquerPassages(centreId: string): Promise<{ deplaces: number }> {
+    const groupesAvecPassage = await this.groupeModel
+      .find({
+        centreId,
+        groupeSuivantId: { $exists: true, $ne: null },
+        joursAvantPassage: { $gt: 0 },
+      })
+      .exec();
+    if (groupesAvecPassage.length === 0) {
+      return { deplaces: 0 };
+    }
+
+    // Groupes suivants actifs : on ne fait pas entrer de candidats dans un
+    // groupe désactivé (ils restent dans leur groupe actuel)
+    const idsSuivants = groupesAvecPassage
+      .map((g) => g.groupeSuivantId)
+      .filter((id): id is Types.ObjectId => !!id);
+    const suivantsActifs = await this.groupeModel
+      .find({ centreId, _id: { $in: idsSuivants }, actif: true })
+      .exec();
+    const idsSuivantsActifs = new Set(suivantsActifs.map((g) => String(g._id)));
+
+    let deplaces = 0;
+    // Plusieurs tours : un candidat arrivé dans Soir 2 peut, s'il a assez de
+    // retard, passer aussitôt dans Soir 3
+    for (let tour = 0; tour < MAX_TOURS_DE_PASSAGE; tour++) {
+      let deplacesCeTour = 0;
+
+      for (const groupe of groupesAvecPassage) {
+        const idSuivant = String(groupe.groupeSuivantId);
+        if (!idsSuivantsActifs.has(idSuivant)) continue;
+
+        const jours = groupe.joursAvantPassage as number;
+        const seuil = new Date(Date.now() - jours * UN_JOUR_MS);
+
+        const aDeplacer = await this.inscriptionModel
+          .find({
+            ...this.filtreEnCours(centreId),
+            groupeId: groupe._id,
+            dateEntreeGroupe: { $lte: seuil },
+          })
+          .select('_id dateEntreeGroupe')
+          .exec();
+
+        for (const inscription of aDeplacer) {
+          const nouvelleDateEntree = new Date(
+            (inscription.dateEntreeGroupe as Date).getTime() + jours * UN_JOUR_MS,
+          );
+          await this.inscriptionModel
+            .updateOne(
+              { _id: inscription._id, centreId, groupeId: groupe._id },
+              { groupeId: groupe.groupeSuivantId, dateEntreeGroupe: nouvelleDateEntree },
+            )
+            .exec();
+          deplacesCeTour++;
+        }
+      }
+
+      deplaces += deplacesCeTour;
+      if (deplacesCeTour === 0) break;
+    }
+
+    if (deplaces > 0) {
+      this.logger.log(`Centre ${centreId} : ${deplaces} candidat(s) passé(s) au groupe suivant`);
+    }
+    return { deplaces };
   }
 }
