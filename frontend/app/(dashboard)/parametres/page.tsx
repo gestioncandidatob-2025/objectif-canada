@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { apiFetch, getToken } from "../../lib/api";
+import { signalerCentreModifie } from "../../lib/centre";
 import TarifsPage from "../tarifs/page";
 
 type Parametres = {
@@ -150,6 +151,8 @@ export default function ParametresPage() {
       }
       setFormulaire(data);
       mettreAJourNomCentreLocal(data.nom);
+      // Le menu se met à jour tout de suite (nom du centre)
+      signalerCentreModifie();
       setMessage("Modifications enregistrées");
     } catch {
       setErreur("Impossible de contacter le serveur");
@@ -194,6 +197,8 @@ export default function ParametresPage() {
         return;
       }
       setFormulaire((f) => (f ? { ...f, logoUrl: data.logoUrl } : data));
+      // Le menu affiche tout de suite le nouveau logo
+      signalerCentreModifie();
       setMessage("Logo enregistré");
     } catch {
       setErreur("Impossible de contacter le serveur");

@@ -3,12 +3,21 @@
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
-import BandeauConfiguration from "../components/BandeauConfiguration";
+import DialogueConfiguration from "../components/DialogueConfiguration";
+import { apiFetch } from "../lib/api";
+import { EVENEMENT_CENTRE_MODIFIE } from "../lib/centre";
 
 type User = {
   nom: string;
   role: string;
   centreId?: string;
+  nomCentre?: string;
+};
+
+// Ce que le menu affiche en haut : le logo du centre, ou son nom s'il n'a pas de logo
+type IdentiteCentre = {
+  nom: string;
+  logoUrl: string | null;
 };
 
 export default function DashboardLayout({
@@ -18,6 +27,7 @@ export default function DashboardLayout({
 }) {
   const [user, setUser] = useState<User | null>(null);
   const [pret, setPret] = useState(false);
+  const [identiteCentre, setIdentiteCentre] = useState<IdentiteCentre | null>(null);
   const router = useRouter();
   const pathname = usePathname();
 
@@ -38,6 +48,27 @@ export default function DashboardLayout({
     setPret(true);
   }, [router]);
 
+  // Logo et nom du centre, pour tous les utilisateurs du centre (admin et
+  // secrétaires). Rechargés dès que l'admin modifie les paramètres.
+  useEffect(() => {
+    if (!pret) return;
+
+    async function chargerIdentiteCentre() {
+      try {
+        const res = await apiFetch("/center/settings");
+        if (!res.ok) return;
+        const data = await res.json();
+        setIdentiteCentre({ nom: data.nom, logoUrl: data.logoUrl ?? null });
+      } catch {
+        // serveur injoignable : on garde le nom du centre déjà connu
+      }
+    }
+
+    chargerIdentiteCentre();
+    window.addEventListener(EVENEMENT_CENTRE_MODIFIE, chargerIdentiteCentre);
+    return () => window.removeEventListener(EVENEMENT_CENTRE_MODIFIE, chargerIdentiteCentre);
+  }, [pret]);
+
   function handleLogout() {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
@@ -49,6 +80,10 @@ export default function DashboardLayout({
   }
 
   const estAdmin = user.role === "admin";
+
+  // En attendant la réponse du serveur, on affiche le nom du centre gardé à la connexion
+  const nomCentre = identiteCentre?.nom ?? user.nomCentre ?? "";
+  const logoUrl = identiteCentre?.logoUrl ?? null;
 
   const liens = [
     { href: "/bienvenue", label: "Accueil", visible: true },
@@ -66,12 +101,22 @@ export default function DashboardLayout({
   return (
     <div className="flex min-h-screen bg-paper">
       <aside className="flex w-64 shrink-0 flex-col border-r border-ink/10 bg-white px-5 py-6">
-        <Link href="/bienvenue" className="mb-8 block">
-          <img
-            src="/logo.jpeg"
-            alt="Logo"
-            className="h-14 w-auto object-contain"
-          />
+        <Link href="/bienvenue" className="mb-8 flex min-h-14 items-center">
+          {logoUrl ? (
+            <img
+              src={logoUrl}
+              alt={nomCentre ? `Logo de ${nomCentre}` : "Logo du centre"}
+              className="h-14 w-auto max-w-full object-contain"
+            />
+          ) : (
+            // Pas de logo : on affiche le nom du centre (jamais le logo d'un autre centre)
+            <span
+              className="text-xl leading-tight text-ink"
+              style={{ fontFamily: "var(--font-display)" }}
+            >
+              {nomCentre}
+            </span>
+          )}
         </Link>
 
         <nav className="flex flex-1 flex-col gap-1">
@@ -109,11 +154,10 @@ export default function DashboardLayout({
         </div>
       </aside>
 
-      <main className="flex-1 overflow-y-auto">
-        {/* Rappel de configuration : administrateur uniquement */}
-        {estAdmin && user.centreId && <BandeauConfiguration centreId={String(user.centreId)} />}
-        {children}
-      </main>
+      <main className="flex-1 overflow-y-auto">{children}</main>
+
+      {/* Rappel de configuration : administrateur uniquement */}
+      {estAdmin && user.centreId && <DialogueConfiguration centreId={String(user.centreId)} />}
     </div>
   );
 }
