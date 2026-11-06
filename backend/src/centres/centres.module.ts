@@ -7,6 +7,7 @@ import { CentresController } from './centres.controller';
 import { MonCentreService } from './mon-centre.service';
 import { MonCentreController } from './mon-centre.controller';
 import { UsersModule } from '../users/users.module';
+import { FacturesModule } from '../factures/factures.module';
 import { User, UserSchema } from '../users/schemas/user.schema';
 import { Inscription, InscriptionSchema } from '../inscriptions/schemas/inscription.schema';
 import { Candidat, CandidatSchema } from '../candidats/schemas/candidat.schema';
@@ -26,6 +27,8 @@ import { Historique, HistoriqueSchema } from '../historique/schemas/historique.s
       { name: Historique.name, schema: HistoriqueSchema },
     ]),
     UsersModule,
+    // Envoi du logo sur S3
+    FacturesModule,
   ],
   controllers: [CentresController, MonCentreController],
   providers: [CentresService, CentresSuperAdminService, MonCentreService],

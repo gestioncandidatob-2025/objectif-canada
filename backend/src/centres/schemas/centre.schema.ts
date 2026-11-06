@@ -1,5 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
+import { ModePaiement } from '../../inscriptions/schemas/inscription.schema';
 
 export type CentreDocument = HydratedDocument<Centre>;
 
@@ -41,6 +42,11 @@ export class Centre {
   // Texte libre affiché en bas des reçus
   @Prop()
   piedDePageRecu?: string;
+
+  // Modes de paiement acceptés par le centre (toujours au moins un).
+  // Un mode retiré n'apparaît plus dans le formulaire de facture.
+  @Prop({ type: [String], default: () => Object.values(ModePaiement) })
+  modesPaiement!: string[];
 
   // Compteur des reçus du centre : chaque nouvelle facture prend le numéro
   // suivant. Incrémenté de façon atomique (deux secrétaires qui facturent à la

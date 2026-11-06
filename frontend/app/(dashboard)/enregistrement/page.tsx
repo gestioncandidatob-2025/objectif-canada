@@ -54,6 +54,10 @@ function formaterNomService(service: string): string {
     .join(" ");
 }
 
+// Tous les modes de paiement possibles (mêmes valeurs que dans le backend),
+// dans l'ordre où ils s'affichent dans la liste
+const ORDRE_MODES_PAIEMENT = ["especes", "orange_money", "mobile_money", "mobile_especes"];
+
 export default function EnregistrementPage() {
   const router = useRouter();
 
@@ -105,6 +109,27 @@ export default function EnregistrementPage() {
     chargerTarifsActifs();
   }, []);
 
+  // Modes de paiement acceptés par le centre (Paramètres → Paiements).
+  // Par défaut tous, le temps que les paramètres se chargent.
+  const [modesAcceptes, setModesAcceptes] = useState<string[]>(ORDRE_MODES_PAIEMENT);
+
+  useEffect(() => {
+    async function chargerModesPaiement() {
+      const res = await apiFetch("/center/settings");
+      if (!res.ok) return;
+      const data = await res.json();
+      const modes: string[] = Array.isArray(data.modesPaiement) ? data.modesPaiement : [];
+      if (modes.length === 0) return;
+      setModesAcceptes(modes);
+      // Le mode sélectionné doit faire partie des modes acceptés
+      setModePaiement((actuel) => (modes.includes(actuel) ? actuel : modes[0]));
+    }
+    chargerModesPaiement();
+  }, []);
+
+  // Modes affichés dans la liste, toujours dans le même ordre
+  const modesAffiches = ORDRE_MODES_PAIEMENT.filter((m) => modesAcceptes.includes(m));
+
   // Il n'y a qu'une seule offre active par service (elle porte elle-même
   // sa liste de régimes le cas échéant).
   function configDuService(svc: string): Tarif | undefined {
@@ -142,8 +167,8 @@ export default function EnregistrementPage() {
   const modePaiementLabels: Record<string, string> = {
     especes: "Espèces",
     orange_money: "Orange Money",
-    mobile_money: "Mobile Money",
-    mobile_especes: "Mobile + Espèces",
+    mobile_money: "MTN Mobile Money",
+    mobile_especes: "Mixte (Mobile + Espèces)",
   };
 
   function calculerMontantTotal(): number {
@@ -697,10 +722,11 @@ export default function EnregistrementPage() {
                 onChange={(e) => setModePaiement(e.target.value)}
                 className={champClass}
               >
-                <option value="especes">Espèces</option>
-                <option value="orange_money">Orange Money</option>
-                <option value="mobile_money">Mobile Money</option>
-                <option value="mobile_especes">Mobile + Espèces</option>
+                {modesAffiches.map((mode) => (
+                  <option key={mode} value={mode}>
+                    {modePaiementLabels[mode] ?? mode}
+                  </option>
+                ))}
               </select>
 
               {modePaiement === "mobile_especes" ? (

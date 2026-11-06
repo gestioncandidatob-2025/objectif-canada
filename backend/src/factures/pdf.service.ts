@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import PDFDocument from 'pdfkit';
 
 interface CandidatPourFacture {
@@ -22,6 +22,21 @@ interface InscriptionPourFacture {
   reference?: string;
 }
 
+/** En-tête et bas du reçu : viennent des Paramètres du centre */
+export interface CentrePourFacture {
+  nom: string;
+  niu?: string;
+  rccm?: string;
+  telephone?: string;
+  adresse?: string;
+  ville?: string;
+  piedDePageRecu?: string;
+  // Contenu de l'image du logo (PNG ou JPG), si le centre en a un
+  logo?: Buffer;
+}
+
+// Libellés des anciens services (données existantes) ; tout autre service
+// est affiché tel qu'il a été saisi dans la page Services
 const LABEL_SERVICE: Record<string, string> = {
   tcf: 'TCF',
   tcf_2mois: 'TCF 2 mois',
@@ -32,22 +47,30 @@ const LABEL_SERVICE: Record<string, string> = {
 const LABEL_PAIEMENT: Record<string, string> = {
   especes: 'Espèces',
   orange_money: 'Orange Money',
-  mobile_money: 'Mobile Money',
-  mobile_especes: 'Mobile + Espèces',
+  mobile_money: 'MTN Mobile Money',
+  mobile_especes: 'Mixte (Mobile + Espèces)',
 };
+
+// Largeur du ticket (en points PDF) et taille maximale du logo
+const LARGEUR_TICKET = 227;
+const LARGEUR_LOGO = 120;
+const HAUTEUR_LOGO = 50;
 
 /**
  * Génère le PDF de la facture/reçu, au même format "ticket" que la page
- * /recu déjà existante, pour archivage sur AWS S3.
+ * /recu, pour archivage sur AWS S3.
  */
 @Injectable()
 export class PdfService {
+  private readonly logger = new Logger(PdfService.name);
+
   genererFacturePdf(
     inscription: InscriptionPourFacture,
     candidat: CandidatPourFacture,
+    centreFacture: CentrePourFacture,
   ): Promise<Buffer> {
     return new Promise((resolve, reject) => {
-      const doc = new PDFDocument({ size: [227, 620], margin: 16 });
+      const doc = new PDFDocument({ size: [LARGEUR_TICKET, 700], margin: 16 });
       const morceaux: Buffer[] = [];
       doc.on('data', (m) => morceaux.push(m));
       doc.on('end', () => resolve(Buffer.concat(morceaux)));
@@ -73,15 +96,34 @@ export class PdfService {
         doc.moveDown(0.2);
       };
 
-      centre('Centre de formation TCF/TEF', 10);
-      centre('NIU:M022517596119U', 8);
-      centre('contact : (+237) 686 876 873', 8);
-      centre('DLA-Bonamoussadi ancien impôt', 8);
+      // ---- En-tête : les informations du centre ----
+      if (centreFacture.logo) {
+        try {
+          // Logo centré ; pdfkit descend tout seul sous l'image
+          doc.image(centreFacture.logo, (LARGEUR_TICKET - LARGEUR_LOGO) / 2, doc.y, {
+            fit: [LARGEUR_LOGO, HAUTEUR_LOGO],
+            align: 'center',
+          });
+          doc.moveDown(0.3);
+        } catch (erreur) {
+          // Image illisible : le reçu sort quand même, sans logo
+          this.logger.warn(`Logo illisible dans le PDF : ${(erreur as Error).message}`);
+        }
+      }
+
+      centre(centreFacture.nom, 10, true);
+      if (centreFacture.niu) centre(`NIU : ${centreFacture.niu}`, 8);
+      if (centreFacture.rccm) centre(`RCCM : ${centreFacture.rccm}`, 8);
+      if (centreFacture.telephone) centre(`Contact : ${centreFacture.telephone}`, 8);
+      const adresseComplete = [centreFacture.adresse, centreFacture.ville].filter(Boolean).join(', ');
+      if (adresseComplete) centre(adresseComplete, 8);
+
       separateur();
       centre('REÇU DE PAIEMENT', 11, true);
       separateur();
 
-      ligne('N° reçu:', inscription.numeroRecu);
+      // ---- Le reçu ----
+      ligne('N° reçu :', inscription.numeroRecu);
       ligne('Date :', new Date(inscription.dateInscription).toLocaleDateString('fr-FR'));
       ligne(
         'Heure :',
@@ -96,12 +138,12 @@ export class PdfService {
       doc.font('Helvetica').fontSize(9).text(`${candidat.prenom} ${candidat.nom}`);
       ligne('Téléphone :', candidat.telephone);
       if (inscription.regime) ligne('Régime :', inscription.regime);
-      ligne('Test :', LABEL_SERVICE[inscription.service] ?? inscription.service);
+      ligne('Service :', LABEL_SERVICE[inscription.service] ?? inscription.service);
       if (inscription.dateDebutTest) {
-        ligne('Début du test :', new Date(inscription.dateDebutTest).toLocaleDateString('fr-FR'));
+        ligne('Début :', new Date(inscription.dateDebutTest).toLocaleDateString('fr-FR'));
       }
       if (inscription.dateFin) {
-        ligne('Fin du test :', new Date(inscription.dateFin).toLocaleDateString('fr-FR'));
+        ligne('Fin :', new Date(inscription.dateFin).toLocaleDateString('fr-FR'));
       }
       separateur();
 
@@ -116,9 +158,12 @@ export class PdfService {
       if (inscription.reference) {
         ligne('Référence :', inscription.reference);
       }
-      separateur();
 
-      centre("le goût des C2 c'est chez nous", 9);
+      // ---- Bas du reçu : texte libre du centre ----
+      if (centreFacture.piedDePageRecu) {
+        separateur();
+        centre(centreFacture.piedDePageRecu, 9);
+      }
 
       doc.end();
     });

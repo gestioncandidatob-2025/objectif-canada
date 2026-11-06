@@ -27,8 +27,23 @@ type Inscription = {
   dateInscription: string;
 };
 
+// En-tête et bas du reçu : viennent des Paramètres du centre
+type InfosCentre = {
+  nom: string;
+  ville: string;
+  telephone: string;
+  adresse: string;
+  niu: string;
+  rccm: string;
+  piedDePageRecu: string;
+  logoUrl: string | null;
+};
+
+// Libellés des anciens services (données existantes) ; tout autre service
+// est affiché tel qu'il a été saisi dans la page Services
 const LABEL_SERVICE: Record<string, string> = {
   tcf: "TCF",
+  tcf_2mois: "TCF 2 mois",
   examen_blanc: "Examen blanc",
   tcf_special: "TCF SPECIAL",
 };
@@ -36,14 +51,15 @@ const LABEL_SERVICE: Record<string, string> = {
 const LABEL_PAIEMENT: Record<string, string> = {
   especes: "Espèces",
   orange_money: "Orange Money",
-  mobile_money: "Mobile Money",
-  mobile_especes: "Mobile + Espèces",
+  mobile_money: "MTN Mobile Money",
+  mobile_especes: "Mixte (Mobile + Espèces)",
 };
 
 export default function RecuPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const [inscription, setInscription] = useState<Inscription | null>(null);
+  const [infosCentre, setInfosCentre] = useState<InfosCentre | null>(null);
   const [erreur, setErreur] = useState("");
 
   useEffect(() => {
@@ -54,15 +70,26 @@ export default function RecuPage() {
     }
 
     async function charger() {
-      const res = await apiFetch(`/registrations/${id}/receipt`);
-      if (!res.ok) {
+      // Le reçu et les informations du centre sont chargés en même temps
+      const [resRecu, resCentre] = await Promise.all([
+        apiFetch(`/registrations/${id}/receipt`),
+        apiFetch("/center/settings"),
+      ]);
+
+      if (!resRecu.ok) {
         setErreur("Reçu introuvable");
         return;
       }
-      setInscription(await res.json());
+      if (!resCentre.ok) {
+        setErreur("Impossible de charger les informations du centre");
+        return;
+      }
+
+      setInscription(await resRecu.json());
+      setInfosCentre(await resCentre.json());
     }
 
-    charger();
+    charger().catch(() => setErreur("Impossible de contacter le serveur"));
   }, [id, router]);
 
   if (erreur) {
@@ -73,7 +100,7 @@ export default function RecuPage() {
     );
   }
 
-  if (!inscription) {
+  if (!inscription || !infosCentre) {
     return null;
   }
 
@@ -90,24 +117,33 @@ export default function RecuPage() {
     ? new Date(inscription.dateFin).toLocaleDateString("fr-FR")
     : null;
 
+  const adresseComplete = [infosCentre.adresse, infosCentre.ville].filter(Boolean).join(", ");
+  // Numéro utilisable dans un lien "tel:" (chiffres et + uniquement)
+  const telephoneLien = infosCentre.telephone.replace(/[^\d+]/g, "");
+
   return (
     <div className="min-h-screen bg-white px-4 py-8 text-black">
       <div className="mx-auto max-w-sm">
         <div className="text-center text-sm leading-relaxed">
-          <img
-            src="/logo.jpeg"
-            alt="Logo"
-            className="mx-auto h-20 w-auto object-contain"
-          />
-          <p className="mt-1">Centre de formation TCF/TEF</p>
-          <p>NIU:M022517596119U</p>
-          <p>
-            contact :{" "}
-            <a href="tel:+237686876873" className="text-blue-600 underline">
-              (+237) 686 876 873
-            </a>
-          </p>
-          <p>DLA-Bonamoussadi ancien impôt</p>
+          {infosCentre.logoUrl && (
+            <img
+              src={infosCentre.logoUrl}
+              alt="Logo"
+              className="mx-auto h-20 w-auto object-contain"
+            />
+          )}
+          <p className="mt-1 font-bold">{infosCentre.nom}</p>
+          {infosCentre.niu && <p>NIU : {infosCentre.niu}</p>}
+          {infosCentre.rccm && <p>RCCM : {infosCentre.rccm}</p>}
+          {infosCentre.telephone && (
+            <p>
+              Contact :{" "}
+              <a href={`tel:${telephoneLien}`} className="text-blue-600 underline">
+                {infosCentre.telephone}
+              </a>
+            </p>
+          )}
+          {adresseComplete && <p>{adresseComplete}</p>}
 
           <p className="mt-2 tracking-widest">
             ------------------------------------
@@ -120,7 +156,7 @@ export default function RecuPage() {
 
         <div className="mt-2 space-y-1 text-left text-sm">
           <p>
-            <span className="font-bold">N° reçu:</span> {inscription.numeroRecu}
+            <span className="font-bold">N° reçu :</span> {inscription.numeroRecu}
           </p>
           <p>
             <span className="font-bold">Date :</span> {dateAffichee}
@@ -138,26 +174,26 @@ export default function RecuPage() {
             {inscription.candidatId?.prenom} {inscription.candidatId?.nom}
           </p>
           <p>
-            <span className="font-bold">Téléphone :</span>
+            <span className="font-bold">Téléphone :</span>{" "}
             {inscription.candidatId?.telephone}
           </p>
           {inscription.regime && (
             <p>
-              <span className="font-bold">régime :</span> {inscription.regime}
+              <span className="font-bold">Régime :</span> {inscription.regime}
             </p>
           )}
           <p>
-            <span className="font-bold">Test :</span>{" "}
+            <span className="font-bold">Service :</span>{" "}
             {LABEL_SERVICE[inscription.service] ?? inscription.service}
           </p>
           {dateDebutAffichee && (
             <p>
-              <span className="font-bold">📅 debut du test :</span> {dateDebutAffichee}
+              <span className="font-bold">📅 Début :</span> {dateDebutAffichee}
             </p>
           )}
           {dateFinAffichee && (
             <p>
-              <span className="font-bold">📅 Fin du test :</span> {dateFinAffichee}
+              <span className="font-bold">📅 Fin :</span> {dateFinAffichee}
             </p>
           )}
 
@@ -183,16 +219,21 @@ export default function RecuPage() {
             </p>
           )}
 
-          <p className="text-center tracking-widest">
-            ------------------------------------
-          </p>
-        
+          {infosCentre.piedDePageRecu && (
+            <p className="text-center tracking-widest">
+              ------------------------------------
+            </p>
+          )}
         </div>
 
-        <p className="mt-4 text-center text-sm">
-          le goût des C2 c'est chez nous 🍁
-        </p>
-        <div className="mb-6 flex justify-center gap-3 print:hidden">
+        {/* Texte libre du centre (Paramètres → Reçu) */}
+        {infosCentre.piedDePageRecu && (
+          <p className="mt-4 whitespace-pre-line text-center text-sm">
+            {infosCentre.piedDePageRecu}
+          </p>
+        )}
+
+        <div className="mb-6 mt-6 flex justify-center gap-3 print:hidden">
           <button
             onClick={() => window.print()}
             className="rounded-full bg-blue-100 px-6 py-2 font-medium text-blue-700 transition hover:bg-blue-200"

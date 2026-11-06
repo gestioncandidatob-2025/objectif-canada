@@ -55,11 +55,12 @@ export default function DashboardLayout({
     { href: "/enregistrement", label: "Enregistrement", visible: true },
     { href: "/candidats", label: "Liste des candidats", visible: true },
     { href: "/classes", label: "Classes", visible: true },
-    { href: "/tarifs", label: "Tarifs", visible: estAdmin },
     { href: "/tableau-de-bord", label: "Tableau de bord", visible: estAdmin },
     { href: "/utilisateurs", label: "Utilisateurs", visible: estAdmin },
     { href: "/factures", label: "Factures", visible: true },
     { href: "/historique", label: "Historique", visible: estAdmin },
+    // Paramètres du centre (les tarifs sont dans l'onglet Services)
+    { href: "/parametres", label: "Paramètres", visible: estAdmin },
   ];
 
   return (

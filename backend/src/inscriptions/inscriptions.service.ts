@@ -43,6 +43,9 @@ export class InscriptionsService {
       throw new NotFoundException('Candidat introuvable');
     }
 
+    // 1.5 Le mode de paiement doit être accepté par le centre (Paramètres → Paiements)
+    await this.verifierModePaiementAccepte(createInscriptionDto.modePaiement, centreId);
+
     // 2. Charger l'offre active du service (définie dans /tarifs). Il n'y a
     //    désormais qu'une seule offre par service, qui porte elle-même la
     //    liste de ses régimes possibles.
@@ -430,6 +433,11 @@ export class InscriptionsService {
       dateFin = dto.dateFin ? new Date(dto.dateFin) : inscription.dateFin;
     }
 
+    // 4.5 Un nouveau mode de paiement doit être accepté par le centre
+    if (dto.modePaiement && dto.modePaiement !== inscription.modePaiement) {
+      await this.verifierModePaiementAccepte(dto.modePaiement, centreId);
+    }
+
     // 5. Montant payé
     let montantPaye: number;
     if (dto.modePaiement === ModePaiement.MOBILE_ESPECES || (!dto.modePaiement && inscription.modePaiement === ModePaiement.MOBILE_ESPECES)) {
@@ -519,11 +527,36 @@ export class InscriptionsService {
     return inscription;
   }
 
+  /** Refuse un mode de paiement que le centre a désactivé dans ses Paramètres */
+  private async verifierModePaiementAccepte(modePaiement: string, centreId: string) {
+    const centre = await this.centresService.trouverParId(centreId);
+    const modesAcceptes = centre.modesPaiement ?? [];
+    // Ancien centre sans liste enregistrée : tous les modes sont acceptés
+    if (modesAcceptes.length > 0 && !modesAcceptes.includes(modePaiement)) {
+      throw new BadRequestException(
+        "Ce mode de paiement n'est pas accepté par le centre (voir Paramètres → Paiements)",
+      );
+    }
+  }
+
   private async genererEtStockerFacture(
     inscription: InscriptionDocument,
     candidat: CandidatDocument,
   ) {
-    const pdfBuffer = await this.pdfService.genererFacturePdf(inscription, candidat);
+    // L'en-tête et le bas du reçu viennent des Paramètres du centre
+    const centre = await this.centresService.trouverParId(String(inscription.centreId));
+    const logo = centre.logoKey ? await this.s3Service.telechargerFichier(centre.logoKey) : null;
+
+    const pdfBuffer = await this.pdfService.genererFacturePdf(inscription, candidat, {
+      nom: centre.nom,
+      niu: centre.niu,
+      rccm: centre.rccm,
+      telephone: centre.telephone,
+      adresse: centre.adresse,
+      ville: centre.ville,
+      piedDePageRecu: centre.piedDePageRecu,
+      logo: logo ?? undefined,
+    });
     // Un dossier par centre : deux centres peuvent avoir le même numéro de reçu
     const cle = await this.s3Service.televerserFacture(
       `factures/${String(inscription.centreId)}/${inscription.numeroRecu}.pdf`,
