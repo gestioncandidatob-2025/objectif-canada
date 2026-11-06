@@ -10,6 +10,7 @@ import { MailService } from '../mail/mail.service';
 import { UsersService } from '../users/users.service';
 import { PdfService } from '../factures/pdf.service';
 import { S3Service } from '../factures/s3.service';
+import { CentresService } from '../centres/centres.service';
 
 /**
  * Charge le candidat lié à une inscription, en restant dans le centre.
@@ -29,6 +30,7 @@ export class InscriptionsService {
     private usersService: UsersService,
     private pdfService: PdfService,
     private s3Service: S3Service,
+    private centresService: CentresService,
   ) {}
 
   async create(createInscriptionDto: CreateInscriptionDto, centreId: string) {
@@ -146,18 +148,18 @@ export class InscriptionsService {
     // 8. Calculer le reste à payer
     const resteAPayer = montantTotal - montantPaye;
 
-    // 9. Générer un numéro de reçu unique DANS CE CENTRE (chaque centre a sa
-    //    propre numérotation, vérifiée pour éviter tout conflit)
+    // 9. Numéro de reçu : date du jour + compteur propre au centre
+    //    (ex : 05112026 + 0042). Le compteur est réservé de façon atomique
+    //    dans la fiche du centre ; la vérification d'existence reste en
+    //    sécurité (ex : anciennes factures numérotées autrement).
     const jour = String(dateInscription.getDate()).padStart(2, '0');
     const mois = String(dateInscription.getMonth() + 1).padStart(2, '0');
     const annee = dateInscription.getFullYear();
+    const formater = (n: number) => `${jour}${mois}${annee}${String(n).padStart(4, '0')}`;
 
-    let compteur = (await this.inscriptionModel.countDocuments({ centreId })) + 1;
-    let numeroRecu = `${jour}${mois}${annee}${String(compteur).padStart(4, '0')}`;
-
+    let numeroRecu = formater(await this.centresService.prochainNumeroRecu(centreId));
     while (await this.inscriptionModel.exists({ centreId, numeroRecu })) {
-      compteur += 1;
-      numeroRecu = `${jour}${mois}${annee}${String(compteur).padStart(4, '0')}`;
+      numeroRecu = formater(await this.centresService.prochainNumeroRecu(centreId));
     }
 
     // 10. Assembler et sauvegarder l'inscription

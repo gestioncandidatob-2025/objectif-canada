@@ -26,7 +26,13 @@ export default function DashboardLayout({
       router.push("/login");
       return;
     }
-    setUser(JSON.parse(userStr));
+    const utilisateur = JSON.parse(userStr);
+    // Le super admin n'appartient à aucun centre : il a son propre espace
+    if (utilisateur.role === "super_admin") {
+      router.replace("/super-admin");
+      return;
+    }
+    setUser(utilisateur);
     setPret(true);
   }, [router]);
 

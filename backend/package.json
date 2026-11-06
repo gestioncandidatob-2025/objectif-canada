@@ -14,6 +14,7 @@
     "start:prod": "node dist/main",
     "admin:creer": "node dist/scripts/creer-admin",
     "migration:centre": "node dist/scripts/migrer-vers-centres",
+    "super-admin:creer": "node dist/scripts/creer-super-admin",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "test": "jest",
     "test:watch": "jest --watch",

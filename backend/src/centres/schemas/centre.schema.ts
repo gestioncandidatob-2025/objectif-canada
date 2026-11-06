@@ -42,6 +42,12 @@ export class Centre {
   @Prop()
   piedDePageRecu?: string;
 
+  // Compteur des reçus du centre : chaque nouvelle facture prend le numéro
+  // suivant. Incrémenté de façon atomique (deux secrétaires qui facturent à la
+  // même seconde ne peuvent pas obtenir le même numéro).
+  @Prop({ default: 0 })
+  dernierNumeroRecu!: number;
+
   @Prop({ type: String, enum: StatutCentre, default: StatutCentre.ACTIF })
   statut!: StatutCentre;
 }
