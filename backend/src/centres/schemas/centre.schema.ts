@@ -48,6 +48,11 @@ export class Centre {
   @Prop({ default: 0 })
   dernierNumeroRecu!: number;
 
+  // Plan d'abonnement du centre. Tout nouveau centre démarre au plan Gratuit.
+  // Les limites de chaque plan (factures, comptes) viendront avec mc/abonnements.
+  @Prop({ default: 'gratuit' })
+  plan!: string;
+
   @Prop({ type: String, enum: StatutCentre, default: StatutCentre.ACTIF })
   statut!: StatutCentre;
 }
