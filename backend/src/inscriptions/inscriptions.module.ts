@@ -9,6 +9,7 @@ import { MailModule } from '../mail/mail.module';
 import { UsersModule } from '../users/users.module';
 import { FacturesModule } from '../factures/factures.module';
 import { CentresModule } from '../centres/centres.module';
+import { GroupesModule } from '../groupes/groupes.module';
 
 @Module({
   imports: [
@@ -21,6 +22,8 @@ import { CentresModule } from '../centres/centres.module';
     UsersModule,
     FacturesModule,
     CentresModule,
+    // Vérifier le groupe choisi sur la facture
+    GroupesModule,
   ],
   controllers: [InscriptionsController],
   providers: [InscriptionsService],

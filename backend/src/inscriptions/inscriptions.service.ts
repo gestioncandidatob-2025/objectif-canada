@@ -11,6 +11,7 @@ import { UsersService } from '../users/users.service';
 import { PdfService } from '../factures/pdf.service';
 import { S3Service } from '../factures/s3.service';
 import { CentresService } from '../centres/centres.service';
+import { GroupesService } from '../groupes/groupes.service';
 
 /**
  * Charge le candidat lié à une inscription, en restant dans le centre.
@@ -31,6 +32,7 @@ export class InscriptionsService {
     private pdfService: PdfService,
     private s3Service: S3Service,
     private centresService: CentresService,
+    private groupesService: GroupesService,
   ) {}
 
   async create(createInscriptionDto: CreateInscriptionDto, centreId: string) {
@@ -165,6 +167,12 @@ export class InscriptionsService {
       numeroRecu = formater(await this.centresService.prochainNumeroRecu(centreId));
     }
 
+    // 9.5 Groupe : le candidat entre automatiquement dans le premier groupe de
+    //     son régime (réglé par l'administrateur dans la page Groupes).
+    //     Aucun groupe si son régime n'a pas de premier groupe.
+    const regimeInscription = offre.regimeActif ? createInscriptionDto.regime : undefined;
+    const groupeDEntree = await this.groupesService.groupeDEntree(regimeInscription, centreId);
+
     // 10. Assembler et sauvegarder l'inscription
     const inscription = new this.inscriptionModel({
       centreId,
@@ -184,6 +192,9 @@ export class InscriptionsService {
       facturePar: createInscriptionDto.facturePar,
       reference: createInscriptionDto.reference,
       numeroRecu,
+      groupeId: groupeDEntree?._id,
+      // Le candidat entre dans son groupe au début de sa formation
+      dateEntreeGroupe: groupeDEntree ? dateDebutTest : undefined,
     });
 
     await inscription.save();
@@ -468,6 +479,16 @@ export class InscriptionsService {
     }
 
     const resteAPayer = montantTotal - montantPaye;
+
+    // 5.5 Si le régime change (correction), le candidat repart dans le premier
+    //     groupe de son nouveau régime
+    const nouveauRegime = offre.regimeActif ? regime : undefined;
+    const ancienRegime = inscription.regime;
+    if ((nouveauRegime ?? '').trim().toLowerCase() !== (ancienRegime ?? '').trim().toLowerCase()) {
+      const groupe = await this.groupesService.groupeDEntree(nouveauRegime, centreId);
+      inscription.groupeId = groupe?._id;
+      inscription.dateEntreeGroupe = groupe ? dateDebutTest : undefined;
+    }
 
     // 6. Appliquer les changements et sauvegarder
     inscription.service = service;

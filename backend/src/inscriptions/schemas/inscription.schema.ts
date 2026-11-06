@@ -27,6 +27,15 @@ export class Inscription {
   @Prop()
   regime?: string;
 
+  // Groupe du candidat, attribué automatiquement selon son régime (jamais
+  // choisi par la secrétaire), et date à laquelle il y est entré.
+  // La date sert au passage automatique dans le groupe suivant après N jours.
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Groupe', index: true })
+  groupeId?: Types.ObjectId;
+
+  @Prop()
+  dateEntreeGroupe?: Date;
+
   @Prop({ required: true })
   dateInscription!: Date;
 
