@@ -48,6 +48,23 @@ export class S3Service {
     }
   }
 
+  /**
+   * Récupère le contenu d'un fichier stocké sur S3 (ex : le logo, pour
+   * l'imprimer dans le PDF du reçu). Renvoie null en cas d'échec.
+   */
+  async telechargerFichier(cle: string): Promise<Buffer | null> {
+    if (!this.bucket) return null;
+    try {
+      const reponse = await this.client.send(new GetObjectCommand({ Bucket: this.bucket, Key: cle }));
+      if (!reponse.Body) return null;
+      const octets = await reponse.Body.transformToByteArray();
+      return Buffer.from(octets);
+    } catch (erreur) {
+      this.logger.error(`Échec de la lecture du fichier S3 "${cle}" : ${(erreur as Error).message}`);
+      return null;
+    }
+  }
+
   /** Lien temporaire (5 minutes) pour lire un fichier stocké sur S3 */
   async urlSignee(cle: string): Promise<string | null> {
     if (!this.bucket) return null;
