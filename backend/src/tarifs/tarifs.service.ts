@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Tarif, TarifDocument } from './schemas/tarif.schema';
+import { Inscription, InscriptionDocument } from '../inscriptions/schemas/inscription.schema';
 import { CreateTarifDto } from './dto/create-tarif.dto';
 import { UpdateTarifDto } from './dto/update-tarif.dto';
 
@@ -9,6 +10,7 @@ import { UpdateTarifDto } from './dto/update-tarif.dto';
 export class TarifsService {
   constructor(
     @InjectModel(Tarif.name) private tarifModel: Model<TarifDocument>,
+    @InjectModel(Inscription.name) private inscriptionModel: Model<InscriptionDocument>,
   ) {}
 
   create(createTarifDto: CreateTarifDto, centreId: string) {
@@ -75,11 +77,33 @@ export class TarifsService {
     return tarif;
   }
 
+  /**
+   * Supprime une offre. Si elle a déjà servi sur au moins une facture, elle
+   * est seulement désactivée : les anciennes factures gardent leur service,
+   * et l'offre n'apparaît plus dans le formulaire de facture.
+   */
   async remove(id: string, centreId: string) {
-    const tarif = await this.tarifModel.findOneAndDelete({ _id: id, centreId }).exec();
+    const tarif = await this.tarifModel.findOne({ _id: id, centreId }).exec();
     if (!tarif) {
       throw new NotFoundException('Offre introuvable');
     }
-    return tarif;
+
+    const nombreFactures = await this.inscriptionModel.countDocuments({
+      centreId,
+      service: tarif.service,
+    });
+
+    if (nombreFactures > 0) {
+      tarif.actif = false;
+      await tarif.save();
+      return {
+        tarif,
+        desactive: true,
+        message: `Ce service a déjà été utilisé sur ${nombreFactures} facture(s) : il a été désactivé au lieu d'être supprimé.`,
+      };
+    }
+
+    await this.tarifModel.findOneAndDelete({ _id: id, centreId }).exec();
+    return { tarif, desactive: false, message: 'Offre supprimée' };
   }
 }

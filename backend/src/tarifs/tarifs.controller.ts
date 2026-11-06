@@ -40,7 +40,10 @@ export class TarifsController {
     return this.tarifsService.update(id, updateTarifDto, centreId);
   }
 
-  @ApiOperation({ summary: "Supprimer une offre (réservé à l'administrateur)" })
+  @ApiOperation({
+    summary:
+      "Supprimer une offre — ou la désactiver si elle a déjà été facturée (réservé à l'administrateur)",
+  })
   @UseGuards(RolesGuard)
   @Roles('admin')
   @Delete(':id')

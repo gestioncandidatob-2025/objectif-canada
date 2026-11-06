@@ -190,22 +190,27 @@ export default function TarifsPage() {
 
   async function supprimerTarif(t: Tarif) {
     const confirme = window.confirm(
-      `Supprimer définitivement l'offre "${formaterNomService(t.service)}" ? Cette action est irréversible.`,
+      `Supprimer l'offre "${formaterNomService(t.service)}" ?\n\n` +
+        "Si elle a déjà été utilisée sur une facture, elle sera seulement désactivée " +
+        "(elle n'apparaîtra plus dans le formulaire de facture, mais les anciennes factures restent intactes).",
     );
     if (!confirme) return;
 
     setSuppressionEnCours(t._id);
     setErreur("");
+    setMessage("");
     const res = await apiFetch(`/tarifs/${t._id}`, { method: "DELETE" });
     setSuppressionEnCours(null);
 
+    const data = await res.json().catch(() => ({}));
+
     if (!res.ok) {
-      const data = await res.json();
       setErreur(Array.isArray(data.message) ? data.message.join(", ") : data.message);
       return;
     }
 
-    setMessage("Offre supprimée");
+    // Le serveur indique s'il a supprimé l'offre ou s'il l'a désactivée
+    setMessage(data.message ?? "Offre supprimée");
     chargerTarifs();
   }
 
