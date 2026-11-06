@@ -85,7 +85,7 @@ export default function LoginPage() {
           <label className="mb-1 block text-sm font-medium text-ink-soft">
             Mot de passe
           </label>
-                   <ChampMotDePasse
+          <ChampMotDePasse
             value={motDePasse}
             onChange={(e) => setMotDePasse(e.target.value)}
             wrapperClassName="mb-2"
@@ -102,12 +102,19 @@ export default function LoginPage() {
           </div>
 
           <button
-          type="submit"
-          disabled={connexionEnCours}
-          className="w-full rounded-lg bg-accent py-2.5 font-medium text-white transition active:scale-[0.97] hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {connexionEnCours ? "Connexion en cours..." : "Se connecter"}
-        </button>
+            type="submit"
+            disabled={connexionEnCours}
+            className="w-full rounded-lg bg-accent py-2.5 font-medium text-white transition active:scale-[0.97] hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {connexionEnCours ? "Connexion en cours..." : "Se connecter"}
+          </button>
+
+          <p className="mt-6 text-center text-sm text-ink-soft">
+            Nouveau centre ?{" "}
+            <Link href="/inscrire-centre" className="font-medium text-seal hover:underline">
+              Inscrire mon centre
+            </Link>
+          </p>
         </form>
       </div>
     </div>

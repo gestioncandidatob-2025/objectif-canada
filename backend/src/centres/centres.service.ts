@@ -10,7 +10,10 @@ export class CentresService {
   ) {}
 
   async creer(donnees: Partial<Centre>) {
-    const existant = await this.centreModel.exists({ nom: donnees.nom });
+    // strength: 2 → "Mon Centre" et "mon centre" sont considérés comme le même nom
+    const existant = await this.centreModel
+      .exists({ nom: donnees.nom })
+      .collation({ locale: 'fr', strength: 2 });
     if (existant) {
       throw new ConflictException('Un centre porte déjà ce nom');
     }

@@ -3,10 +3,12 @@
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
+import BandeauConfiguration from "../components/BandeauConfiguration";
 
 type User = {
   nom: string;
   role: string;
+  centreId?: string;
 };
 
 export default function DashboardLayout({
@@ -106,7 +108,11 @@ export default function DashboardLayout({
         </div>
       </aside>
 
-      <main className="flex-1 overflow-y-auto">{children}</main>
+      <main className="flex-1 overflow-y-auto">
+        {/* Rappel de configuration : administrateur uniquement */}
+        {estAdmin && user.centreId && <BandeauConfiguration centreId={String(user.centreId)} />}
+        {children}
+      </main>
     </div>
   );
 }
