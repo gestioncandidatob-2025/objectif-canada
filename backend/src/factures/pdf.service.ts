@@ -51,6 +51,13 @@ const LABEL_PAIEMENT: Record<string, string> = {
   mobile_especes: 'Mixte (Mobile + Espèces)',
 };
 
+// Montant avec des espaces normales entre les milliers ("65 000").
+// toLocaleString('fr-FR') utilise une espace spéciale que la police du PDF
+// ne sait pas dessiner (elle apparaissait comme "65 /000").
+function formaterMontant(montant: number): string {
+  return montant.toLocaleString('fr-FR').replace(/\s/g, ' ');
+}
+
 // Largeur du ticket (en points PDF) et taille maximale du logo
 const LARGEUR_TICKET = 227;
 const LARGEUR_LOGO = 120;
@@ -98,15 +105,23 @@ export class PdfService {
 
       // ---- En-tête : les informations du centre ----
       if (centreFacture.logo) {
+        const margeGauche = doc.page.margins.left;
+        const yLogo = doc.y;
         try {
-          // Logo centré ; pdfkit descend tout seul sous l'image
-          doc.image(centreFacture.logo, (LARGEUR_TICKET - LARGEUR_LOGO) / 2, doc.y, {
+          // Logo centré dans un cadre de LARGEUR_LOGO x HAUTEUR_LOGO
+          doc.image(centreFacture.logo, (LARGEUR_TICKET - LARGEUR_LOGO) / 2, yLogo, {
             fit: [LARGEUR_LOGO, HAUTEUR_LOGO],
             align: 'center',
+            valign: 'center',
           });
-          doc.moveDown(0.3);
+          // On place nous-mêmes le texte suivant SOUS le logo, et on remet la
+          // position horizontale à la marge (sinon le texte se superpose au logo)
+          doc.x = margeGauche;
+          doc.y = yLogo + HAUTEUR_LOGO + 6;
         } catch (erreur) {
           // Image illisible : le reçu sort quand même, sans logo
+          doc.x = margeGauche;
+          doc.y = yLogo;
           this.logger.warn(`Logo illisible dans le PDF : ${(erreur as Error).message}`);
         }
       }
@@ -150,9 +165,9 @@ export class PdfService {
       doc
         .font('Helvetica-Bold')
         .fontSize(9)
-        .text(`Montant : ${inscription.montantTotal.toLocaleString('fr-FR')} FCFA`);
-      doc.font('Helvetica').fontSize(9).text(`Payé : ${inscription.montantPaye.toLocaleString('fr-FR')} FCFA`);
-      doc.text(`Reste : ${inscription.resteAPayer.toLocaleString('fr-FR')} FCFA`);
+        .text(`Montant : ${formaterMontant(inscription.montantTotal)} FCFA`);
+      doc.font('Helvetica').fontSize(9).text(`Payé : ${formaterMontant(inscription.montantPaye)} FCFA`);
+      doc.text(`Reste : ${formaterMontant(inscription.resteAPayer)} FCFA`);
       ligne('Mode de paiement :', LABEL_PAIEMENT[inscription.modePaiement] ?? inscription.modePaiement);
       doc.text(`Facture établie par : ${inscription.facturePar}`);
       if (inscription.reference) {
