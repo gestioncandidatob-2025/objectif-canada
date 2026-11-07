@@ -4,10 +4,13 @@ import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { apiFetch } from "../lib/api";
+import { useLangue } from "../lib/langue";
+import BoutonLangue from "../components/BoutonLangue";
 
 function MotDePasseOublieForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { t } = useLangue();
 
   const [email, setEmail] = useState(searchParams.get("email") ?? "");
   const [erreur, setErreur] = useState("");
@@ -58,24 +61,25 @@ function MotDePasseOublieForm() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-paper px-4">
       <div className="w-full max-w-sm">
+        <div className="mb-4 flex justify-end">
+          <BoutonLangue />
+        </div>
         <div className="mb-8 text-center">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-seal">
-            Espace de gestion
+            {t("app.titre")}
           </p>
           <h1
             className="mt-2 text-3xl text-ink"
             style={{ fontFamily: "var(--font-display)" }}
           >
-            Mot de passe oublié
+            {t("motDePasseOublie.titre")}
           </h1>
-          <p className="mt-2 text-sm text-ink-soft">
-            Reçois un code de réinitialisation par email.
-          </p>
+          <p className="mt-2 text-sm text-ink-soft">{t("motDePasseOublie.consigne")}</p>
         </div>
 
         <form
           onSubmit={handleSubmit}
-          className="space-y-3 rounded-2xl border border-ink/10 bg-white p-8 shadow-sm"
+          className="space-y-3 rounded-2xl border border-ink/10 bg-white p-5 shadow-sm sm:p-8"
         >
           {message && (
             <p className="rounded-lg bg-accent/10 px-3 py-2 text-sm text-accent">
@@ -88,7 +92,7 @@ function MotDePasseOublieForm() {
             </p>
           )}
 
-          <label className={labelClass}>Email</label>
+          <label className={labelClass}>{t("connexion.email")}</label>
           <input
             type="email"
             value={email}
@@ -101,12 +105,12 @@ function MotDePasseOublieForm() {
             disabled={envoiEnCours}
             className="w-full rounded-lg bg-accent py-2.5 font-medium text-white transition active:scale-[0.97] hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {envoiEnCours ? "Envoi..." : "Recevoir le code"}
+            {envoiEnCours ? t("motDePasseOublie.envoi") : t("motDePasseOublie.recevoirCode")}
           </button>
 
           <p className="text-center text-sm text-ink-soft">
             <Link href="/login" className="text-seal hover:underline">
-              Retour à la connexion
+              {t("motDePasseOublie.retourConnexion")}
             </Link>
           </p>
         </form>
