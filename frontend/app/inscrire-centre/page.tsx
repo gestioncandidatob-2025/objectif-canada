@@ -6,6 +6,7 @@ import Link from "next/link";
 import ChampMotDePasse from "../components/ChampMotDePasse";
 import BoutonLangue from "../components/BoutonLangue";
 import { useLangue } from "../lib/langue";
+import { traduireReponseServeur } from "../lib/api";
 
 // Mêmes règles que le backend (8 caractères, 1 majuscule, 1 minuscule, 1 chiffre, 1 caractère spécial)
 const REGEX_MOT_DE_PASSE = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
@@ -48,11 +49,13 @@ export default function InscrireCentrePage() {
     setEnvoiEnCours(true);
 
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/register-center`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nomCentre, nom, email, telephone, motDePasse }),
-      });
+      const res = await traduireReponseServeur(
+        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/register-center`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ nomCentre, nom, email, telephone, motDePasse }),
+        }),
+      );
 
       const data = await res.json();
 

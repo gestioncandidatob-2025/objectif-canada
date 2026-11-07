@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { apiFetch, getToken } from "../../lib/api";
+import { apiFetch, getToken, traduireReponseServeur } from "../../lib/api";
 import { signalerCentreModifie } from "../../lib/centre";
 import { useLangue } from "../../lib/langue";
 import TarifsPage from "../tarifs/page";
@@ -185,11 +185,13 @@ export default function ParametresPage() {
     try {
       // Pas de "Content-Type" ici : le navigateur le remplit seul pour un fichier
       const token = getToken();
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/center/logo`, {
-        method: "POST",
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-        body: donnees,
-      });
+      const res = await traduireReponseServeur(
+        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/center/logo`, {
+          method: "POST",
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+          body: donnees,
+        }),
+      );
       const data = await res.json();
       if (!res.ok) {
         setErreur(messageErreur(data, t("parametres.erreurLogoEnvoi")));
