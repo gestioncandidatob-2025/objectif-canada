@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { apiFetch } from "../../lib/api";
+import { useLangue } from "../../lib/langue";
 
 type User = {
   nom: string;
@@ -28,19 +29,20 @@ type Raccourci = {
   icone: React.ReactNode;
 };
 
-// "il y a 12 min", "il y a 3 h", sinon la date
-function quandLisible(date: string): string {
-  const ecartMinutes = Math.round((Date.now() - new Date(date).getTime()) / 60000);
-  if (ecartMinutes < 1) return "à l'instant";
-  if (ecartMinutes < 60) return `il y a ${ecartMinutes} min`;
-  const ecartHeures = Math.round(ecartMinutes / 60);
-  if (ecartHeures < 24) return `il y a ${ecartHeures} h`;
-  return new Date(date).toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
-}
-
 export default function BienvenuePage() {
   const [user, setUser] = useState<User | null>(null);
   const [recentes, setRecentes] = useState<EntreeHistorique[]>([]);
+  const { t, locale } = useLangue();
+
+  // "il y a 12 min", "il y a 3 h", sinon la date
+  function quandLisible(date: string): string {
+    const ecartMinutes = Math.round((Date.now() - new Date(date).getTime()) / 60000);
+    if (ecartMinutes < 1) return t("accueil.aLInstant");
+    if (ecartMinutes < 60) return t("accueil.ilYaMinutes", { n: ecartMinutes });
+    const ecartHeures = Math.round(ecartMinutes / 60);
+    if (ecartHeures < 24) return t("accueil.ilYaHeures", { n: ecartHeures });
+    return new Date(date).toLocaleDateString(locale, { day: "numeric", month: "short" });
+  }
 
   useEffect(() => {
     const stored = localStorage.getItem("user");
@@ -68,7 +70,7 @@ export default function BienvenuePage() {
 
   const estAdmin = user.role === "admin";
   const prenom = user.nom.split(/\s+/)[0] ?? user.nom;
-  const aujourdhui = new Date().toLocaleDateString("fr-FR", {
+  const aujourdhui = new Date().toLocaleDateString(locale, {
     weekday: "long",
     day: "numeric",
     month: "long",
@@ -77,7 +79,7 @@ export default function BienvenuePage() {
   const raccourcis: Raccourci[] = [
     {
       href: "/candidats",
-      label: "Candidats",
+      label: t("menu.candidats"),
       icone: (
         <>
           <circle cx="9" cy="7" r="4" />
@@ -88,7 +90,7 @@ export default function BienvenuePage() {
     },
     {
       href: "/factures",
-      label: "Factures",
+      label: t("menu.factures"),
       icone: (
         <>
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -98,7 +100,7 @@ export default function BienvenuePage() {
     },
     {
       href: "/classes",
-      label: "Classes",
+      label: t("menu.classes"),
       icone: (
         <>
           <rect x="3" y="3" width="7" height="7" rx="1.5" />
@@ -112,7 +114,7 @@ export default function BienvenuePage() {
   if (estAdmin) {
     raccourcis.push({
       href: "/tableau-de-bord",
-      label: "Tableau de bord",
+      label: t("menu.tableauDeBord"),
       icone: (
         <>
           <path d="M3 3v18h18" />
@@ -129,7 +131,7 @@ export default function BienvenuePage() {
         <div>
           <p className="text-sm capitalize text-ink-soft">{aujourdhui}</p>
           <h1 className="mt-1 text-[26px] font-bold tracking-tight text-ink sm:text-3xl">
-            Bonjour, {prenom}
+            {t("accueil.bonjour", { prenom })}
           </h1>
         </div>
 
@@ -154,9 +156,11 @@ export default function BienvenuePage() {
               </svg>
             </span>
             <span>
-              <span className="block text-[17px] font-semibold sm:text-lg">Nouvelle facture</span>
+              <span className="block text-[17px] font-semibold sm:text-lg">
+                {t("menu.nouvelleFacture")}
+              </span>
               <span className="block text-sm text-white/90">
-                Enregistrer un candidat et son paiement
+                {t("accueil.nouvelleFactureDetail")}
               </span>
             </span>
           </Link>
@@ -190,18 +194,20 @@ export default function BienvenuePage() {
         {estAdmin && (
           <section className="rounded-2xl border border-ink/10 bg-white px-4 py-1 sm:px-6">
             <div className="flex items-center justify-between py-3">
-              <h2 className="text-base font-semibold text-ink sm:text-[17px]">Activité récente</h2>
+              <h2 className="text-base font-semibold text-ink sm:text-[17px]">
+                {t("accueil.activiteRecente")}
+              </h2>
               <Link
                 href="/historique"
                 className="py-2 text-sm font-medium text-accent hover:underline"
               >
-                Tout voir
+                {t("accueil.toutVoir")}
               </Link>
             </div>
 
             {recentes.length === 0 ? (
               <p className="border-t border-ink/5 py-4 text-sm text-ink-soft">
-                Aucune action récente.
+                {t("accueil.aucuneAction")}
               </p>
             ) : (
               <ul>
@@ -222,12 +228,12 @@ export default function BienvenuePage() {
                         {entree.action} — {entree.details || entree.module}
                         {entree.statut !== "succès" && (
                           <span className="ml-2 rounded-full bg-error/10 px-2 py-0.5 text-xs font-medium text-error">
-                            échec
+                            {t("accueil.echec")}
                           </span>
                         )}
                       </p>
                       <p className="mt-0.5 text-[13px] text-ink-soft">
-                        Par {entree.utilisateurNom || entree.utilisateurEmail} ·{" "}
+                        {t("accueil.par", { nom: entree.utilisateurNom || entree.utilisateurEmail })} ·{" "}
                         {quandLisible(entree.date)}
                       </p>
                     </div>

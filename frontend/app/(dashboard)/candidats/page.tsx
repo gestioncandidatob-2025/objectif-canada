@@ -138,7 +138,7 @@ export default function CandidatsPage() {
   const [editRegime, setEditRegime] = useState("jour");
   const [editDateDebutTest, setEditDateDebutTest] = useState("");
   const [editMontantPaye, setEditMontantPaye] = useState("");
-  const [editFacturePar, setEditFacturePar] = useState("STEPHANE");
+  const [editFacturePar, setEditFacturePar] = useState("");
   const [editReference, setEditReference] = useState("");
   const [editRaison, setEditRaison] = useState("");
   const [enregistrementEnCours, setEnregistrementEnCours] = useState(false);
@@ -205,6 +205,10 @@ export default function CandidatsPage() {
   }, []);
 
   const servicesDisponibles = Array.from(new Set(tarifsActifs.map((t) => t.service)));
+  // Tous les régimes saisis dans les services du centre (pour le filtre)
+  const regimesDuCentre = Array.from(
+    new Set(tarifsActifs.flatMap((t) => (t.regimeActif ? (t.regimes ?? []) : []))),
+  );
   const configEditService = tarifsActifs.find((t) => t.service === editService);
   const regimesDisponibles = configEditService?.regimes ?? [];
 
@@ -312,10 +316,10 @@ export default function CandidatsPage() {
   );
 
   return (
-    <div className="px-4 py-10">
+    <div className="px-4 py-6 sm:py-10">
       <div className="mx-auto max-w-7xl">
         <h1
-          className="mb-6 text-3xl text-ink"
+          className="mb-6 text-2xl text-ink sm:text-3xl"
           style={{ fontFamily: "var(--font-display)" }}
         >
           Liste des candidats
@@ -351,9 +355,12 @@ export default function CandidatsPage() {
             className={`${champClass} bg-white`}
           >
             <option value="">Tous les services</option>
-            <option value="tcf">TCF</option>
-            <option value="examen_blanc">Examen blanc</option>
-            <option value="tcf_special">TCF SPECIAL</option>
+            {/* Les services du centre (Paramètres → Services), jamais une liste écrite en dur */}
+            {servicesDisponibles.map((svc) => (
+              <option key={svc} value={svc}>
+                {LABEL_SERVICE[svc] ?? svc}
+              </option>
+            ))}
           </select>
           <select
             value={filtreRegime}
@@ -361,8 +368,12 @@ export default function CandidatsPage() {
             className={`${champClass} bg-white`}
           >
             <option value="">Tous les régimes</option>
-            <option value="jour">Jour</option>
-            <option value="soir">Soir</option>
+            {/* Les régimes de tous les services du centre */}
+            {regimesDuCentre.map((reg) => (
+              <option key={reg} value={reg}>
+                {reg}
+              </option>
+            ))}
           </select>
           <select
             value={filtreStatut}
@@ -547,7 +558,7 @@ export default function CandidatsPage() {
                   {ligneOuverte === insc._id && (
                     <tr className="border-b border-ink/5 bg-paper">
                       <td colSpan={9} className="px-4 py-4 text-sm text-ink-soft">
-                        <div className="grid grid-cols-2 gap-x-8 gap-y-1">
+                        <div className="grid grid-cols-1 gap-x-8 gap-y-1 sm:grid-cols-2">
                           <p>Prénom : {insc.candidatId?.prenom}</p>
                           <p>Téléphone : {insc.candidatId?.telephone}</p>
                           <p>Date d'inscription : {insc.dateInscription?.slice(0, 10)}</p>
@@ -567,8 +578,8 @@ export default function CandidatsPage() {
                   {ligneEnEdition === insc._id && (
                     <tr className="border-b border-ink/5 bg-accent/5">
                       <td colSpan={9} className="space-y-3 px-4 py-4">
-                        <div className="grid grid-cols-2 gap-3">
-                          <div className="col-span-2">
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                          <div className="sm:col-span-2">
                             <label className="mb-1 block text-xs font-medium text-ink-soft">
                               Raison de la modification <span className="text-error">*</span>
                             </label>
@@ -648,18 +659,14 @@ export default function CandidatsPage() {
                             <label className="mb-1 block text-xs font-medium text-ink-soft">
                               Facturé par
                             </label>
-                            <select
+                            {/* Texte libre : plus de liste de noms écrite en dur */}
+                            <input
                               value={editFacturePar}
                               onChange={(e) => setEditFacturePar(e.target.value)}
                               className={`${champClass} bg-white`}
-                            >
-                              <option value="STEPHANE">STEPHANE</option>
-                              <option value="VANELLE">VANELLE</option>
-                              <option value="SILAINE">SILAINE</option>
-                              <option value="BOFIA.S">BOFIA.S</option>
-                            </select>
+                            />
                             </div>
-                            <div className="col-span-2">
+                            <div className="sm:col-span-2">
                             <label className="mb-1 block text-xs font-medium text-ink-soft">
                               Référence
                             </label>

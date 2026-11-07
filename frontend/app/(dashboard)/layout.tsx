@@ -6,6 +6,8 @@ import Link from "next/link";
 import DialogueConfiguration from "../components/DialogueConfiguration";
 import { apiFetch } from "../lib/api";
 import { EVENEMENT_CENTRE_MODIFIE } from "../lib/centre";
+import { useLangue } from "../lib/langue";
+import BoutonLangue from "../components/BoutonLangue";
 
 type User = {
   nom: string;
@@ -33,11 +35,6 @@ type NomIcone =
   | "menu"
   | "fermer"
   | "sortir";
-
-const LIBELLE_ROLE: Record<string, string> = {
-  admin: "Administrateur",
-  secretariat: "Secrétariat",
-};
 
 // Petites icônes au trait, dessinées en SVG (pas d'emoji)
 function Icone({ nom, taille = 20 }: { nom: NomIcone; taille?: number }) {
@@ -128,6 +125,7 @@ export default function DashboardLayout({
   const [menuOuvert, setMenuOuvert] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
+  const { t } = useLangue();
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -195,15 +193,15 @@ export default function DashboardLayout({
     .join("");
 
   const liens: { href: string; label: string; icone: NomIcone; visible: boolean }[] = [
-    { href: "/bienvenue", label: "Accueil", icone: "accueil", visible: true },
-    { href: "/candidats", label: "Liste des candidats", icone: "candidats", visible: true },
-    { href: "/classes", label: "Classes", icone: "classes", visible: true },
-    { href: "/factures", label: "Factures", icone: "factures", visible: true },
-    { href: "/tableau-de-bord", label: "Tableau de bord", icone: "tableau", visible: estAdmin },
-    { href: "/utilisateurs", label: "Utilisateurs", icone: "utilisateurs", visible: estAdmin },
-    { href: "/historique", label: "Historique", icone: "historique", visible: estAdmin },
+    { href: "/bienvenue", label: t("menu.accueil"), icone: "accueil", visible: true },
+    { href: "/candidats", label: t("menu.listeCandidats"), icone: "candidats", visible: true },
+    { href: "/classes", label: t("menu.classes"), icone: "classes", visible: true },
+    { href: "/factures", label: t("menu.factures"), icone: "factures", visible: true },
+    { href: "/tableau-de-bord", label: t("menu.tableauDeBord"), icone: "tableau", visible: estAdmin },
+    { href: "/utilisateurs", label: t("menu.utilisateurs"), icone: "utilisateurs", visible: estAdmin },
+    { href: "/historique", label: t("menu.historique"), icone: "historique", visible: estAdmin },
     // Paramètres du centre (les tarifs sont dans l'onglet Services)
-    { href: "/parametres", label: "Paramètres", icone: "parametres", visible: estAdmin },
+    { href: "/parametres", label: t("menu.parametres"), icone: "parametres", visible: estAdmin },
   ];
   const liensVisibles = liens.filter((l) => l.visible);
 
@@ -217,7 +215,7 @@ export default function DashboardLayout({
       {logoUrl ? (
         <img
           src={logoUrl}
-          alt={nomCentre ? `Logo de ${nomCentre}` : "Logo du centre"}
+          alt={nomCentre ? t("menu.logoDe", { nom: nomCentre }) : t("menu.logoDuCentre")}
           className="h-10 w-auto max-w-[120px] shrink-0 object-contain"
         />
       ) : (
@@ -233,12 +231,14 @@ export default function DashboardLayout({
     <div className="flex items-center gap-3">
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-semibold text-ink">{user.nom}</p>
-        <p className="text-[13px] text-ink-soft">{LIBELLE_ROLE[user.role] ?? user.role}</p>
+        <p className="text-[13px] text-ink-soft">
+          {user.role === "admin" || user.role === "secretariat" ? t(`roles.${user.role}`) : user.role}
+        </p>
       </div>
       <button
         onClick={handleLogout}
-        aria-label="Se déconnecter"
-        title="Se déconnecter"
+        aria-label={t("menu.seDeconnecter")}
+        title={t("menu.seDeconnecter")}
         className="flex h-10 w-10 items-center justify-center rounded-lg text-ink-soft transition hover:bg-paper hover:text-error"
       >
         <Icone nom="sortir" />
@@ -257,10 +257,10 @@ export default function DashboardLayout({
           className="flex h-11 items-center justify-center gap-2 rounded-xl bg-accent text-sm font-semibold text-white transition hover:bg-accent-hover"
         >
           <Icone nom="plus" taille={18} />
-          Nouvelle facture
+          {t("menu.nouvelleFacture")}
         </Link>
 
-        <nav aria-label="Menu principal" className="flex flex-1 flex-col gap-0.5 overflow-y-auto">
+        <nav aria-label={t("menu.principal")} className="flex flex-1 flex-col gap-0.5 overflow-y-auto">
           {liensVisibles.map((lien) => (
             <Link
               key={lien.href}
@@ -280,7 +280,10 @@ export default function DashboardLayout({
           ))}
         </nav>
 
-        <div className="border-t border-ink/10 px-2 pt-4">{blocUtilisateur}</div>
+        <div className="flex flex-col gap-3 border-t border-ink/10 px-2 pt-4">
+          {blocUtilisateur}
+          <BoutonLangue className="self-start" />
+        </div>
       </aside>
 
       {/* ---------- Téléphone : barre du haut ---------- */}
@@ -293,7 +296,7 @@ export default function DashboardLayout({
 
       {/* ---------- Téléphone : barre du bas ---------- */}
       <nav
-        aria-label="Menu rapide"
+        aria-label={t("menu.rapide")}
         className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-ink/10 bg-white px-1 pb-[max(10px,env(safe-area-inset-bottom))] pt-1.5 lg:hidden"
       >
         <Link
@@ -304,7 +307,7 @@ export default function DashboardLayout({
           }
         >
           <Icone nom="accueil" taille={22} />
-          Accueil
+          {t("menu.accueil")}
         </Link>
         <Link
           href="/candidats"
@@ -314,11 +317,11 @@ export default function DashboardLayout({
           }
         >
           <Icone nom="candidats" taille={22} />
-          Candidats
+          {t("menu.candidats")}
         </Link>
         <Link
           href="/enregistrement"
-          aria-label="Nouvelle facture"
+          aria-label={t("menu.nouvelleFacture")}
           className="flex items-center justify-center"
         >
           <span className="-mt-6 flex h-14 w-14 items-center justify-center rounded-full bg-accent text-white shadow-lg shadow-accent/30">
@@ -333,7 +336,7 @@ export default function DashboardLayout({
           }
         >
           <Icone nom="factures" taille={22} />
-          Factures
+          {t("menu.factures")}
         </Link>
         <button
           type="button"
@@ -342,32 +345,32 @@ export default function DashboardLayout({
           className="flex min-h-12 flex-col items-center justify-center gap-1 text-xs font-medium text-ink-soft"
         >
           <Icone nom="menu" taille={22} />
-          Menu
+          {t("menu.menu")}
         </button>
       </nav>
 
       {/* ---------- Téléphone : menu complet ---------- */}
       {menuOuvert && (
-        <div className="fixed inset-0 z-40 lg:hidden" role="dialog" aria-modal="true" aria-label="Menu">
+        <div className="fixed inset-0 z-40 lg:hidden" role="dialog" aria-modal="true" aria-label={t("menu.menu")}>
           <button
             type="button"
-            aria-label="Fermer le menu"
+            aria-label={t("menu.fermer")}
             onClick={() => setMenuOuvert(false)}
             className="absolute inset-0 h-full w-full bg-ink/40"
           />
           <div className="absolute inset-x-0 bottom-0 max-h-[85vh] overflow-y-auto rounded-t-3xl bg-white px-4 pb-6 pt-3">
             <div className="mb-2 flex items-center justify-between">
-              <span className="px-2 text-base font-semibold text-ink">Menu</span>
+              <span className="px-2 text-base font-semibold text-ink">{t("menu.menu")}</span>
               <button
                 type="button"
                 onClick={() => setMenuOuvert(false)}
-                aria-label="Fermer le menu"
+                aria-label={t("menu.fermer")}
                 className="flex h-11 w-11 items-center justify-center rounded-lg text-ink-soft hover:bg-paper"
               >
                 <Icone nom="fermer" />
               </button>
             </div>
-            <nav aria-label="Menu principal" className="flex flex-col gap-0.5">
+            <nav aria-label={t("menu.principal")} className="flex flex-col gap-0.5">
               {liensVisibles.map((lien) => (
                 <Link
                   key={lien.href}
@@ -386,7 +389,10 @@ export default function DashboardLayout({
                 </Link>
               ))}
             </nav>
-            <div className="mt-4 border-t border-ink/10 px-2 pt-4">{blocUtilisateur}</div>
+            <div className="mt-4 flex flex-col gap-3 border-t border-ink/10 px-2 pt-4">
+              {blocUtilisateur}
+              <BoutonLangue className="self-start" />
+            </div>
           </div>
         </div>
       )}

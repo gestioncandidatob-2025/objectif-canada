@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import ChampMotDePasse from "../components/ChampMotDePasse";
+import BoutonLangue from "../components/BoutonLangue";
+import { useLangue } from "../lib/langue";
 
 // Icône « maison » de l'Espace de gestion (nom neutre : on ne sait pas
 // encore de quel centre il s'agit avant la connexion)
@@ -32,6 +34,7 @@ export default function LoginPage() {
   const [erreur, setErreur] = useState("");
   const [connexionEnCours, setConnexionEnCours] = useState(false);
   const router = useRouter();
+  const { t } = useLangue();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -46,7 +49,7 @@ export default function LoginPage() {
       });
 
       if (!res.ok) {
-        setErreur("Email ou mot de passe incorrect");
+        setErreur(t("connexion.erreurIdentifiants"));
         setConnexionEnCours(false);
         return;
       }
@@ -63,7 +66,7 @@ export default function LoginPage() {
 
       router.push("/bienvenue");
     } catch {
-      setErreur("Impossible de contacter le serveur");
+      setErreur(t("connexion.erreurServeur"));
       setConnexionEnCours(false);
     }
   }
@@ -79,14 +82,14 @@ export default function LoginPage() {
           <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/15">
             <IconeEspace taille={24} />
           </span>
-          <span className="text-lg font-semibold">Espace de gestion</span>
+          <span className="text-lg font-semibold">{t("app.titre")}</span>
         </div>
         <div className="max-w-md">
           <h2 className="text-4xl font-bold leading-tight tracking-tight">
-            Inscriptions, factures et paiements de votre centre, au même endroit.
+            {t("connexion.accroche")}
           </h2>
           <p className="mt-4 text-[17px] leading-relaxed text-white/90">
-            Sur ordinateur comme sur téléphone.
+            {t("connexion.sousAccroche")}
           </p>
         </div>
         <p className="text-sm text-white/80">© {new Date().getFullYear()}</p>
@@ -94,6 +97,9 @@ export default function LoginPage() {
 
       {/* ---------- Formulaire (téléphone et ordinateur) ---------- */}
       <main className="flex flex-1 flex-col px-5 py-8 sm:px-12">
+        <div className="flex justify-end">
+          <BoutonLangue />
+        </div>
         <div className="flex flex-1 items-center justify-center">
           <div className="flex w-full max-w-sm flex-col gap-7">
             {/* En-tête : sur téléphone seulement (sur ordinateur, il est à gauche) */}
@@ -102,16 +108,16 @@ export default function LoginPage() {
                 <IconeEspace taille={28} />
               </span>
               <p className="text-[13px] font-semibold uppercase tracking-[0.08em] text-ink-soft">
-                Espace de gestion
+                {t("app.titre")}
               </p>
             </div>
 
             <div className="text-center lg:text-left">
               <h1 className="text-[28px] font-bold tracking-tight text-ink lg:text-3xl">
-                Connexion
+                {t("connexion.titre")}
               </h1>
               <p className="mt-2 hidden text-[15px] text-ink-soft lg:block">
-                Entrez votre email et votre mot de passe.
+                {t("connexion.consigne")}
               </p>
             </div>
 
@@ -125,7 +131,7 @@ export default function LoginPage() {
 
               <div className="flex flex-col gap-1.5">
                 <label htmlFor="email" className="text-sm font-medium text-ink-soft">
-                  Email
+                  {t("connexion.email")}
                 </label>
                 <input
                   id="email"
@@ -133,7 +139,7 @@ export default function LoginPage() {
                   autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="vous@moncentre.cm"
+                  placeholder={t("connexion.exempleEmail")}
                   className={champClass}
                 />
               </div>
@@ -141,13 +147,13 @@ export default function LoginPage() {
               <div className="flex flex-col gap-1.5">
                 <div className="flex items-baseline justify-between gap-3">
                   <label htmlFor="mot-de-passe" className="text-sm font-medium text-ink-soft">
-                    Mot de passe
+                    {t("connexion.motDePasse")}
                   </label>
                   <Link
                     href={`/mot-de-passe-oublie${email ? `?email=${encodeURIComponent(email)}` : ""}`}
                     className="py-1 text-sm font-medium text-accent hover:underline"
                   >
-                    Mot de passe oublié ?
+                    {t("connexion.motDePasseOublie")}
                   </Link>
                 </div>
                 <ChampMotDePasse
@@ -164,14 +170,14 @@ export default function LoginPage() {
                 disabled={connexionEnCours}
                 className="mt-1 h-[52px] w-full rounded-xl bg-accent text-base font-semibold text-white transition active:scale-[0.98] hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {connexionEnCours ? "Connexion en cours..." : "Se connecter"}
+                {connexionEnCours ? t("connexion.connexionEnCours") : t("connexion.seConnecter")}
               </button>
             </form>
 
             <p className="text-center text-[15px] text-ink-soft lg:text-left">
-              Nouveau centre ?{" "}
+              {t("connexion.nouveauCentre")}{" "}
               <Link href="/inscrire-centre" className="font-semibold text-accent hover:underline">
-                Inscrire mon centre
+                {t("connexion.inscrireMonCentre")}
               </Link>
             </p>
           </div>

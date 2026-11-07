@@ -88,13 +88,17 @@ export default function EnregistrementPage() {
   const [reference, setReference] = useState("");
 
  const [facturePar, setFacturePar] = useState("");
+  // Nom du centre, pour l'aperçu du reçu (jamais un nom écrit en dur)
+  const [nomCentre, setNomCentre] = useState("");
 
   const [tarifsActifs, setTarifsActifs] = useState<Tarif[]>([]);
 
   useEffect(() => {
     const userStr = localStorage.getItem("user");
     if (userStr) {
-      setFacturePar(JSON.parse(userStr).nom);
+      const utilisateur = JSON.parse(userStr);
+      setFacturePar(utilisateur.nom);
+      setNomCentre(utilisateur.nomCentre ?? "");
     }
   }, []);
 
@@ -428,15 +432,16 @@ export default function EnregistrementPage() {
     router.push(`/recu/${inscription._id}`);
   }
 
+  // text-base (16 px) : sur téléphone, le navigateur ne zoome pas quand on touche un champ
   const champClass =
-    "w-full rounded-lg border border-ink/15 px-3 py-2.5 text-ink outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20";
+    "w-full min-w-0 rounded-lg border border-ink/15 px-3 py-2.5 text-base text-ink outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20";
   const labelClass = "mb-1 block text-sm font-medium text-ink-soft";
 
   return (
-    <div className="px-4 py-10">
+    <div className="px-4 py-6 sm:py-10">
       <div className="mx-auto max-w-5xl">
         <h1
-          className="mb-6 text-3xl text-ink"
+          className="mb-6 text-2xl text-ink sm:text-3xl"
           style={{ fontFamily: "var(--font-display)" }}
         >
           Enregistrement d'un candidat
@@ -448,15 +453,15 @@ export default function EnregistrementPage() {
           </p>
         )}
 
-        <div className="grid gap-8 lg:grid-cols-[380px_1fr]">
+        <div className="grid gap-6 lg:grid-cols-[380px_1fr] lg:gap-8">
           {!detteInfo?.aUneDette && (
             <div className="order-2 lg:order-1">
-              <div className="rounded-2xl border border-ink/10 bg-white p-6 shadow-sm lg:sticky lg:top-8">
+              <div className="rounded-2xl border border-ink/10 bg-white p-5 shadow-sm sm:p-6 lg:sticky lg:top-8">
                 <p className="mb-2 text-center text-xs font-semibold uppercase tracking-widest text-ink-soft">
                   Aperçu du reçu
                 </p>
                 <div className="text-center text-sm leading-relaxed text-ink">
-                  <p className="mt-1">Centre de formation TCF/TEF</p>
+                  <p className="mt-1 font-semibold">{nomCentre}</p>
                   <p className="mt-2 tracking-widest text-ink-soft">
                     ------------------------------------
                   </p>
@@ -524,7 +529,7 @@ export default function EnregistrementPage() {
           <div className={detteInfo?.aUneDette ? "lg:col-span-2" : "order-1 lg:order-2"}>
         <form
           onSubmit={handleSubmit}
-          className="space-y-3 rounded-2xl border border-ink/10 bg-white p-8 shadow-sm"
+          className="space-y-3 rounded-2xl border border-ink/10 bg-white p-5 shadow-sm sm:p-8"
         >
           <label className={labelClass}>Rechercher un candidat existant</label>
           <div className="flex gap-2">
@@ -788,7 +793,7 @@ export default function EnregistrementPage() {
 
       {modalConfirmationOuvert && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-lg">
+          <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl bg-white p-6 shadow-lg">
             <h2
               className="mb-4 text-xl text-ink"
               style={{ fontFamily: "var(--font-display)" }}
@@ -854,7 +859,7 @@ export default function EnregistrementPage() {
               )}
             </div>
 
-            <div className="mt-6 flex gap-3">
+            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row">
               <button
                 type="button"
                 onClick={() => setModalConfirmationOuvert(false)}
