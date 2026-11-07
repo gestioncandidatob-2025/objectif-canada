@@ -71,6 +71,7 @@ export const fr = {
   commun: {
     annuler: "Annuler",
     enregistrer: "Enregistrer",
+    chargement: "Chargement...",
   },
   paiement: {
     especes: "Espèces",
@@ -192,6 +193,23 @@ export const fr = {
     modifiePar: "Modifié par {nom} le {date}",
     champsModifies: "Champs modifiés",
   },
+  factures: {
+    erreurChargement: "Impossible de charger les factures (réservé aux administrateurs)",
+    description:
+      "Toutes les factures générées, de la plus récente à la plus ancienne — pour la comptabilité et les impôts.",
+    recuNumero: "Reçu N°",
+    date: "Date",
+    montant: "Montant",
+    ouverture: "Ouverture...",
+    consulter: "Consulter / Réimprimer",
+    aucune: "Aucune facture stockée pour le moment.",
+  },
+  recu: {
+    introuvable: "Reçu introuvable",
+    erreurCentre: "Impossible de charger les informations du centre",
+    imprimer: "Imprimer",
+    retour: "Retour",
+  },
 };
 
 export type Dictionnaire = typeof fr;
@@ -263,6 +281,7 @@ export const en: Dictionnaire = {
   commun: {
     annuler: "Cancel",
     enregistrer: "Save",
+    chargement: "Loading...",
   },
   paiement: {
     especes: "Cash",
@@ -382,5 +401,22 @@ export const en: Dictionnaire = {
     historique: "Change history",
     modifiePar: "Changed by {nom} on {date}",
     champsModifies: "Fields changed",
+  },
+  factures: {
+    erreurChargement: "Could not load the invoices (administrators only)",
+    description:
+      "All generated invoices, from the most recent to the oldest — for accounting and taxes.",
+    recuNumero: "Receipt No.",
+    date: "Date",
+    montant: "Amount",
+    ouverture: "Opening...",
+    consulter: "View / Reprint",
+    aucune: "No invoice stored yet.",
+  },
+  recu: {
+    introuvable: "Receipt not found",
+    erreurCentre: "Could not load the centre's details",
+    imprimer: "Print",
+    retour: "Back",
   },
 };

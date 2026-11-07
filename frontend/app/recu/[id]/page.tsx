@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { apiFetch } from "../../lib/api";
+import { useLangue } from "../../lib/langue";
 
 type Candidat = {
   nom: string;
@@ -61,6 +62,9 @@ export default function RecuPage() {
   const [inscription, setInscription] = useState<Inscription | null>(null);
   const [infosCentre, setInfosCentre] = useState<InfosCentre | null>(null);
   const [erreur, setErreur] = useState("");
+  // Le reçu lui-même reste en français (document officiel du centre) :
+  // seuls les messages et les boutons autour suivent la langue choisie
+  const { t } = useLangue();
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -77,11 +81,11 @@ export default function RecuPage() {
       ]);
 
       if (!resRecu.ok) {
-        setErreur("Reçu introuvable");
+        setErreur(t("recu.introuvable"));
         return;
       }
       if (!resCentre.ok) {
-        setErreur("Impossible de charger les informations du centre");
+        setErreur(t("recu.erreurCentre"));
         return;
       }
 
@@ -89,7 +93,8 @@ export default function RecuPage() {
       setInfosCentre(await resCentre.json());
     }
 
-    charger().catch(() => setErreur("Impossible de contacter le serveur"));
+    charger().catch(() => setErreur(t("connexion.erreurServeur")));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, router]);
 
   if (erreur) {
@@ -238,13 +243,13 @@ export default function RecuPage() {
             onClick={() => window.print()}
             className="rounded-full bg-blue-100 px-6 py-2 font-medium text-blue-700 transition hover:bg-blue-200"
           >
-            Imprimer
+            {t("recu.imprimer")}
           </button>
           <button
             onClick={() => router.push("/candidats")}
             className="rounded-full bg-blue-100 px-6 py-2 font-medium text-blue-700 transition hover:bg-blue-200"
           >
-            Retour
+            {t("recu.retour")}
           </button>
         </div>
       </div>
