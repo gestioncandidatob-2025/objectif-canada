@@ -4,12 +4,16 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import ChampMotDePasse from "../components/ChampMotDePasse";
+import BoutonLangue from "../components/BoutonLangue";
+import { useLangue } from "../lib/langue";
+import { traduireReponseServeur } from "../lib/api";
 
 // Mêmes règles que le backend (8 caractères, 1 majuscule, 1 minuscule, 1 chiffre, 1 caractère spécial)
 const REGEX_MOT_DE_PASSE = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
 
 export default function InscrireCentrePage() {
   const router = useRouter();
+  const { t } = useLangue();
 
   const [nomCentre, setNomCentre] = useState("");
   const [nom, setNom] = useState("");
@@ -21,7 +25,7 @@ export default function InscrireCentrePage() {
   const [envoiEnCours, setEnvoiEnCours] = useState(false);
 
   const champClass =
-    "mb-4 w-full rounded-lg border border-ink/15 px-3 py-2.5 text-ink outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20";
+    "mb-4 w-full rounded-lg border border-ink/15 px-3 py-2.5 text-base text-ink outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20";
   const labelClass = "mb-1 block text-sm font-medium text-ink-soft";
 
   async function handleSubmit(e: React.FormEvent) {
@@ -30,28 +34,28 @@ export default function InscrireCentrePage() {
 
     // Vérifications rapides avant d'appeler le serveur
     if (!nomCentre.trim() || !nom.trim() || !email.trim() || !telephone.trim()) {
-      setErreur("Remplis tous les champs");
+      setErreur(t("inscription.erreurChamps"));
       return;
     }
     if (!REGEX_MOT_DE_PASSE.test(motDePasse)) {
-      setErreur(
-        "Le mot de passe doit contenir au moins 8 caractères, avec 1 majuscule, 1 minuscule, 1 chiffre et 1 caractère spécial",
-      );
+      setErreur(t("utilisateurs.reglesMotDePasse"));
       return;
     }
     if (motDePasse !== confirmation) {
-      setErreur("Les deux mots de passe ne sont pas identiques");
+      setErreur(t("utilisateurs.erreurMotsDePasse"));
       return;
     }
 
     setEnvoiEnCours(true);
 
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/register-center`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nomCentre, nom, email, telephone, motDePasse }),
-      });
+      const res = await traduireReponseServeur(
+        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/register-center`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ nomCentre, nom, email, telephone, motDePasse }),
+        }),
+      );
 
       const data = await res.json();
 
@@ -66,10 +70,10 @@ export default function InscrireCentrePage() {
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
 
-      // Étape suivante : saisir le code reçu par email
-      router.push(`/verifier-email?email=${encodeURIComponent(data.user.email)}`);
+      // Pas de vérification d'email pour un centre : il entre directement
+      router.push("/bienvenue");
     } catch {
-      setErreur("Impossible de contacter le serveur");
+      setErreur(t("connexion.erreurServeur"));
       setEnvoiEnCours(false);
     }
   }
@@ -77,24 +81,25 @@ export default function InscrireCentrePage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-paper px-4 py-10">
       <div className="w-full max-w-sm">
+        <div className="mb-4 flex justify-end">
+          <BoutonLangue />
+        </div>
         <div className="mb-8 text-center">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-seal">
-            Nouveau centre
+            {t("inscription.surTitre")}
           </p>
           <h1
             className="mt-2 text-3xl text-ink"
             style={{ fontFamily: "var(--font-display)" }}
           >
-            Inscrire mon centre
+            {t("connexion.inscrireMonCentre")}
           </h1>
-          <p className="mt-2 text-sm text-ink-soft">
-            Crée ton espace en une minute. Tu commences au plan Gratuit.
-          </p>
+          <p className="mt-2 text-sm text-ink-soft">{t("inscription.accroche")}</p>
         </div>
 
         <form
           onSubmit={handleSubmit}
-          className="rounded-2xl border border-ink/10 bg-white p-8 shadow-sm"
+          className="rounded-2xl border border-ink/10 bg-white p-5 shadow-sm sm:p-8"
         >
           {erreur && (
             <p className="mb-4 rounded-lg bg-error/10 px-3 py-2 text-sm text-error">
@@ -102,58 +107,56 @@ export default function InscrireCentrePage() {
             </p>
           )}
 
-          <label className={labelClass}>Nom du centre</label>
+          <label className={labelClass}>{t("parametres.nomCentre")}</label>
           <input
             value={nomCentre}
             onChange={(e) => setNomCentre(e.target.value)}
-            placeholder="Ex : Centre Excellence Langues"
+            placeholder={t("inscription.nomCentreExemple")}
             className={champClass}
           />
 
-          <label className={labelClass}>Ton nom</label>
+          <label className={labelClass}>{t("inscription.tonNom")}</label>
           <input
             value={nom}
             onChange={(e) => setNom(e.target.value)}
-            placeholder="Ex : Paul Mbarga"
+            placeholder={t("inscription.tonNomExemple")}
             className={champClass}
           />
 
-          <label className={labelClass}>Email</label>
+          <label className={labelClass}>{t("connexion.email")}</label>
           <input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="Ex : paul@moncentre.cm"
+            placeholder={t("connexion.exempleEmail")}
             className={champClass}
           />
 
-          <label className={labelClass}>Téléphone du centre</label>
+          <label className={labelClass}>{t("inscription.telephoneCentre")}</label>
           <input
             type="tel"
             inputMode="tel"
             value={telephone}
             onChange={(e) => setTelephone(e.target.value)}
-            placeholder="Ex : +237 699 00 00 00"
+            placeholder={t("inscription.telephoneExemple")}
             className={champClass}
           />
 
-          <label className={labelClass}>Mot de passe</label>
+          <label className={labelClass}>{t("connexion.motDePasse")}</label>
           <ChampMotDePasse
             value={motDePasse}
             onChange={(e) => setMotDePasse(e.target.value)}
             wrapperClassName="mb-1"
-            className="w-full rounded-lg border border-ink/15 px-3 py-2.5 text-ink outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20"
+            className="w-full rounded-lg border border-ink/15 px-3 py-2.5 text-base text-ink outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20"
           />
-          <p className="mb-4 text-xs text-ink-soft">
-            8 caractères minimum, avec 1 majuscule, 1 minuscule, 1 chiffre et 1 caractère spécial.
-          </p>
+          <p className="mb-4 text-xs text-ink-soft">{t("utilisateurs.reglesMotDePasse")}</p>
 
-          <label className={labelClass}>Confirmer le mot de passe</label>
+          <label className={labelClass}>{t("utilisateurs.confirmerMotDePasse")}</label>
           <ChampMotDePasse
             value={confirmation}
             onChange={(e) => setConfirmation(e.target.value)}
             wrapperClassName="mb-6"
-            className="w-full rounded-lg border border-ink/15 px-3 py-2.5 text-ink outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20"
+            className="w-full rounded-lg border border-ink/15 px-3 py-2.5 text-base text-ink outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20"
           />
 
           <button
@@ -161,13 +164,13 @@ export default function InscrireCentrePage() {
             disabled={envoiEnCours}
             className="w-full rounded-lg bg-accent py-2.5 font-medium text-white transition active:scale-[0.97] hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {envoiEnCours ? "Création en cours..." : "Créer mon centre"}
+            {envoiEnCours ? t("inscription.creationEnCours") : t("inscription.creer")}
           </button>
 
           <p className="mt-6 text-center text-sm text-ink-soft">
-            Tu as déjà un compte ?{" "}
+            {t("inscription.dejaCompte")}{" "}
             <Link href="/login" className="text-seal hover:underline">
-              Se connecter
+              {t("connexion.seConnecter")}
             </Link>
           </p>
         </form>

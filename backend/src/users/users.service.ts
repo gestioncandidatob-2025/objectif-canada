@@ -48,7 +48,11 @@ export class UsersService {
    * L'email reste unique sur toute la plateforme (un email = un compte = un
    * centre), d'où la recherche "sansCentre".
    */
-  async create(createUserDto: CreateUserDto, centreId: string) {
+  async create(
+    createUserDto: CreateUserDto,
+    centreId: string,
+    options: { sansVerificationEmail?: boolean } = {},
+  ) {
     const existant = await this.userModel
       .findOne({ email: createUserDto.email })
       .setOptions({ sansCentre: true });
@@ -62,12 +66,17 @@ export class UsersService {
       ...createUserDto,
       motDePasse: motDePasseHache,
       centreId,
+      // Le centre qui s'inscrit lui-même n'a pas besoin de vérifier son email
+      ...(options.sansVerificationEmail ? { emailVerifie: true } : {}),
     });
 
     await user.save();
 
     // Envoie automatiquement un code de vérification d'email au nouvel opérateur
-    await this.genererEtEnvoyerCodeVerification(user);
+    // (sauf pour le centre qui s'inscrit lui-même)
+    if (!options.sansVerificationEmail) {
+      await this.genererEtEnvoyerCodeVerification(user);
+    }
 
     return user;
   }

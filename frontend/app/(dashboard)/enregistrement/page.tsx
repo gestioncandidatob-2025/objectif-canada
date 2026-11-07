@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "../../lib/api";
+import { useLangue } from "../../lib/langue";
 
 type Candidat = {
   _id: string;
@@ -59,6 +60,7 @@ function formaterNomService(service: string): string {
 const ORDRE_MODES_PAIEMENT = ["especes", "orange_money", "mobile_money", "mobile_especes"];
 
 export default function EnregistrementPage() {
+  const { t, locale } = useLangue();
   const router = useRouter();
 
   const [recherche, setRecherche] = useState("");
@@ -88,13 +90,17 @@ export default function EnregistrementPage() {
   const [reference, setReference] = useState("");
 
  const [facturePar, setFacturePar] = useState("");
+  // Nom du centre, pour l'aperçu du reçu (jamais un nom écrit en dur)
+  const [nomCentre, setNomCentre] = useState("");
 
   const [tarifsActifs, setTarifsActifs] = useState<Tarif[]>([]);
 
   useEffect(() => {
     const userStr = localStorage.getItem("user");
     if (userStr) {
-      setFacturePar(JSON.parse(userStr).nom);
+      const utilisateur = JSON.parse(userStr);
+      setFacturePar(utilisateur.nom);
+      setNomCentre(utilisateur.nomCentre ?? "");
     }
   }, []);
 
@@ -165,6 +171,13 @@ export default function EnregistrementPage() {
   const [rechercheEnCours, setRechercheEnCours] = useState(false);
 
   const modePaiementLabels: Record<string, string> = {
+    especes: t("paiement.especes"),
+    orange_money: t("paiement.orangeMoney"),
+    mobile_money: t("paiement.mobileMoney"),
+    mobile_especes: t("paiement.mixte"),
+  };
+  // Le reçu reste en français (document officiel du centre) : l'aperçu aussi
+  const modePaiementLabelsRecu: Record<string, string> = {
     especes: "Espèces",
     orange_money: "Orange Money",
     mobile_money: "MTN Mobile Money",
@@ -209,7 +222,7 @@ export default function EnregistrementPage() {
     if (chiffresUniquement.length === 0) {
       setErreurTelephone("");
     } else if (chiffresUniquement.length < 9) {
-      setErreurTelephone("Le téléphone doit contenir exactement 9 chiffres");
+      setErreurTelephone(t("facture.erreurTelephone"));
     } else {
       setErreurTelephone("");
       verifierDette(chiffresUniquement);
@@ -240,11 +253,11 @@ export default function EnregistrementPage() {
 
     const montant = Number(montantComplement);
     if (!montant || montant <= 0) {
-      setErreur("Le montant à ajouter doit être positif");
+      setErreur(t("facture.erreurMontantPositif"));
       return;
     }
     if (montant > detteInfo.inscription.resteAPayer) {
-      setErreur("Ce montant dépasse le reste à payer");
+      setErreur(t("facture.erreurMontantDepasse"));
       return;
     }
 
@@ -287,7 +300,7 @@ export default function EnregistrementPage() {
       }),
     });
     if (!res.ok) {
-      setErreur("Impossible de créer le candidat");
+      setErreur(t("facture.erreurCreationCandidat"));
       return null;
     }
     return res.json();
@@ -298,46 +311,44 @@ export default function EnregistrementPage() {
     setErreur("");
 
     if (detteInfo?.aUneDette) {
-      setErreur("Ce client a une dette en cours : mets à jour son paiement au lieu de créer un nouvel enregistrement");
+      setErreur(t("facture.erreurDette"));
       return;
     }
 
     if (!candidatSelectionne) {
       if (!nouveauNom || !nouveauPrenom || !nouveauTelephone) {
-        setErreur("Sélectionne un candidat existant ou remplis ses informations");
+        setErreur(t("facture.erreurCandidat"));
         return;
       }
       if (nouveauTelephone.length !== 9) {
-        setErreurTelephone("Le téléphone doit contenir exactement 9 chiffres");
+        setErreurTelephone(t("facture.erreurTelephone"));
         return;
       }
     }
 
     const config = configActuelle;
     if (!config) {
-      setErreur(
-        "Aucune offre active n'est configurée pour ce service. Va dans la page Tarifs pour créer ou activer cette offre.",
-      );
+      setErreur(t("facture.erreurAucuneOffre"));
       return;
     }
 
     if (config.regimeActif && !regime) {
-      setErreur("Le régime est obligatoire pour ce service");
+      setErreur(t("facture.erreurRegime"));
       return;
     }
 
     if (config.regimeActif && !dateDebutTest) {
-      setErreur("La date de début du test est obligatoire");
+      setErreur(t("facture.erreurDateDebut"));
       return;
     }
 
     if (config.dateFinNecessaire && !dateFin) {
-      setErreur("La date de fin est obligatoire pour ce service");
+      setErreur(t("facture.erreurDateFin"));
       return;
     }
 
     if (config.montantNegociable && !montantNegocie) {
-      setErreur("Le montant négocié est obligatoire pour ce service");
+      setErreur(t("facture.erreurMontantNegocie"));
       return;
     }
 
@@ -347,13 +358,16 @@ export default function EnregistrementPage() {
 
     if (montantTotal > MONTANT_MINIMUM_INSCRIPTION && montantPayeCalcule <= MONTANT_MINIMUM_INSCRIPTION) {
       setErreur(
-        `Le montant payé doit être supérieur à ${MONTANT_MINIMUM_INSCRIPTION.toLocaleString("fr-FR")} FCFA pour enregistrer une inscription`,
+        t("facture.erreurMinimum", { minimum: MONTANT_MINIMUM_INSCRIPTION.toLocaleString(locale) }),
       );
       return;
     }
     if (montantTotal <= MONTANT_MINIMUM_INSCRIPTION && montantPayeCalcule < montantTotal) {
       setErreur(
-        `Ce service coûte ${montantTotal.toLocaleString("fr-FR")} FCFA (moins de ${MONTANT_MINIMUM_INSCRIPTION.toLocaleString("fr-FR")} FCFA) : il doit être payé intégralement à l'inscription`,
+        t("facture.erreurPayerTout", {
+          total: montantTotal.toLocaleString(locale),
+          minimum: MONTANT_MINIMUM_INSCRIPTION.toLocaleString(locale),
+        }),
       );
       return;
     }
@@ -428,18 +442,19 @@ export default function EnregistrementPage() {
     router.push(`/recu/${inscription._id}`);
   }
 
+  // text-base (16 px) : sur téléphone, le navigateur ne zoome pas quand on touche un champ
   const champClass =
-    "w-full rounded-lg border border-ink/15 px-3 py-2.5 text-ink outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20";
+    "w-full min-w-0 rounded-lg border border-ink/15 px-3 py-2.5 text-base text-ink outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20";
   const labelClass = "mb-1 block text-sm font-medium text-ink-soft";
 
   return (
-    <div className="px-4 py-10">
+    <div className="px-4 py-6 sm:py-10">
       <div className="mx-auto max-w-5xl">
         <h1
-          className="mb-6 text-3xl text-ink"
+          className="mb-6 text-2xl text-ink sm:text-3xl"
           style={{ fontFamily: "var(--font-display)" }}
         >
-          Enregistrement d'un candidat
+          {t("facture.titre")}
         </h1>
 
         {erreur && (
@@ -448,15 +463,15 @@ export default function EnregistrementPage() {
           </p>
         )}
 
-        <div className="grid gap-8 lg:grid-cols-[380px_1fr]">
+        <div className="grid gap-6 lg:grid-cols-[380px_1fr] lg:gap-8">
           {!detteInfo?.aUneDette && (
             <div className="order-2 lg:order-1">
-              <div className="rounded-2xl border border-ink/10 bg-white p-6 shadow-sm lg:sticky lg:top-8">
+              <div className="rounded-2xl border border-ink/10 bg-white p-5 shadow-sm sm:p-6 lg:sticky lg:top-8">
                 <p className="mb-2 text-center text-xs font-semibold uppercase tracking-widest text-ink-soft">
-                  Aperçu du reçu
+                  {t("facture.apercuRecu")}
                 </p>
                 <div className="text-center text-sm leading-relaxed text-ink">
-                  <p className="mt-1">Centre de formation TCF/TEF</p>
+                  <p className="mt-1 font-semibold">{nomCentre}</p>
                   <p className="mt-2 tracking-widest text-ink-soft">
                     ------------------------------------
                   </p>
@@ -505,7 +520,7 @@ export default function EnregistrementPage() {
                   </p>
                   <p>
                     <span className="font-bold">Mode de paiement :</span>{" "}
-                    {modePaiementLabels[modePaiement]}
+                    {modePaiementLabelsRecu[modePaiement]}
                   </p>
                   {reference && (
                     <p>
@@ -524,14 +539,14 @@ export default function EnregistrementPage() {
           <div className={detteInfo?.aUneDette ? "lg:col-span-2" : "order-1 lg:order-2"}>
         <form
           onSubmit={handleSubmit}
-          className="space-y-3 rounded-2xl border border-ink/10 bg-white p-8 shadow-sm"
+          className="space-y-3 rounded-2xl border border-ink/10 bg-white p-5 shadow-sm sm:p-8"
         >
-          <label className={labelClass}>Rechercher un candidat existant</label>
+          <label className={labelClass}>{t("facture.rechercher")}</label>
           <div className="flex gap-2">
             <input
               value={recherche}
               onChange={(e) => setRecherche(e.target.value)}
-              placeholder="Nom, prénom ou téléphone"
+              placeholder={t("facture.rechercherExemple")}
               className={champClass}
             />
             <button
@@ -540,7 +555,7 @@ export default function EnregistrementPage() {
               disabled={rechercheEnCours}
               className="whitespace-nowrap rounded-lg border border-ink/15 px-4 py-2.5 font-medium text-ink transition hover:bg-paper disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {rechercheEnCours ? "Recherche..." : "Chercher"}
+              {rechercheEnCours ? t("facture.rechercheEnCours") : t("facture.chercher")}
             </button>
           </div>
 
@@ -567,25 +582,27 @@ export default function EnregistrementPage() {
 
           {candidatSelectionne && !detteInfo?.aUneDette && (
             <p className="rounded-lg bg-accent/10 px-3 py-2 text-sm text-accent">
-              Candidat sélectionné : {candidatSelectionne.nom} {candidatSelectionne.prenom}
+              {t("facture.candidatSelectionne", {
+                nom: `${candidatSelectionne.nom} ${candidatSelectionne.prenom}`,
+              })}
             </p>
           )}
 
           {verificationDetteEnCours && (
-            <p className="text-sm text-ink-soft">Vérification du client...</p>
+            <p className="text-sm text-ink-soft">{t("facture.verificationClient")}</p>
           )}
 
           {detteInfo?.aUneDette && detteInfo.inscription && candidatSelectionne && (
             <div className="space-y-3 rounded-lg border border-error/30 bg-error/10 p-4">
               <p className="text-sm font-medium text-error">
-                Ce client existe déjà ({candidatSelectionne.nom} {candidatSelectionne.prenom}) et
-                a une dette en cours sur le reçu N° {detteInfo.inscription.numeroRecu} : reste à
-                payer {detteInfo.inscription.resteAPayer.toLocaleString("fr-FR")} FCFA. Mets à
-                jour son paiement au lieu de créer un nouvel enregistrement — le numéro de facture
-                reste le même tant que le paiement n'est pas complété.
+                {t("facture.detteExplication", {
+                  nom: `${candidatSelectionne.nom} ${candidatSelectionne.prenom}`,
+                  recu: detteInfo.inscription.numeroRecu,
+                  reste: detteInfo.inscription.resteAPayer.toLocaleString(locale),
+                })}
               </p>
               <div>
-                <label className={labelClass}>Montant reçu aujourd'hui (FCFA)</label>
+                <label className={labelClass}>{t("facture.montantRecuAujourdhui")}</label>
                 <input
                   type="number"
                   value={montantComplement}
@@ -599,26 +616,26 @@ export default function EnregistrementPage() {
                 disabled={paiementEnCours}
                 className="w-full rounded-lg bg-accent py-2.5 font-medium text-white transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 hover:bg-accent-hover"
               >
-                {paiementEnCours ? "Mise à jour du paiement en cours..." : "Mettre à jour le paiement"}
+                {paiementEnCours ? t("facture.miseAJourEnCours") : t("facture.mettreAJourPaiement")}
               </button>
             </div>
           )}
 
           {!candidatSelectionne && (
             <>
-              <label className={labelClass}>Nom</label>
+              <label className={labelClass}>{t("facture.nom")}</label>
               <input
                 value={nouveauNom}
                 onChange={(e) => setNouveauNom(e.target.value)}
                 className={champClass}
               />
-              <label className={labelClass}>Prénom</label>
+              <label className={labelClass}>{t("facture.prenom")}</label>
               <input
                 value={nouveauPrenom}
                 onChange={(e) => setNouveauPrenom(e.target.value)}
                 className={champClass}
               />
-              <label className={labelClass}>Téléphone (9 chiffres)</label>
+              <label className={labelClass}>{t("facture.telephone9")}</label>
               <input
                 value={nouveauTelephone}
                 onChange={(e) => handleTelephoneChange(e.target.value)}
@@ -635,14 +652,14 @@ export default function EnregistrementPage() {
           {!detteInfo?.aUneDette && (
             <>
               <div className="border-t border-ink/10 pt-4">
-                <label className={labelClass}>Service</label>
+                <label className={labelClass}>{t("facture.service")}</label>
                 <select
                   value={service}
                   onChange={(e) => setService(e.target.value)}
                   className={champClass}
                 >
                   {servicesDisponibles.length === 0 && (
-                    <option value="">Aucune offre active — crée-en une dans Tarifs</option>
+                    <option value="">{t("facture.aucuneOffreOption")}</option>
                   )}
                   {servicesDisponibles.map((s) => (
                     <option key={s} value={s}>
@@ -654,14 +671,14 @@ export default function EnregistrementPage() {
 
               {configActuelle?.regimeActif && (
                 <>
-                  <label className={labelClass}>Régime</label>
+                  <label className={labelClass}>{t("facture.regime")}</label>
                   <select
                     value={regime}
                     onChange={(e) => setRegime(e.target.value)}
                     className={champClass}
                   >
                     {regimesDisponibles.length === 0 && (
-                      <option value="">Aucun régime disponible pour ce service</option>
+                      <option value="">{t("facture.aucunRegime")}</option>
                     )}
                     {regimesDisponibles.map((r) => (
                       <option key={r} value={r}>
@@ -670,7 +687,7 @@ export default function EnregistrementPage() {
                     ))}
                   </select>
 
-                  <label className={labelClass}>Date de début du test</label>
+                  <label className={labelClass}>{t("facture.dateDebut")}</label>
                   <input
                     type="date"
                     value={dateDebutTest}
@@ -682,7 +699,7 @@ export default function EnregistrementPage() {
 
               {configActuelle?.dateFinNecessaire && (
                 <>
-                  <label className={labelClass}>Date de fin du test</label>
+                  <label className={labelClass}>{t("facture.dateFin")}</label>
                   <input
                     type="date"
                     value={dateFin}
@@ -694,7 +711,7 @@ export default function EnregistrementPage() {
 
               {configActuelle?.montantNegociable && (
                 <>
-                  <label className={labelClass}>Montant négocié (FCFA)</label>
+                  <label className={labelClass}>{t("facture.montantNegocie")}</label>
                   <input
                     type="number"
                     value={montantNegocie}
@@ -706,7 +723,7 @@ export default function EnregistrementPage() {
 
               {configActuelle?.remiseActive && (
                 <>
-                  <label className={labelClass}>Remise (FCFA, optionnel)</label>
+                  <label className={labelClass}>{t("facture.remise")}</label>
                   <input
                     type="number"
                     value={remise}
@@ -716,7 +733,7 @@ export default function EnregistrementPage() {
                 </>
               )}
 
-              <label className={labelClass}>Mode de paiement</label>
+              <label className={labelClass}>{t("facture.modePaiement")}</label>
               <select
                 value={modePaiement}
                 onChange={(e) => setModePaiement(e.target.value)}
@@ -731,14 +748,14 @@ export default function EnregistrementPage() {
 
               {modePaiement === "mobile_especes" ? (
                 <>
-                  <label className={labelClass}>Montant Mobile</label>
+                  <label className={labelClass}>{t("facture.montantMobile")}</label>
                   <input
                     type="number"
                     value={montantMobile}
                     onChange={(e) => setMontantMobile(e.target.value)}
                     className={champClass}
                   />
-                  <label className={labelClass}>Montant Espèces</label>
+                  <label className={labelClass}>{t("facture.montantEspeces")}</label>
                   <input
                     type="number"
                     value={montantEspeces}
@@ -748,7 +765,7 @@ export default function EnregistrementPage() {
                 </>
               ) : (
                 <>
-                  <label className={labelClass}>Montant payé</label>
+                  <label className={labelClass}>{t("facture.montantPaye")}</label>
                   <input
                     type="number"
                     value={montantPaye}
@@ -758,14 +775,14 @@ export default function EnregistrementPage() {
                 </>
               )}
 
-              <label className={labelClass}>Facturé par</label>
+              <label className={labelClass}>{t("facture.facturePar")}</label>
               <input
                 value={facturePar}
                 disabled
                 className={`${champClass} cursor-not-allowed bg-paper text-ink-soft`}
               />
 
-              <label className={labelClass}>Référence (optionnel)</label>
+              <label className={labelClass}>{t("facture.reference")}</label>
               <input
                 value={reference}
                 onChange={(e) => setReference(e.target.value)}
@@ -777,7 +794,7 @@ export default function EnregistrementPage() {
                 disabled={envoiEnCours}
                 className="w-full rounded-lg bg-accent py-2.5 font-medium text-white transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 hover:bg-accent-hover"
               >
-                {envoiEnCours ? "Enregistrement..." : "Enregistrer l'inscription"}
+                {envoiEnCours ? t("facture.enregistrementCourt") : t("facture.enregistrer")}
               </button>
             </>
           )}
@@ -788,80 +805,80 @@ export default function EnregistrementPage() {
 
       {modalConfirmationOuvert && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-lg">
+          <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl bg-white p-6 shadow-lg">
             <h2
               className="mb-4 text-xl text-ink"
               style={{ fontFamily: "var(--font-display)" }}
             >
-              Confirmer l'enregistrement
+              {t("facture.confirmerTitre")}
             </h2>
             <div className="space-y-2 text-sm text-ink">
               <p>
-                <span className="text-ink-soft">Candidat : </span>
+                <span className="text-ink-soft">{t("facture.candidat")} : </span>
                 {candidatSelectionne
                   ? `${candidatSelectionne.nom} ${candidatSelectionne.prenom}`
                   : `${nouveauNom} ${nouveauPrenom}`}
               </p>
               <p>
-                <span className="text-ink-soft">Téléphone : </span>
+                <span className="text-ink-soft">{t("facture.telephone")} : </span>
                 {candidatSelectionne ? candidatSelectionne.telephone : nouveauTelephone}
               </p>
               <p>
-                <span className="text-ink-soft">Service : </span>
+                <span className="text-ink-soft">{t("facture.service")} : </span>
                 {formaterNomService(service)}
               </p>
               {configActuelle?.regimeActif && (
                 <p>
-                  <span className="text-ink-soft">Régime : </span>
+                  <span className="text-ink-soft">{t("facture.regime")} : </span>
                   {regime}
                 </p>
               )}
               <p>
-                <span className="text-ink-soft">Date de fin de formation : </span>
+                <span className="text-ink-soft">{t("facture.dateFinFormation")} : </span>
                 {calculerDateFin()}
               </p>
               <p>
-                <span className="text-ink-soft">Montant total : </span>
-                {calculerMontantTotal().toLocaleString("fr-FR")} FCFA
+                <span className="text-ink-soft">{t("facture.montantTotal")} : </span>
+                {calculerMontantTotal().toLocaleString(locale)} FCFA
               </p>
               {configActuelle?.remiseActive && Number(remise) > 0 && (
                 <p>
-                  <span className="text-ink-soft">Remise appliquée : </span>
-                  {Number(remise).toLocaleString("fr-FR")} FCFA
+                  <span className="text-ink-soft">{t("facture.remiseAppliquee")} : </span>
+                  {Number(remise).toLocaleString(locale)} FCFA
                 </p>
               )}
               <p>
-                <span className="text-ink-soft">Montant payé : </span>
-                {calculerMontantPaye().toLocaleString("fr-FR")} FCFA
+                <span className="text-ink-soft">{t("facture.montantPaye")} : </span>
+                {calculerMontantPaye().toLocaleString(locale)} FCFA
               </p>
               <p>
-                <span className="text-ink-soft">Reste à payer : </span>
-                {(calculerMontantTotal() - calculerMontantPaye()).toLocaleString("fr-FR")} FCFA
+                <span className="text-ink-soft">{t("facture.resteAPayer")} : </span>
+                {(calculerMontantTotal() - calculerMontantPaye()).toLocaleString(locale)} FCFA
               </p>
               <p>
-                <span className="text-ink-soft">Mode de paiement : </span>
+                <span className="text-ink-soft">{t("facture.modePaiement")} : </span>
                 {modePaiementLabels[modePaiement]}
               </p>
               <p>
-                <span className="text-ink-soft">Facturé par : </span>
+                <span className="text-ink-soft">{t("facture.facturePar")} : </span>
                 {facturePar}
               </p>
               {reference && (
                 <p>
-                  <span className="text-ink-soft">Référence : </span>
+                  <span className="text-ink-soft">{t("facture.referenceCourt")} : </span>
                   {reference}
                 </p>
               )}
             </div>
 
-            <div className="mt-6 flex gap-3">
+            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row">
               <button
                 type="button"
                 onClick={() => setModalConfirmationOuvert(false)}
                 disabled={envoiEnCours}
                 className="flex-1 rounded-lg border border-ink/15 py-2.5 font-medium text-ink transition hover:bg-paper disabled:cursor-not-allowed disabled:opacity-60"
               >
-                Annuler
+                {t("commun.annuler")}
               </button>
               <button
                 type="button"
@@ -869,7 +886,7 @@ export default function EnregistrementPage() {
                 disabled={envoiEnCours}
                 className="flex-1 rounded-lg bg-accent py-2.5 font-medium text-white transition active:scale-[0.98] hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {envoiEnCours ? "Enregistrement en cours..." : "Confirmer et enregistrer"}
+                {envoiEnCours ? t("facture.enregistrementEnCours") : t("facture.confirmerEtEnregistrer")}
               </button>
             </div>
           </div>

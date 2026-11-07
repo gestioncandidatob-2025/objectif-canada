@@ -5,10 +5,13 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { apiFetch } from "../lib/api";
 import ChampMotDePasse from "../components/ChampMotDePasse";
+import BoutonLangue from "../components/BoutonLangue";
+import { useLangue } from "../lib/langue";
 
 function ReinitialiserMotDePasseForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { t } = useLangue();
 
   const [email, setEmail] = useState(searchParams.get("email") ?? "");
   const [code, setCode] = useState("");
@@ -28,7 +31,7 @@ function ReinitialiserMotDePasseForm() {
     setMessage("");
 
     if (nouveauMotDePasse !== confirmationMotDePasse) {
-      setErreur("Les deux mots de passe ne correspondent pas");
+      setErreur(t("utilisateurs.erreurMotsDePasse"));
       return;
     }
 
@@ -46,31 +49,32 @@ function ReinitialiserMotDePasseForm() {
       return;
     }
 
-    setMessage("Mot de passe réinitialisé ! Redirection vers la connexion...");
+    setMessage(t("reinitialiser.succes"));
     setTimeout(() => router.push("/login"), 1200);
   }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-paper px-4">
       <div className="w-full max-w-sm">
+        <div className="mb-4 flex justify-end">
+          <BoutonLangue />
+        </div>
         <div className="mb-8 text-center">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-seal">
-            Espace de gestion
+            {t("app.titre")}
           </p>
           <h1
             className="mt-2 text-3xl text-ink"
             style={{ fontFamily: "var(--font-display)" }}
           >
-            Réinitialiser le mot de passe
+            {t("reinitialiser.titre")}
           </h1>
-          <p className="mt-2 text-sm text-ink-soft">
-            Entre le code reçu par email et ton nouveau mot de passe.
-          </p>
+          <p className="mt-2 text-sm text-ink-soft">{t("reinitialiser.consigne")}</p>
         </div>
 
         <form
           onSubmit={handleSubmit}
-          className="space-y-3 rounded-2xl border border-ink/10 bg-white p-8 shadow-sm"
+          className="space-y-3 rounded-2xl border border-ink/10 bg-white p-5 shadow-sm sm:p-8"
         >
           {message && (
             <p className="rounded-lg bg-accent/10 px-3 py-2 text-sm text-accent">
@@ -83,7 +87,7 @@ function ReinitialiserMotDePasseForm() {
             </p>
           )}
 
-          <label className={labelClass}>Email</label>
+          <label className={labelClass}>{t("connexion.email")}</label>
           <input
             type="email"
             value={email}
@@ -91,7 +95,7 @@ function ReinitialiserMotDePasseForm() {
             className={champClass}
           />
 
-          <label className={labelClass}>Code reçu par email (6 chiffres)</label>
+          <label className={labelClass}>{t("reinitialiser.code")}</label>
           <input
             value={code}
             onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
@@ -100,17 +104,17 @@ function ReinitialiserMotDePasseForm() {
             className={champClass}
           />
 
-          <label className={labelClass}>Nouveau mot de passe</label>
+          <label className={labelClass}>{t("reinitialiser.nouveau")}</label>
                     <ChampMotDePasse
             value={nouveauMotDePasse}
             onChange={(e) => setNouveauMotDePasse(e.target.value)}
             className={champClass}
           />
           <p className="text-xs text-ink-soft">
-            Au moins 8 caractères, avec 1 majuscule, 1 minuscule, 1 chiffre et 1 caractère spécial.
+            {t("utilisateurs.reglesMotDePasse")}
           </p>
 
-          <label className={labelClass}>Confirmer le nouveau mot de passe</label>
+          <label className={labelClass}>{t("reinitialiser.confirmer")}</label>
                     <ChampMotDePasse
             value={confirmationMotDePasse}
             onChange={(e) => setConfirmationMotDePasse(e.target.value)}
@@ -122,12 +126,12 @@ function ReinitialiserMotDePasseForm() {
             disabled={envoiEnCours}
             className="w-full rounded-lg bg-accent py-2.5 font-medium text-white transition active:scale-[0.97] hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {envoiEnCours ? "Réinitialisation..." : "Réinitialiser le mot de passe"}
+            {envoiEnCours ? t("reinitialiser.enCours") : t("reinitialiser.titre")}
           </button>
 
           <p className="text-center text-sm text-ink-soft">
             <Link href="/mot-de-passe-oublie" className="text-seal hover:underline">
-              Je n'ai pas reçu de code
+              {t("reinitialiser.pasRecu")}
             </Link>
           </p>
         </form>

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { apiFetch } from "../../../lib/api";
+import { useLangue } from "../../../lib/langue";
 
 type HistoriqueEntree = {
   raison: string;
@@ -40,6 +41,7 @@ const LABEL_SERVICE: Record<string, string> = {
 
 export default function DossierCandidatPage() {
   const { id } = useParams<{ id: string }>();
+  const { t, locale } = useLangue();
 
   const [candidat, setCandidat] = useState<Candidat | null>(null);
   const [inscriptions, setInscriptions] = useState<Inscription[]>([]);
@@ -69,7 +71,7 @@ export default function DossierCandidatPage() {
     ]);
 
     if (!rCandidat.ok || !rInscriptions.ok) {
-      setErreur("Impossible de charger ce dossier");
+      setErreur(t("dossier.erreurChargement"));
       setChargement(false);
       return;
     }
@@ -94,7 +96,7 @@ export default function DossierCandidatPage() {
     setMessage("");
 
     if (!editRaison.trim()) {
-      setErreur("La raison de la modification est obligatoire");
+      setErreur(t("candidats.erreurRaison"));
       return;
     }
 
@@ -116,7 +118,7 @@ export default function DossierCandidatPage() {
       return;
     }
 
-    setMessage("Informations mises à jour");
+    setMessage(t("dossier.misAJour"));
     setModeEdition(false);
     setEditRaison("");
     setEnvoiEnCours(false);
@@ -144,10 +146,10 @@ export default function DossierCandidatPage() {
   const labelClass = "mb-1 block text-xs font-medium text-ink-soft";
 
   return (
-    <div className="px-4 py-10">
+    <div className="px-4 py-6 sm:py-10">
       <div className="mx-auto max-w-3xl">
-        <div className="rounded-2xl border border-ink/10 bg-white p-8 shadow-sm">
-          <div className="flex items-start justify-between gap-3">
+        <div className="rounded-2xl border border-ink/10 bg-white p-5 shadow-sm sm:p-8">
+          <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h1
                 className="text-2xl text-ink"
@@ -156,14 +158,14 @@ export default function DossierCandidatPage() {
                 {candidat.nom} {candidat.prenom}
               </h1>
               <p className="mt-1 text-sm text-ink-soft">
-                Téléphone : {candidat.telephone}
+                {t("facture.telephone")} : {candidat.telephone}
               </p>
             </div>
             <button
               onClick={() => setModeEdition(!modeEdition)}
               className="whitespace-nowrap rounded-lg border border-ink/15 px-4 py-2 text-sm font-medium text-ink transition hover:bg-paper"
             >
-              {modeEdition ? "Annuler" : "Modifier"}
+              {modeEdition ? t("commun.annuler") : t("candidats.modifier")}
             </button>
           </div>
 
@@ -184,7 +186,7 @@ export default function DossierCandidatPage() {
               className="mt-4 space-y-3 rounded-xl border border-ink/10 bg-paper p-5"
             >
               <div>
-                <label className={labelClass}>Nom</label>
+                <label className={labelClass}>{t("facture.nom")}</label>
                 <input
                   value={editNom}
                   onChange={(e) => setEditNom(e.target.value)}
@@ -192,7 +194,7 @@ export default function DossierCandidatPage() {
                 />
               </div>
               <div>
-                <label className={labelClass}>Prénom</label>
+                <label className={labelClass}>{t("facture.prenom")}</label>
                 <input
                   value={editPrenom}
                   onChange={(e) => setEditPrenom(e.target.value)}
@@ -200,7 +202,7 @@ export default function DossierCandidatPage() {
                 />
               </div>
               <div>
-                <label className={labelClass}>Téléphone</label>
+                <label className={labelClass}>{t("facture.telephone")}</label>
                 <input
                   value={editTelephone}
                   onChange={(e) => setEditTelephone(e.target.value)}
@@ -209,12 +211,12 @@ export default function DossierCandidatPage() {
               </div>
               <div>
                 <label className={labelClass}>
-                  Raison de la modification (obligatoire)
+                  {t("dossier.raisonObligatoire")}
                 </label>
                 <input
                   value={editRaison}
                   onChange={(e) => setEditRaison(e.target.value)}
-                  placeholder="Ex : correction faute de frappe sur le nom"
+                  placeholder={t("dossier.raisonExemple")}
                   className={`${champClass} bg-white`}
                 />
               </div>
@@ -223,17 +225,17 @@ export default function DossierCandidatPage() {
                 disabled={envoiEnCours}
                 className="rounded-lg bg-accent px-5 py-2 text-sm font-medium text-white transition disabled:cursor-not-allowed disabled:opacity-60 hover:bg-accent-hover"
               >
-                {envoiEnCours ? "Enregistrement..." : "Enregistrer"}
+                {envoiEnCours ? t("facture.enregistrementCourt") : t("commun.enregistrer")}
               </button>
             </form>
           )}
 
           <p className="mt-6 mb-3 text-sm font-semibold text-ink-soft">
-            {inscriptions.length} inscription{inscriptions.length > 1 ? "s" : ""} au total
+            {t("dossier.nombreInscriptions", { n: inscriptions.length })}
           </p>
 
           {inscriptions.length === 0 ? (
-            <p className="text-sm text-ink-soft">Aucune inscription pour ce candidat.</p>
+            <p className="text-sm text-ink-soft">{t("dossier.aucuneInscription")}</p>
           ) : (
             <div className="space-y-3">
               {inscriptions.map((insc) => (
@@ -248,14 +250,14 @@ export default function DossierCandidatPage() {
                       target="_blank"
                       className="rounded-full border border-seal/30 bg-seal/10 px-3 py-1 text-xs font-medium text-seal transition hover:bg-seal/20"
                     >
-                      N° {insc.numeroRecu}
+                      {t("candidats.numero")} {insc.numeroRecu}
                     </a>
                   </div>
-                  <div className="mt-2 grid grid-cols-2 gap-x-6 gap-y-1 text-ink-soft">
-                    <p>Inscrit le : {insc.dateInscription?.slice(0, 10)}</p>
-                    <p>Début du test : {insc.dateDebutTest?.slice(0, 10) ?? "—"}</p>
-                    <p>Montant total : {insc.montantTotal.toLocaleString("fr-FR")} FCFA</p>
-                    <p>Reste à payer : {insc.resteAPayer.toLocaleString("fr-FR")} FCFA</p>
+                  <div className="mt-2 grid grid-cols-1 gap-x-6 gap-y-1 text-ink-soft sm:grid-cols-2">
+                    <p>{t("dossier.inscritLe")} : {insc.dateInscription?.slice(0, 10)}</p>
+                    <p>{t("candidats.debutTest")} : {insc.dateDebutTest?.slice(0, 10) ?? "—"}</p>
+                    <p>{t("facture.montantTotal")} : {insc.montantTotal.toLocaleString(locale)} FCFA</p>
+                    <p>{t("facture.resteAPayer")} : {insc.resteAPayer.toLocaleString(locale)} FCFA</p>
                   </div>
                 </div>
               ))}
@@ -265,16 +267,21 @@ export default function DossierCandidatPage() {
           {role === "admin" && candidat.historique && candidat.historique.length > 0 && (
             <div className="mt-8 border-t border-ink/10 pt-5">
               <p className="mb-3 text-sm font-semibold text-ink-soft">
-                Historique des modifications
+                {t("dossier.historique")}
               </p>
               <div className="space-y-2">
                 {[...candidat.historique].reverse().map((h, i) => (
                   <div key={i} className="rounded-lg border border-ink/10 p-3 text-xs">
                     <p className="font-medium text-ink">{h.raison}</p>
                     <p className="mt-1 text-ink-soft">
-                      Modifié par {h.modifiePar} le {new Date(h.date).toLocaleString("fr-FR")}
+                      {t("dossier.modifiePar", {
+                        nom: h.modifiePar,
+                        date: new Date(h.date).toLocaleString(locale),
+                      })}
                     </p>
-                    <p className="text-ink-soft">Champs modifiés : {h.champsModifies}</p>
+                    <p className="text-ink-soft">
+                      {t("dossier.champsModifies")} : {h.champsModifies}
+                    </p>
                   </div>
                 ))}
               </div>

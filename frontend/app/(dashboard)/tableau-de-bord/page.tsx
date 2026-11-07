@@ -2,6 +2,7 @@
 
 import { useEffect, useState, ReactNode } from "react";
 import { apiFetch } from "../../lib/api";
+import { useLangue } from "../../lib/langue";
 
 type StatsJour = {
   nombreCandidatsTotal: number;
@@ -33,26 +34,19 @@ function debutSemaineCourante() {
   return d;
 }
 
+// Numéro de la semaine dans le mois ("1" à "5") ; le texte « Semaine 1 » /
+// « Week 1 » est ajouté à l'affichage, dans la langue choisie
 function semaineDuMois(dateStr: string) {
   const jourDuMois = Number(dateStr.slice(8, 10));
-  const numeroSemaine = Math.ceil(jourDuMois / 7);
-  return `Semaine ${numeroSemaine}`;
+  return String(Math.ceil(jourDuMois / 7));
 }
 
-const LABEL_MOIS: Record<string, string> = {
-  "01": "Jan",
-  "02": "Fév",
-  "03": "Mar",
-  "04": "Avr",
-  "05": "Mai",
-  "06": "Juin",
-  "07": "Juil",
-  "08": "Août",
-  "09": "Sep",
-  "10": "Oct",
-  "11": "Nov",
-  "12": "Déc",
-};
+// "03" → "mars" ou "Mar", selon la langue
+function nomCourtDuMois(numeroMois: string, locale: string) {
+  const mois = Number(numeroMois);
+  if (!mois) return numeroMois;
+  return new Date(2000, mois - 1, 1).toLocaleDateString(locale, { month: "short" });
+}
 
 const ICONES: Record<string, ReactNode> = {
   jour: (
@@ -102,6 +96,7 @@ export default function TableauDeBordPage() {
 
   const [graphiqueOuvert, setGraphiqueOuvert] = useState(false);
   const [sousGraphique, setSousGraphique] = useState<SousGraphique>(null);
+  const { t, locale } = useLangue();
 
   useEffect(() => {
     async function charger() {
@@ -116,7 +111,7 @@ export default function TableauDeBordPage() {
       ]);
 
       if (!rJour.ok || !rSemaine.ok || !rMois.ok || !rGraph.ok || !rAnnuel.ok) {
-        setErreur("Impossible de charger les statistiques");
+        setErreur(t("tableau.erreurChargement"));
         setChargement(false);
         return;
       }
@@ -176,13 +171,13 @@ export default function TableauDeBordPage() {
   }
 
   return (
-    <div className="px-4 py-12">
+    <div className="px-4 py-6 sm:py-12">
       <div className="mx-auto max-w-4xl">
         <h1
-          className="mb-10 text-4xl text-ink"
+          className="mb-6 text-3xl text-ink sm:mb-10 sm:text-4xl"
           style={{ fontFamily: "var(--font-display)" }}
         >
-          Tableau de bord
+          {t("menu.tableauDeBord")}
         </h1>
 
         {erreur && (
@@ -190,26 +185,26 @@ export default function TableauDeBordPage() {
             {erreur}
           </p>
         )}
-        {chargement && <p className="mb-6 text-base text-ink-soft">Chargement...</p>}
+        {chargement && <p className="mb-6 text-base text-ink-soft">{t("commun.chargement")}</p>}
 
         {/* Section Aujourd'hui */}
         <div className="mb-10">
           <div className="mb-4 flex items-center gap-3 text-ink">
             {ICONES.jour}
-            <h2 className="text-xl font-semibold">Aujourd'hui</h2>
+            <h2 className="text-xl font-semibold">{t("tableau.aujourdhui")}</h2>
           </div>
           {jour && (
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-              <div className="rounded-2xl border border-ink/10 bg-white p-8 shadow-sm">
-                <p className="text-base text-ink-soft">Inscriptions aujourd'hui</p>
+              <div className="rounded-2xl border border-ink/10 bg-white p-5 shadow-sm sm:p-8">
+                <p className="text-base text-ink-soft">{t("tableau.inscriptionsAujourdhui")}</p>
                 <p className="mt-3 text-5xl font-semibold text-ink">
                   {jour.nombreInscriptionsJour}
                 </p>
               </div>
-              <div className="rounded-2xl border border-ink/10 bg-white p-8 shadow-sm">
-                <p className="text-base text-ink-soft">Montant encaissé aujourd'hui</p>
+              <div className="rounded-2xl border border-ink/10 bg-white p-5 shadow-sm sm:p-8">
+                <p className="text-base text-ink-soft">{t("tableau.encaisseAujourdhui")}</p>
                 <p className="mt-3 text-4xl font-semibold text-accent">
-                  {jour.montantEncaisseJour.toLocaleString("fr-FR")}{" "}
+                  {jour.montantEncaisseJour.toLocaleString(locale)}{" "}
                   <span className="text-xl">FCFA</span>
                 </p>
               </div>
@@ -221,20 +216,20 @@ export default function TableauDeBordPage() {
         <div className="mb-10">
           <div className="mb-4 flex items-center gap-3 text-ink">
             {ICONES.semaine}
-            <h2 className="text-xl font-semibold">Cette semaine</h2>
+            <h2 className="text-xl font-semibold">{t("tableau.cetteSemaine")}</h2>
           </div>
           {semaine && (
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-              <div className="rounded-2xl border border-ink/10 bg-white p-8 shadow-sm">
-                <p className="text-base text-ink-soft">Inscriptions cette semaine</p>
+              <div className="rounded-2xl border border-ink/10 bg-white p-5 shadow-sm sm:p-8">
+                <p className="text-base text-ink-soft">{t("tableau.inscriptionsSemaine")}</p>
                 <p className="mt-3 text-5xl font-semibold text-ink">
                   {semaine.nombreInscriptionsSemaine}
                 </p>
               </div>
-              <div className="rounded-2xl border border-ink/10 bg-white p-8 shadow-sm">
-                <p className="text-base text-ink-soft">Montant encaissé cette semaine</p>
+              <div className="rounded-2xl border border-ink/10 bg-white p-5 shadow-sm sm:p-8">
+                <p className="text-base text-ink-soft">{t("tableau.encaisseSemaine")}</p>
                 <p className="mt-3 text-4xl font-semibold text-accent">
-                  {semaine.montantEncaisseSemaine.toLocaleString("fr-FR")}{" "}
+                  {semaine.montantEncaisseSemaine.toLocaleString(locale)}{" "}
                   <span className="text-xl">FCFA</span>
                 </p>
               </div>
@@ -246,20 +241,20 @@ export default function TableauDeBordPage() {
         <div className="mb-10">
           <div className="mb-4 flex items-center gap-3 text-ink">
             {ICONES.mois}
-            <h2 className="text-xl font-semibold">Ce mois</h2>
+            <h2 className="text-xl font-semibold">{t("tableau.ceMois")}</h2>
           </div>
           {mois && (
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-              <div className="rounded-2xl border border-ink/10 bg-white p-8 shadow-sm">
-                <p className="text-base text-ink-soft">Inscriptions ce mois</p>
+              <div className="rounded-2xl border border-ink/10 bg-white p-5 shadow-sm sm:p-8">
+                <p className="text-base text-ink-soft">{t("tableau.inscriptionsMois")}</p>
                 <p className="mt-3 text-5xl font-semibold text-ink">
                   {mois.nombreInscriptionsMois}
                 </p>
               </div>
-              <div className="rounded-2xl border border-ink/10 bg-white p-8 shadow-sm">
-                <p className="text-base text-ink-soft">Montant encaissé ce mois</p>
+              <div className="rounded-2xl border border-ink/10 bg-white p-5 shadow-sm sm:p-8">
+                <p className="text-base text-ink-soft">{t("tableau.encaisseMois")}</p>
                 <p className="mt-3 text-4xl font-semibold text-accent">
-                  {mois.montantEncaisseMois.toLocaleString("fr-FR")}{" "}
+                  {mois.montantEncaisseMois.toLocaleString(locale)}{" "}
                   <span className="text-xl">FCFA</span>
                 </p>
               </div>
@@ -277,7 +272,7 @@ export default function TableauDeBordPage() {
             className="mb-4 flex items-center gap-3 text-ink"
           >
             {ICONES.graphique}
-            <h2 className="text-xl font-semibold">Graphique</h2>
+            <h2 className="text-xl font-semibold">{t("tableau.graphique")}</h2>
           </button>
 
           {graphiqueOuvert && (
@@ -287,39 +282,39 @@ export default function TableauDeBordPage() {
                   onClick={() => setSousGraphique("mensuel")}
                   className={sousBoutonClass(sousGraphique === "mensuel")}
                 >
-                  Graphique mensuel
+                  {t("tableau.graphiqueMensuel")}
                 </button>
                 <button
                   onClick={() => setSousGraphique("hebdomadaire")}
                   className={sousBoutonClass(sousGraphique === "hebdomadaire")}
                 >
-                  Graphique hebdomadaire
+                  {t("tableau.graphiqueHebdo")}
                 </button>
                 <button
                   onClick={() => setSousGraphique("annuel")}
                   className={sousBoutonClass(sousGraphique === "annuel")}
                 >
-                  Graphique annuel
+                  {t("tableau.graphiqueAnnuel")}
                 </button>
               </div>
 
               {sousGraphique && (
-                <div className="rounded-2xl border border-ink/10 bg-white p-8 shadow-sm">
+                <div className="rounded-2xl border border-ink/10 bg-white p-5 shadow-sm sm:p-8">
                   <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
                     <p className="text-lg font-semibold text-ink">
                       {sousGraphique === "mensuel"
-                        ? "Inscriptions par semaine — ce mois"
+                        ? t("tableau.parSemaine")
                         : sousGraphique === "annuel"
-                          ? "Inscriptions par mois — année en cours"
-                          : "Inscriptions par jour — cette semaine"}
+                          ? t("tableau.parMois")
+                          : t("tableau.parJour")}
                     </p>
                     <p className="rounded-full bg-seal/10 px-4 py-2 text-base font-semibold text-seal">
-                      Total : {totalEncaisseGraphique.toLocaleString("fr-FR")} FCFA
+                      {t("tableau.total", { montant: totalEncaisseGraphique.toLocaleString(locale) })}
                     </p>
                   </div>
 
                   {donneesGraphActif.length === 0 ? (
-                    <p className="text-base text-ink-soft">Aucune donnée pour le moment.</p>
+                    <p className="text-base text-ink-soft">{t("tableau.aucuneDonnee")}</p>
                   ) : (
                                         <div className="flex items-end gap-3">
                       {donneesGraphActif.map((entree) => {
@@ -335,9 +330,9 @@ export default function TableauDeBordPage() {
                             : 0;
                         const labelAffiche =
                           sousGraphique === "mensuel"
-                            ? label
+                            ? t("tableau.semaineN", { n: label })
                             : sousGraphique === "annuel"
-                              ? LABEL_MOIS[label] ?? label
+                              ? nomCourtDuMois(label, locale)
                               : label.slice(8, 10) + "/" + label.slice(5, 7);
 
                         return (
@@ -356,7 +351,7 @@ export default function TableauDeBordPage() {
                             </div>
                             <span className="text-sm text-ink-soft">{labelAffiche}</span>
                             <span className="text-sm font-semibold text-seal">
-                              {valeurs.montant.toLocaleString("fr-FR")} F
+                              {valeurs.montant.toLocaleString(locale)} F
                             </span>
                           </div>
                         );

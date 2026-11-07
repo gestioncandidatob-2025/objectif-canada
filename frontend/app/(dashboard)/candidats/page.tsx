@@ -4,7 +4,8 @@ import { useEffect, useState, Fragment } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { apiFetch } from "../../lib/api";
-import { CodeClasse, NOM_CLASSE, classeDe } from "../../lib/classes";
+import { CodeClasse, classeDe } from "../../lib/classes";
+import { useLangue } from "../../lib/langue";
 
 type Candidat = {
   _id: string;
@@ -43,6 +44,14 @@ const LABEL_SERVICE: Record<string, string> = {
   tcf_2mois: "TCF 2 mois",
   examen_blanc: "Examen blanc",
   tcf_special: "TCF SPECIAL",
+};
+
+// Clés de traduction des modes de paiement
+const LIBELLES_PAIEMENT: Record<string, string> = {
+  especes: "paiement.especes",
+  orange_money: "paiement.orangeMoney",
+  mobile_money: "paiement.mobileMoney",
+  mobile_especes: "paiement.mixte",
 };
 
 type ColonneTri = "nom" | "service" | "regime" | "resteAPayer" | "dateFin";
@@ -112,6 +121,7 @@ function statutDeInscription(insc: Inscription): "termine" | "en_cours" {
 }
 
 export default function CandidatsPage() {
+  const { t, locale } = useLangue();
   const searchParams = useSearchParams();
   const classeParam = searchParams.get("classe") as CodeClasse | null;
 
@@ -138,7 +148,7 @@ export default function CandidatsPage() {
   const [editRegime, setEditRegime] = useState("jour");
   const [editDateDebutTest, setEditDateDebutTest] = useState("");
   const [editMontantPaye, setEditMontantPaye] = useState("");
-  const [editFacturePar, setEditFacturePar] = useState("STEPHANE");
+  const [editFacturePar, setEditFacturePar] = useState("");
   const [editReference, setEditReference] = useState("");
   const [editRaison, setEditRaison] = useState("");
   const [enregistrementEnCours, setEnregistrementEnCours] = useState(false);
@@ -183,7 +193,7 @@ export default function CandidatsPage() {
     if (res.ok) {
       setInscriptions(await res.json());
     } else {
-      setErreur("Impossible de charger la liste");
+      setErreur(t("candidats.erreurChargement"));
     }
     setChargement(false);
   }
@@ -205,6 +215,10 @@ export default function CandidatsPage() {
   }, []);
 
   const servicesDisponibles = Array.from(new Set(tarifsActifs.map((t) => t.service)));
+  // Tous les régimes saisis dans les services du centre (pour le filtre)
+  const regimesDuCentre = Array.from(
+    new Set(tarifsActifs.flatMap((t) => (t.regimeActif ? (t.regimes ?? []) : []))),
+  );
   const configEditService = tarifsActifs.find((t) => t.service === editService);
   const regimesDisponibles = configEditService?.regimes ?? [];
 
@@ -223,7 +237,7 @@ export default function CandidatsPage() {
 
   async function enregistrerModification(id: string) {
     if (!editRaison.trim()) {
-      setErreur("La raison de la modification est obligatoire");
+      setErreur(t("candidats.erreurRaison"));
       return;
     }
     setEnregistrementEnCours(true);
@@ -255,7 +269,7 @@ export default function CandidatsPage() {
     setSuppressionEnCours(true);
     const res = await apiFetch(`/registrations/${id}`, { method: "DELETE" });
     if (!res.ok) {
-      setErreur("Suppression impossible");
+      setErreur(t("candidats.erreurSuppression"));
       setSuppressionEnCours(false);
       return;
     }
@@ -312,22 +326,22 @@ export default function CandidatsPage() {
   );
 
   return (
-    <div className="px-4 py-10">
+    <div className="px-4 py-6 sm:py-10">
       <div className="mx-auto max-w-7xl">
         <h1
-          className="mb-6 text-3xl text-ink"
+          className="mb-6 text-2xl text-ink sm:text-3xl"
           style={{ fontFamily: "var(--font-display)" }}
         >
-          Liste des candidats
+          {t("menu.listeCandidats")}
         </h1>
 
         {classeParam && (
           <div className="mb-4 flex items-center justify-between rounded-lg bg-accent/10 px-4 py-2.5 text-sm text-accent">
             <span>
-              Filtré par classe : <strong>{NOM_CLASSE[classeParam]}</strong>
+              {t("candidats.filtreClasse")} <strong>{t(`classes.noms.${classeParam}`)}</strong>
             </span>
             <Link href="/candidats" className="font-medium underline hover:no-underline">
-              Retirer le filtre
+              {t("candidats.retirerFiltre")}
             </Link>
           </div>
         )}
@@ -342,7 +356,7 @@ export default function CandidatsPage() {
           <input
             value={recherche}
             onChange={(e) => setRecherche(e.target.value)}
-            placeholder="Nom ou prénom"
+            placeholder={t("candidats.rechercheNom")}
             className={`${champClass} bg-white sm:col-span-2`}
           />
           <select
@@ -350,41 +364,48 @@ export default function CandidatsPage() {
             onChange={(e) => setFiltreService(e.target.value)}
             className={`${champClass} bg-white`}
           >
-            <option value="">Tous les services</option>
-            <option value="tcf">TCF</option>
-            <option value="examen_blanc">Examen blanc</option>
-            <option value="tcf_special">TCF SPECIAL</option>
+            <option value="">{t("candidats.tousServices")}</option>
+            {/* Les services du centre (Paramètres → Services), jamais une liste écrite en dur */}
+            {servicesDisponibles.map((svc) => (
+              <option key={svc} value={svc}>
+                {LABEL_SERVICE[svc] ?? svc}
+              </option>
+            ))}
           </select>
           <select
             value={filtreRegime}
             onChange={(e) => setFiltreRegime(e.target.value)}
             className={`${champClass} bg-white`}
           >
-            <option value="">Tous les régimes</option>
-            <option value="jour">Jour</option>
-            <option value="soir">Soir</option>
+            <option value="">{t("candidats.tousRegimes")}</option>
+            {/* Les régimes de tous les services du centre */}
+            {regimesDuCentre.map((reg) => (
+              <option key={reg} value={reg}>
+                {reg}
+              </option>
+            ))}
           </select>
           <select
             value={filtreStatut}
             onChange={(e) => setFiltreStatut(e.target.value)}
             className={`${champClass} bg-white`}
           >
-            <option value="">Tous les statuts</option>
-            <option value="en_cours">En cours</option>
-            <option value="termine">Terminé</option>
+            <option value="">{t("candidats.tousStatuts")}</option>
+            <option value="en_cours">{t("candidats.enCours")}</option>
+            <option value="termine">{t("candidats.termine")}</option>
           </select>
           <select
             value={filtrePaiement}
             onChange={(e) => setFiltrePaiement(e.target.value)}
             className={`${champClass} bg-white`}
           >
-            <option value="">Tous les paiements</option>
-            <option value="avec_reste">Avec reste à payer</option>
-            <option value="solde">Soldé</option>
+            <option value="">{t("candidats.tousPaiements")}</option>
+            <option value="avec_reste">{t("candidats.avecReste")}</option>
+            <option value="solde">{t("candidats.solde")}</option>
           </select>
           <div>
             <label className="mb-1 block text-xs font-medium text-ink-soft">
-              Inscrit à partir du
+              {t("candidats.inscritDepuis")}
             </label>
             <input
               type="date"
@@ -395,7 +416,7 @@ export default function CandidatsPage() {
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-ink-soft">
-              Inscrit jusqu'au
+              {t("candidats.inscritJusqua")}
             </label>
             <input
               type="date"
@@ -411,23 +432,23 @@ export default function CandidatsPage() {
           disabled={chargement}
           className="mb-4 rounded-lg bg-accent px-5 py-2.5 text-sm font-medium text-white transition active:scale-[0.97] hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {chargement ? "Recherche..." : "Chercher"}
+          {chargement ? t("facture.rechercheEnCours") : t("facture.chercher")}
         </button>
 
         <div className="overflow-x-auto rounded-2xl border border-ink/10 bg-white shadow-sm">
           <table className="w-full min-w-[700px] border-collapse text-sm">
             <thead>
               <tr className="border-b border-ink/10 bg-paper text-left text-ink-soft">
-                <th className="whitespace-nowrap px-4 py-3 font-medium">N°</th>
-                <EnTeteTriable colonne="nom" label="Nom" triColonne={triColonne} triOrdre={triOrdre} onClick={basculerTri} />
-                <EnTeteTriable colonne="service" label="Service" triColonne={triColonne} triOrdre={triOrdre} onClick={basculerTri} />
-                <EnTeteTriable colonne="regime" label="Régime" triColonne={triColonne} triOrdre={triOrdre} onClick={basculerTri} />
-                <EnTeteTriable colonne="resteAPayer" label="Reste à payer" triColonne={triColonne} triOrdre={triOrdre} onClick={basculerTri} />
-                <EnTeteTriable colonne="dateFin" label="Date de fin" triColonne={triColonne} triOrdre={triOrdre} onClick={basculerTri} />
-                <th className="whitespace-nowrap px-4 py-3 font-medium">Statut</th>
-                <th className="whitespace-nowrap px-4 py-3 font-medium">Reçu</th>
+                <th className="whitespace-nowrap px-4 py-3 font-medium">{t("candidats.numero")}</th>
+                <EnTeteTriable colonne="nom" label={t("facture.nom")} triColonne={triColonne} triOrdre={triOrdre} onClick={basculerTri} />
+                <EnTeteTriable colonne="service" label={t("facture.service")} triColonne={triColonne} triOrdre={triOrdre} onClick={basculerTri} />
+                <EnTeteTriable colonne="regime" label={t("facture.regime")} triColonne={triColonne} triOrdre={triOrdre} onClick={basculerTri} />
+                <EnTeteTriable colonne="resteAPayer" label={t("facture.resteAPayer")} triColonne={triColonne} triOrdre={triOrdre} onClick={basculerTri} />
+                <EnTeteTriable colonne="dateFin" label={t("candidats.dateFin")} triColonne={triColonne} triOrdre={triOrdre} onClick={basculerTri} />
+                <th className="whitespace-nowrap px-4 py-3 font-medium">{t("candidats.statut")}</th>
+                <th className="whitespace-nowrap px-4 py-3 font-medium">{t("candidats.recu")}</th>
                 <th className="sticky right-0 z-10 whitespace-nowrap bg-paper px-4 py-3 font-medium">
-                  Action
+                  {t("candidats.action")}
                 </th>
               </tr>
             </thead>
@@ -458,7 +479,7 @@ export default function CandidatsPage() {
                             : "font-medium text-accent"
                         }
                       >
-                        {insc.resteAPayer.toLocaleString("fr-FR")} FCFA
+                        {insc.resteAPayer.toLocaleString(locale)} FCFA
                       </span>
                     </td>
                     <td className="whitespace-nowrap px-4 py-3">
@@ -472,7 +493,7 @@ export default function CandidatsPage() {
                             : "rounded-full bg-accent/10 px-3 py-1 text-xs font-medium text-accent"
                         }
                       >
-                        {statutDeInscription(insc) === "termine" ? "Terminée" : "En cours"}
+                        {statutDeInscription(insc) === "termine" ? t("candidats.terminee") : t("candidats.enCours")}
                       </span>
                     </td>
                     <td className="whitespace-nowrap px-4 py-3">
@@ -481,7 +502,7 @@ export default function CandidatsPage() {
                         target="_blank"
                         className="rounded-full border border-seal/30 bg-seal/10 px-3 py-1 text-xs font-medium text-seal transition active:scale-[0.95] hover:bg-seal/20"
                       >
-                        N° {insc.numeroRecu}
+                        {t("candidats.numero")} {insc.numeroRecu}
                       </a>
                     </td>
                     <td className="sticky right-0 z-10 whitespace-nowrap bg-white px-4 py-3 shadow-[-4px_0_6px_-4px_rgba(0,0,0,0.15)]">
@@ -490,7 +511,8 @@ export default function CandidatsPage() {
                           onClick={() =>
                             setLigneOuverte(ligneOuverte === insc._id ? null : insc._id)
                           }
-                          title="Voir plus"
+                          title={t("candidats.voirPlus")}
+                          aria-label={t("candidats.voirPlus")}
                           className="text-accent transition hover:scale-110 active:scale-95"
                         >
                           <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
@@ -504,7 +526,8 @@ export default function CandidatsPage() {
                         </button>
                         <button
                           onClick={() => ouvrirEdition(insc)}
-                          title="Modifier"
+                          title={t("candidats.modifier")}
+                          aria-label={t("candidats.modifier")}
                           className="text-blue-900 transition hover:scale-110 active:scale-95"
                         >
                           <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
@@ -525,7 +548,8 @@ export default function CandidatsPage() {
                                 setLigneEnEdition(null);
                                 setLettreConfirmation("");
                               }}
-                              title="Supprimer"
+                              title={t("candidats.supprimer")}
+                              aria-label={t("candidats.supprimer")}
                               className="text-error transition hover:scale-110 active:scale-95"
                             >
                               <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
@@ -547,18 +571,18 @@ export default function CandidatsPage() {
                   {ligneOuverte === insc._id && (
                     <tr className="border-b border-ink/5 bg-paper">
                       <td colSpan={9} className="px-4 py-4 text-sm text-ink-soft">
-                        <div className="grid grid-cols-2 gap-x-8 gap-y-1">
-                          <p>Prénom : {insc.candidatId?.prenom}</p>
-                          <p>Téléphone : {insc.candidatId?.telephone}</p>
-                          <p>Date d'inscription : {insc.dateInscription?.slice(0, 10)}</p>
-                          <p>Début du test : {insc.dateDebutTest?.slice(0, 10) ?? "—"}</p>
-                          <p>Date de fin : {insc.dateFin?.slice(0, 10) ?? "—"}</p>
-                          <p>Montant total : {insc.montantTotal} FCFA</p>
-                          <p>Montant payé : {insc.montantPaye} FCFA</p>
-                          <p>Reste à payer : {insc.resteAPayer} FCFA</p>
-                          <p>Mode de paiement : {insc.modePaiement}</p>
-                          <p>Facturé par : {insc.facturePar}</p>
-                          <p>Référence : {insc.reference ?? "—"}</p>
+                        <div className="grid grid-cols-1 gap-x-8 gap-y-1 sm:grid-cols-2">
+                          <p>{t("facture.prenom")} : {insc.candidatId?.prenom}</p>
+                          <p>{t("facture.telephone")} : {insc.candidatId?.telephone}</p>
+                          <p>{t("candidats.dateInscription")} : {insc.dateInscription?.slice(0, 10)}</p>
+                          <p>{t("candidats.debutTest")} : {insc.dateDebutTest?.slice(0, 10) ?? "—"}</p>
+                          <p>{t("candidats.dateFin")} : {insc.dateFin?.slice(0, 10) ?? "—"}</p>
+                          <p>{t("facture.montantTotal")} : {insc.montantTotal.toLocaleString(locale)} FCFA</p>
+                          <p>{t("facture.montantPaye")} : {insc.montantPaye.toLocaleString(locale)} FCFA</p>
+                          <p>{t("facture.resteAPayer")} : {insc.resteAPayer.toLocaleString(locale)} FCFA</p>
+                          <p>{t("facture.modePaiement")} : {LIBELLES_PAIEMENT[insc.modePaiement] ? t(LIBELLES_PAIEMENT[insc.modePaiement]) : insc.modePaiement}</p>
+                          <p>{t("facture.facturePar")} : {insc.facturePar}</p>
+                          <p>{t("facture.referenceCourt")} : {insc.reference ?? "—"}</p>
                         </div>
                       </td>
                     </tr>
@@ -567,22 +591,22 @@ export default function CandidatsPage() {
                   {ligneEnEdition === insc._id && (
                     <tr className="border-b border-ink/5 bg-accent/5">
                       <td colSpan={9} className="space-y-3 px-4 py-4">
-                        <div className="grid grid-cols-2 gap-3">
-                          <div className="col-span-2">
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                          <div className="sm:col-span-2">
                             <label className="mb-1 block text-xs font-medium text-ink-soft">
-                              Raison de la modification <span className="text-error">*</span>
+                              {t("candidats.raison")} <span className="text-error">*</span>
                             </label>
                             <textarea
                               value={editRaison}
                               onChange={(e) => setEditRaison(e.target.value)}
                               rows={2}
-                              placeholder="Explique pourquoi tu modifies cette inscription (obligatoire)"
+                              placeholder={t("candidats.raisonExemple")}
                               className={`${champClass} bg-white`}
                             />
                           </div>
                           <div>
                             <label className="mb-1 block text-xs font-medium text-ink-soft">
-                              Service
+                              {t("facture.service")}
                             </label>
                             <select
                               value={editService}
@@ -594,14 +618,14 @@ export default function CandidatsPage() {
                               ).map((svc) => (
                                 <option key={svc} value={svc}>
                                   {svc}
-                                  {!servicesDisponibles.includes(svc) ? " (offre inactive)" : ""}
+                                  {!servicesDisponibles.includes(svc) ? ` (${t("candidats.offreInactive")})` : ""}
                                 </option>
                               ))}
                             </select>
                           </div>
                           <div>
                             <label className="mb-1 block text-xs font-medium text-ink-soft">
-                              Régime
+                              {t("facture.regime")}
                             </label>
                             <select
                               value={editRegime}
@@ -610,21 +634,21 @@ export default function CandidatsPage() {
                               disabled={configEditService && !configEditService.regimeActif}
                             >
                               {regimesDisponibles.length === 0 && !editRegime && (
-                                <option value="">Aucun régime pour ce service</option>
+                                <option value="">{t("facture.aucunRegime")}</option>
                               )}
                               {Array.from(
                                 new Set([...regimesDisponibles, editRegime].filter(Boolean))
                               ).map((reg) => (
                                 <option key={reg} value={reg}>
                                   {reg}
-                                  {!regimesDisponibles.includes(reg) ? " (indisponible pour ce service)" : ""}
+                                  {!regimesDisponibles.includes(reg) ? ` (${t("candidats.regimeIndisponible")})` : ""}
                                 </option>
                               ))}
                             </select>
                           </div>
                           <div>
                             <label className="mb-1 block text-xs font-medium text-ink-soft">
-                              Date de début du test
+                              {t("facture.dateDebut")}
                             </label>
                             <input
                               type="date"
@@ -635,7 +659,7 @@ export default function CandidatsPage() {
                           </div>
                           <div>
                             <label className="mb-1 block text-xs font-medium text-ink-soft">
-                              Montant payé
+                              {t("facture.montantPaye")}
                             </label>
                             <input
                               type="number"
@@ -646,22 +670,18 @@ export default function CandidatsPage() {
                           </div>
                           <div>
                             <label className="mb-1 block text-xs font-medium text-ink-soft">
-                              Facturé par
+                              {t("facture.facturePar")}
                             </label>
-                            <select
+                            {/* Texte libre : plus de liste de noms écrite en dur */}
+                            <input
                               value={editFacturePar}
                               onChange={(e) => setEditFacturePar(e.target.value)}
                               className={`${champClass} bg-white`}
-                            >
-                              <option value="STEPHANE">STEPHANE</option>
-                              <option value="VANELLE">VANELLE</option>
-                              <option value="SILAINE">SILAINE</option>
-                              <option value="BOFIA.S">BOFIA.S</option>
-                            </select>
+                            />
                             </div>
-                            <div className="col-span-2">
+                            <div className="sm:col-span-2">
                             <label className="mb-1 block text-xs font-medium text-ink-soft">
-                              Référence
+                              {t("facture.referenceCourt")}
                             </label>
                             <input
                               value={editReference}
@@ -676,14 +696,14 @@ export default function CandidatsPage() {
                             disabled={enregistrementEnCours}
                             className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
                           >
-                            {enregistrementEnCours ? "Enregistrement..." : "Enregistrer"}
+                            {enregistrementEnCours ? t("facture.enregistrementCourt") : t("commun.enregistrer")}
                           </button>
                           <button
                             onClick={() => setLigneEnEdition(null)}
                             disabled={enregistrementEnCours}
                             className="rounded-lg border border-ink/15 px-4 py-2 text-sm font-medium text-ink transition hover:bg-paper disabled:cursor-not-allowed disabled:opacity-60"
                           >
-                            Annuler
+                            {t("commun.annuler")}
                           </button>
                         </div>
                         {erreur && (
@@ -697,9 +717,9 @@ export default function CandidatsPage() {
                     <tr className="border-b border-ink/5 bg-error/5">
                       <td  className="px-4 py-4">
                         <p className="mb-2 text-sm font-medium text-error">
-                          Pour confirmer la suppression de {insc.candidatId?.nom}{" "}
-                          {insc.candidatId?.prenom}, tape la lettre <strong>S</strong> majuscule
-                          ci-dessous.
+                          {t("candidats.confirmerSuppressionTexte", {
+                            nom: `${insc.candidatId?.nom ?? ""} ${insc.candidatId?.prenom ?? ""}`.trim(),
+                          })}
                         </p>
                         <div className="flex items-center gap-2">
                           <input
@@ -713,7 +733,7 @@ export default function CandidatsPage() {
                             disabled={lettreConfirmation !== "S" || suppressionEnCours}
                             className="rounded-lg bg-error px-4 py-2 text-sm font-medium text-white transition disabled:cursor-not-allowed disabled:opacity-40 hover:bg-red-700"
                           >
-                            {suppressionEnCours ? "Suppression..." : "Confirmer la suppression"}
+                            {suppressionEnCours ? t("candidats.suppressionEnCours") : t("candidats.confirmerSuppression")}
                           </button>
                           <button
                             onClick={() => {
@@ -723,7 +743,7 @@ export default function CandidatsPage() {
                             disabled={suppressionEnCours}
                             className="rounded-lg border border-ink/15 px-4 py-2 text-sm font-medium text-ink transition hover:bg-paper disabled:cursor-not-allowed disabled:opacity-60"
                           >
-                            Annuler
+                            {t("commun.annuler")}
                           </button>
                         </div>
                       </td>
@@ -736,7 +756,7 @@ export default function CandidatsPage() {
 
           {inscriptionsDeLaClasse.length === 0 && !chargement && (
             <p className="px-4 py-8 text-center text-ink-soft">
-              Aucun candidat trouvé.
+              {t("candidats.aucun")}
             </p>
           )}
         </div>
@@ -744,8 +764,11 @@ export default function CandidatsPage() {
         {inscriptionsTriees.length > 0 && (
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-ink-soft">
             <p>
-              Page {pageEffective} sur {totalPages} — {inscriptionsTriees.length}{" "}
-              candidat{inscriptionsTriees.length > 1 ? "s" : ""}
+              {t("candidats.pagination", {
+                page: pageEffective,
+                total: totalPages,
+                n: inscriptionsTriees.length,
+              })}
             </p>
             <div className="flex flex-wrap items-center gap-1">
               <button
@@ -753,7 +776,7 @@ export default function CandidatsPage() {
                 disabled={pageEffective <= 1}
                 className="rounded-lg border border-ink/15 px-3 py-2 font-medium text-ink transition hover:bg-paper disabled:cursor-not-allowed disabled:opacity-60"
               >
-                Précédent
+                {t("candidats.precedent")}
               </button>
 
               {Array.from({ length: totalPages }, (_, i) => i + 1)
@@ -787,7 +810,7 @@ export default function CandidatsPage() {
                 disabled={pageEffective >= totalPages}
                 className="rounded-lg bg-accent px-4 py-2 font-medium text-white transition disabled:cursor-not-allowed disabled:opacity-60"
               >
-                Page suivante
+                {t("candidats.suivant")}
               </button>
             </div>
           </div>

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { apiFetch } from "../lib/api";
+import { useLangue } from "../lib/langue";
 
 type ElementConfiguration = {
   cle: string;
@@ -17,6 +18,7 @@ export default function DialogueConfiguration({ centreId }: { centreId: string }
   const cleSession = `dialogue-configuration-vu:${centreId}`;
   const pathname = usePathname();
   const router = useRouter();
+  const { t } = useLangue();
 
   const [aFaire, setAFaire] = useState<ElementConfiguration[]>([]);
   const [visible, setVisible] = useState(false);
@@ -89,11 +91,9 @@ export default function DialogueConfiguration({ centreId }: { centreId: string }
           className="text-2xl text-ink"
           style={{ fontFamily: "var(--font-display)" }}
         >
-          Complétez vos paramètres
+          {t("dialogue.titre")}
         </h2>
-        <p className="mt-3 text-sm text-ink-soft">
-          Avant de créer votre première facture, complétez les paramètres de votre centre :
-        </p>
+        <p className="mt-3 text-sm text-ink-soft">{t("dialogue.texte")}</p>
 
         <ul className="mt-4 space-y-2">
           {aFaire.map((element) => (
@@ -102,7 +102,10 @@ export default function DialogueConfiguration({ centreId }: { centreId: string }
                 className="inline-block h-2 w-2 shrink-0 rounded-full bg-seal"
                 aria-hidden="true"
               />
-              {element.libelle}
+              {/* Texte traduit d'après la clé ; le libellé du serveur sert de secours */}
+              {t(`dialogue.elements.${element.cle}`) === `dialogue.elements.${element.cle}`
+                ? element.libelle
+                : t(`dialogue.elements.${element.cle}`)}
             </li>
           ))}
         </ul>
@@ -113,14 +116,14 @@ export default function DialogueConfiguration({ centreId }: { centreId: string }
             onClick={plusTard}
             className="rounded-lg border border-ink/15 px-5 py-2.5 text-sm font-medium text-ink transition hover:bg-paper"
           >
-            Plus tard
+            {t("dialogue.plusTard")}
           </button>
           <button
             type="button"
             onClick={allerAuxParametres}
             className="rounded-lg bg-accent px-5 py-2.5 text-sm font-medium text-white transition hover:bg-accent-hover"
           >
-            Aller aux paramètres
+            {t("dialogue.allerParametres")}
           </button>
         </div>
       </div>

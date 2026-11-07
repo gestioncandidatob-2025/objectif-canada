@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type InputHTMLAttributes } from "react";
+import { useLangue } from "../lib/langue";
 
 // Champ mot de passe avec un bouton « œil » pour afficher ou masquer le texte.
 // Il accepte les mêmes propriétés qu'un <input> normal (value, onChange, className...).
@@ -14,6 +15,7 @@ export default function ChampMotDePasse({
   ...props
 }: Props) {
   const [visible, setVisible] = useState(false);
+  const { t } = useLangue();
 
   return (
     <div className={`relative ${wrapperClassName}`}>
@@ -25,7 +27,7 @@ export default function ChampMotDePasse({
       <button
         type="button"
         onClick={() => setVisible((v) => !v)}
-        aria-label={visible ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+        aria-label={visible ? t("motDePasse.masquer") : t("motDePasse.afficher")}
         className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-ink-soft transition hover:text-ink"
       >
         {visible ? (

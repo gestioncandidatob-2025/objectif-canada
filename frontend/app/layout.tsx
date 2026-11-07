@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Fraunces, Inter } from "next/font/google";
 import "./globals.css";
+import { LangueProvider } from "./lib/langue";
 
 
 const fraunces = Fraunces({
@@ -29,7 +30,8 @@ export default function RootLayout({
   return (
     <html lang="fr">
       <body className={`${fraunces.variable} ${inter.variable} antialiased`}>
-        {children}
+        {/* Langue choisie (français / anglais) disponible dans toutes les pages */}
+        <LangueProvider>{children}</LangueProvider>
       </body>
     </html>
   );

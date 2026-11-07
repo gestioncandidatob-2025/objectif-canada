@@ -3,6 +3,7 @@
 import { useEffect, useState, Fragment } from "react";
 import { apiFetch } from "../../lib/api";
 import ChampMotDePasse from "../../components/ChampMotDePasse";
+import { useLangue } from "../../lib/langue";
 
 type User = {
   _id: string;
@@ -11,9 +12,10 @@ type User = {
   role: string;
 };
 
+// Clés de traduction des rôles
 const LABEL_ROLE: Record<string, string> = {
-  admin: "Administrateur",
-  secretariat: "Secrétariat",
+  admin: "roles.admin",
+  secretariat: "roles.secretariat",
 };
 
 export default function UtilisateursPage() {
@@ -35,6 +37,7 @@ export default function UtilisateursPage() {
   const [editRole, setEditRole] = useState("secretariat");
   const [enregistrementEnCours, setEnregistrementEnCours] = useState(false);
   const [suppressionEnCours, setSuppressionEnCours] = useState<string | null>(null);
+  const { t } = useLangue();
 
   async function chargerUsers() {
     setChargement(true);
@@ -43,7 +46,7 @@ export default function UtilisateursPage() {
     if (res.ok) {
       setUsers(await res.json());
     } else {
-      setErreur("Impossible de charger les utilisateurs");
+      setErreur(t("utilisateurs.erreurChargement"));
     }
     setChargement(false);
   }
@@ -58,7 +61,7 @@ export default function UtilisateursPage() {
     setMessage("");
 
     if (motDePasse !== motDePasseConfirmation) {
-      setErreur("Les deux mots de passe ne correspondent pas");
+      setErreur(t("utilisateurs.erreurMotsDePasse"));
       return;
     }
 
@@ -76,7 +79,7 @@ export default function UtilisateursPage() {
       return;
     }
 
-    setMessage("Utilisateur créé avec succès");
+    setMessage(t("utilisateurs.cree"));
     setNom("");
     setEmail("");
     setMotDePasse("");
@@ -111,11 +114,11 @@ export default function UtilisateursPage() {
   }
 
   async function supprimer(id: string) {
-    if (!window.confirm("Confirmer la suppression de cet utilisateur ?")) return;
+    if (!window.confirm(t("utilisateurs.confirmerSuppression"))) return;
     setSuppressionEnCours(id);
     const res = await apiFetch(`/users/${id}`, { method: "DELETE" });
     if (!res.ok) {
-      setErreur("Suppression impossible");
+      setErreur(t("candidats.erreurSuppression"));
       setSuppressionEnCours(null);
       return;
     }
@@ -128,20 +131,20 @@ export default function UtilisateursPage() {
   const labelClass = "mb-1 block text-sm font-medium text-ink-soft";
 
   return (
-    <div className="px-4 py-10">
+    <div className="px-4 py-6 sm:py-10">
       <div className="mx-auto max-w-3xl">
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <h1
-            className="text-3xl text-ink"
+            className="text-2xl text-ink sm:text-3xl"
             style={{ fontFamily: "var(--font-display)" }}
           >
-            Gestion des utilisateurs
+            {t("utilisateurs.titre")}
           </h1>
           <button
             onClick={() => setAfficherFormulaire(!afficherFormulaire)}
             className="rounded-lg bg-accent px-5 py-2.5 text-sm font-medium text-white transition hover:bg-accent-hover"
           >
-            {afficherFormulaire ? "Annuler" : "+ Nouvel utilisateur"}
+            {afficherFormulaire ? t("commun.annuler") : t("utilisateurs.nouveau")}
           </button>
         </div>
 
@@ -161,66 +164,66 @@ export default function UtilisateursPage() {
             onSubmit={handleCreer}
             className="mb-6 space-y-3 rounded-2xl border border-ink/10 bg-white p-6 shadow-sm"
           >
-            <label className={labelClass}>Nom</label>
+            <label className={labelClass}>{t("utilisateurs.nom")}</label>
             <input
               value={nom}
               onChange={(e) => setNom(e.target.value)}
               className={champClass}
             />
-            <label className={labelClass}>Email</label>
+            <label className={labelClass}>{t("connexion.email")}</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className={champClass}
             />
-            <label className={labelClass}>Mot de passe</label>
+            <label className={labelClass}>{t("connexion.motDePasse")}</label>
                         <ChampMotDePasse
               value={motDePasse}
               onChange={(e) => setMotDePasse(e.target.value)}
               className={champClass}
             />
             <p className="text-xs text-ink-soft">
-              Au moins 8 caractères, avec 1 majuscule, 1 minuscule, 1 chiffre et 1 caractère spécial.
+              {t("utilisateurs.reglesMotDePasse")}
             </p>
-            <label className={labelClass}>Confirmer le mot de passe</label>
+            <label className={labelClass}>{t("utilisateurs.confirmerMotDePasse")}</label>
                         <ChampMotDePasse
               value={motDePasseConfirmation}
               onChange={(e) => setMotDePasseConfirmation(e.target.value)}
               className={champClass}
             />
             {motDePasseConfirmation && motDePasse !== motDePasseConfirmation && (
-              <p className="text-sm text-error">Les mots de passe ne correspondent pas</p>
+              <p className="text-sm text-error">{t("utilisateurs.motsDePasseDifferents")}</p>
             )}
-            <label className={labelClass}>Rôle</label>
+            <label className={labelClass}>{t("utilisateurs.role")}</label>
             <select
               value={role}
               onChange={(e) => setRole(e.target.value)}
               className={champClass}
             >
-              <option value="secretariat">Secrétariat</option>
-              <option value="admin">Administrateur</option>
+              <option value="secretariat">{t("roles.secretariat")}</option>
+              <option value="admin">{t("roles.admin")}</option>
             </select>
             <button
               type="submit"
               disabled={envoiEnCours}
               className="w-full rounded-lg bg-accent py-2.5 font-medium text-white transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 hover:bg-accent-hover"
             >
-              {envoiEnCours ? "Création..." : "Créer l'utilisateur"}
+              {envoiEnCours ? t("tarifs.creation") : t("utilisateurs.creer")}
             </button>
           </form>
         )}
 
-        {chargement && <p className="text-sm text-ink-soft">Chargement...</p>}
+        {chargement && <p className="text-sm text-ink-soft">{t("commun.chargement")}</p>}
 
         <div className="overflow-x-auto rounded-2xl border border-ink/10 bg-white shadow-sm">
           <table className="w-full min-w-[500px] border-collapse text-sm">
             <thead>
               <tr className="border-b border-ink/10 bg-paper text-left text-ink-soft">
-                <th className="px-4 py-3 font-medium">Nom</th>
-                <th className="px-4 py-3 font-medium">Email</th>
-                <th className="px-4 py-3 font-medium">Rôle</th>
-                <th className="px-4 py-3 font-medium">Action</th>
+                <th className="px-4 py-3 font-medium">{t("utilisateurs.nom")}</th>
+                <th className="px-4 py-3 font-medium">{t("connexion.email")}</th>
+                <th className="px-4 py-3 font-medium">{t("utilisateurs.role")}</th>
+                <th className="px-4 py-3 font-medium">{t("candidats.action")}</th>
               </tr>
             </thead>
             <tbody>
@@ -231,7 +234,7 @@ export default function UtilisateursPage() {
                     <td className="px-4 py-3">{u.email}</td>
                     <td className="px-4 py-3">
                       <span className="rounded-full bg-accent/10 px-3 py-1 text-xs font-medium text-accent">
-                        {LABEL_ROLE[u.role] ?? u.role}
+                        {LABEL_ROLE[u.role] ? t(LABEL_ROLE[u.role]) : u.role}
                       </span>
                     </td>
                     <td className="space-x-3 px-4 py-3">
@@ -239,14 +242,14 @@ export default function UtilisateursPage() {
                         onClick={() => ouvrirEdition(u)}
                         className="font-medium text-seal hover:underline"
                       >
-                        Modifier
+                        {t("candidats.modifier")}
                       </button>
                       <button
                         onClick={() => supprimer(u._id)}
                         disabled={suppressionEnCours === u._id}
                         className="font-medium text-error hover:underline disabled:cursor-not-allowed disabled:opacity-60"
                       >
-                        {suppressionEnCours === u._id ? "Suppression..." : "Supprimer"}
+                        {suppressionEnCours === u._id ? t("candidats.suppressionEnCours") : t("candidats.supprimer")}
                       </button>
                     </td>
                   </tr>
@@ -254,10 +257,10 @@ export default function UtilisateursPage() {
                   {ligneEnEdition === u._id && (
                     <tr className="border-b border-ink/5 bg-accent/5">
                       <td colSpan={4} className="space-y-3 px-4 py-4">
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                           <div>
                             <label className="mb-1 block text-xs font-medium text-ink-soft">
-                              Nom
+                              {t("utilisateurs.nom")}
                             </label>
                             <input
                               value={editNom}
@@ -267,15 +270,15 @@ export default function UtilisateursPage() {
                           </div>
                           <div>
                             <label className="mb-1 block text-xs font-medium text-ink-soft">
-                              Rôle
+                              {t("utilisateurs.role")}
                             </label>
                             <select
                               value={editRole}
                               onChange={(e) => setEditRole(e.target.value)}
                               className={`${champClass} bg-white`}
                             >
-                              <option value="secretariat">Secrétariat</option>
-                              <option value="admin">Administrateur</option>
+                              <option value="secretariat">{t("roles.secretariat")}</option>
+                              <option value="admin">{t("roles.admin")}</option>
                             </select>
                           </div>
                         </div>
@@ -285,14 +288,14 @@ export default function UtilisateursPage() {
                             disabled={enregistrementEnCours}
                             className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
                           >
-                            {enregistrementEnCours ? "Enregistrement..." : "Enregistrer"}
+                            {enregistrementEnCours ? t("facture.enregistrementCourt") : t("commun.enregistrer")}
                           </button>
                           <button
                             onClick={() => setLigneEnEdition(null)}
                             disabled={enregistrementEnCours}
                             className="rounded-lg border border-ink/15 px-4 py-2 text-sm font-medium text-ink transition hover:bg-paper disabled:cursor-not-allowed disabled:opacity-60"
                           >
-                            Annuler
+                            {t("commun.annuler")}
                           </button>
                         </div>
                       </td>
@@ -305,7 +308,7 @@ export default function UtilisateursPage() {
 
           {users.length === 0 && !chargement && (
             <p className="px-4 py-8 text-center text-ink-soft">
-              Aucun utilisateur trouvé.
+              {t("utilisateurs.aucun")}
             </p>
           )}
         </div>

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { apiFetch } from "../../lib/api";
+import { useLangue } from "../../lib/langue";
 
 type Candidat = {
   nom: string;
@@ -39,6 +40,7 @@ export default function FacturesPage() {
   const [chargement, setChargement] = useState(false);
   const [erreur, setErreur] = useState("");
   const [ouvertureEnCours, setOuvertureEnCours] = useState<string | null>(null);
+  const { t, locale } = useLangue();
 
   async function chargerFactures() {
     setChargement(true);
@@ -47,9 +49,7 @@ export default function FacturesPage() {
     if (res.ok) {
       setFactures(await res.json());
     } else {
-      setErreur(
-        "Impossible de charger les factures (réservé aux administrateurs)",
-      );
+      setErreur(t("factures.erreurChargement"));
     }
     setChargement(false);
   }
@@ -77,36 +77,33 @@ export default function FacturesPage() {
   }
 
   return (
-    <div className="px-4 py-10">
+    <div className="px-4 py-6 sm:py-10">
       <div className="mx-auto max-w-4xl">
         <h1
-          className="mb-2 text-3xl text-ink"
+          className="mb-2 text-2xl text-ink sm:text-3xl"
           style={{ fontFamily: "var(--font-display)" }}
         >
-          Factures
+          {t("menu.factures")}
         </h1>
-        <p className="mb-6 text-sm text-ink-soft">
-          Toutes les factures générées, stockées sur AWS, de la plus récente à
-          la plus ancienne — pour la comptabilité et les impôts.
-        </p>
+        <p className="mb-6 text-sm text-ink-soft">{t("factures.description")}</p>
 
         {erreur && (
           <p className="mb-4 rounded-lg bg-error/10 px-3 py-2.5 text-sm text-error">
             {erreur}
           </p>
         )}
-        {chargement && <p className="mb-4 text-sm text-ink-soft">Chargement...</p>}
+        {chargement && <p className="mb-4 text-sm text-ink-soft">{t("commun.chargement")}</p>}
 
         <div className="overflow-x-auto rounded-2xl border border-ink/10 bg-white shadow-sm">
           <table className="w-full min-w-[600px] border-collapse text-sm">
             <thead>
               <tr className="border-b border-ink/10 bg-paper text-left text-ink-soft">
-                <th className="px-4 py-3 font-medium">Reçu N°</th>
-                <th className="px-4 py-3 font-medium">Date</th>
-                <th className="px-4 py-3 font-medium">Candidat</th>
-                <th className="px-4 py-3 font-medium">Service</th>
-                <th className="px-4 py-3 font-medium">Montant</th>
-                <th className="px-4 py-3 font-medium">Action</th>
+                <th className="px-4 py-3 font-medium">{t("factures.recuNumero")}</th>
+                <th className="px-4 py-3 font-medium">{t("factures.date")}</th>
+                <th className="px-4 py-3 font-medium">{t("facture.candidat")}</th>
+                <th className="px-4 py-3 font-medium">{t("facture.service")}</th>
+                <th className="px-4 py-3 font-medium">{t("factures.montant")}</th>
+                <th className="px-4 py-3 font-medium">{t("candidats.action")}</th>
               </tr>
             </thead>
             <tbody>
@@ -116,7 +113,7 @@ export default function FacturesPage() {
                     {f.numeroRecu}
                   </td>
                   <td className="whitespace-nowrap px-4 py-3">
-                    {new Date(f.dateInscription).toLocaleDateString("fr-FR")}
+                    {new Date(f.dateInscription).toLocaleDateString(locale)}
                   </td>
                   <td className="px-4 py-3">
                     {f.candidatId?.prenom} {f.candidatId?.nom}
@@ -125,7 +122,7 @@ export default function FacturesPage() {
                     {formaterNomService(f.service)}
                   </td>
                   <td className="whitespace-nowrap px-4 py-3">
-                    {f.montantTotal.toLocaleString("fr-FR")} FCFA
+                    {f.montantTotal.toLocaleString(locale)} FCFA
                   </td>
                   <td className="px-4 py-3">
                     <button
@@ -133,7 +130,7 @@ export default function FacturesPage() {
                       disabled={ouvertureEnCours === f._id}
                       className="whitespace-nowrap rounded-full border border-seal/30 bg-seal/10 px-4 py-1.5 text-xs font-medium text-seal transition hover:bg-seal/20 disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                      {ouvertureEnCours === f._id ? "Ouverture..." : "Consulter / Réimprimer"}
+                      {ouvertureEnCours === f._id ? t("factures.ouverture") : t("factures.consulter")}
                     </button>
                   </td>
                 </tr>
@@ -143,7 +140,7 @@ export default function FacturesPage() {
 
           {factures.length === 0 && !chargement && (
             <p className="px-4 py-8 text-center text-ink-soft">
-              Aucune facture stockée pour le moment.
+              {t("factures.aucune")}
             </p>
           )}
         </div>
