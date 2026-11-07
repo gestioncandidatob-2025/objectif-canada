@@ -58,8 +58,9 @@ export default function LoginPage() {
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
 
-      // Si l'email n'est pas encore vérifié, on redirige vers la page de vérification
-      if (!data.user.emailVerifie) {
+      // Le centre (admin) entre directement.
+      // Le secrétariat et le super admin doivent d'abord vérifier leur email.
+      if (!data.user.emailVerifie && data.user.role !== "admin") {
         router.push(`/verifier-email?email=${encodeURIComponent(data.user.email)}`);
         return;
       }

@@ -70,8 +70,8 @@ export default function InscrireCentrePage() {
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
 
-      // Étape suivante : saisir le code reçu par email
-      router.push(`/verifier-email?email=${encodeURIComponent(data.user.email)}`);
+      // Pas de vérification d'email pour un centre : il entre directement
+      router.push("/bienvenue");
     } catch {
       setErreur(t("connexion.erreurServeur"));
       setEnvoiEnCours(false);
