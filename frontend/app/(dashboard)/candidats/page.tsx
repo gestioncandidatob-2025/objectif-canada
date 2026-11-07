@@ -4,7 +4,7 @@ import { useEffect, useState, Fragment } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { apiFetch } from "../../lib/api";
-import { CodeClasse, NOM_CLASSE, classeDe } from "../../lib/classes";
+import { CodeClasse, classeDe } from "../../lib/classes";
 import { useLangue } from "../../lib/langue";
 
 type Candidat = {
@@ -338,7 +338,7 @@ export default function CandidatsPage() {
         {classeParam && (
           <div className="mb-4 flex items-center justify-between rounded-lg bg-accent/10 px-4 py-2.5 text-sm text-accent">
             <span>
-              {t("candidats.filtreClasse")} <strong>{NOM_CLASSE[classeParam]}</strong>
+              {t("candidats.filtreClasse")} <strong>{t(`classes.noms.${classeParam}`)}</strong>
             </span>
             <Link href="/candidats" className="font-medium underline hover:no-underline">
               {t("candidats.retirerFiltre")}

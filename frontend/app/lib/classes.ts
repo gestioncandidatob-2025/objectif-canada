@@ -51,6 +51,11 @@ export function classeDe(insc: {
   return recente ? "soir1" : "soir2";
 }
 
+// Raison pour laquelle une inscription n'est dans aucune classe : une clé de
+// traduction (lib/traductions.ts) et ses valeurs, pour l'afficher dans la
+// langue choisie avec t(raison.cle, raison.valeurs)
+export type RaisonNonClasse = { cle: string; valeurs?: Record<string, string> };
+
 // Explique pourquoi une inscription en régime jour/soir n'apparaît dans
 // aucune classe, pour permettre de repérer et corriger les données au lieu
 // que le candidat disparaisse silencieusement. Retourne null si l'inscription
@@ -58,15 +63,15 @@ export function classeDe(insc: {
 export function raisonNonClasse(insc: {
   regime?: string;
   dateDebutTest?: string;
-}): string | null {
+}): RaisonNonClasse | null {
   const brut = insc.regime;
   const regime = regimeNormalise(brut);
   if (!brut) return null; // service sans régime jour/soir : normal
   if (regime !== "jour" && regime !== "soir") {
-    return `Régime "${brut}" non reconnu (attendu : "jour" ou "soir")`;
+    return { cle: "classes.regimeInconnu", valeurs: { regime: brut } };
   }
   if (joursEcoules(insc.dateDebutTest) === null) {
-    return "Date de début du test manquante";
+    return { cle: "classes.dateManquante" };
   }
   return null;
 }
