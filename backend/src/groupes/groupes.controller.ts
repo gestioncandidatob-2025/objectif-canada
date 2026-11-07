@@ -1,18 +1,18 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger';
+import { Body, Controller, Get, Param, Post, Put, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { Role } from '../users/schemas/user.schema';
 import { CentreId } from '../common/centre-id.decorator';
 import { GroupesService } from './groupes.service';
-import { CreateGroupeDto } from './dto/create-groupe.dto';
-import { UpdateGroupeDto } from './dto/update-groupe.dto';
+import { UpdateBlocGroupesDto } from './dto/update-bloc-groupes.dto';
 
 /**
  * Groupes de candidats du centre (remplacent les classes Jour/Soir).
- * Seul l'administrateur crée et modifie les groupes ; les candidats y entrent
- * et en changent automatiquement.
+ * Les groupes viennent des services et de leurs régimes ; l'administrateur
+ * règle seulement le groupe 2, les jours avant le passage et les capacités.
+ * Les candidats y entrent et en changent automatiquement.
  */
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -21,32 +21,30 @@ export class GroupesController {
   constructor(private readonly groupesService: GroupesService) {}
 
   @ApiOperation({
-    summary: 'Lister les groupes du centre avec leur nombre de candidats en cours — tous les utilisateurs',
-  })
-  @ApiQuery({
-    name: 'active',
-    required: false,
-    description: "'true' = seulement les groupes actifs",
+    summary: 'Liste simple de tous les groupes du centre avec leur nombre de candidats — tous les utilisateurs',
   })
   @Get()
-  findAll(@CentreId() centreId: string, @Query('active') active?: string) {
-    return this.groupesService.lister(centreId, active === 'true');
-  }
-
-  @ApiOperation({ summary: 'Créer un groupe — administrateur' })
-  @Roles(Role.ADMIN)
-  @Post()
-  create(@Body() dto: CreateGroupeDto, @CentreId() centreId: string) {
-    return this.groupesService.creer(dto, centreId);
+  findAll(@CentreId() centreId: string) {
+    return this.groupesService.lister(centreId);
   }
 
   @ApiOperation({
-    summary: 'Modifier ou désactiver un groupe (null efface un champ) — administrateur',
+    summary:
+      'Blocs de groupes de la page Groupes (un par service, ou par service et régime) ; crée le groupe 1 s’il manque — tous les utilisateurs',
+  })
+  @Get('blocks')
+  findBlocks(@CentreId() centreId: string) {
+    return this.groupesService.parBloc(centreId);
+  }
+
+  @ApiOperation({
+    summary:
+      "Régler un bloc : capacités, groupe 2 coché ou non, jours avant le passage — administrateur",
   })
   @Roles(Role.ADMIN)
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() dto: UpdateGroupeDto, @CentreId() centreId: string) {
-    return this.groupesService.modifier(id, dto, centreId);
+  @Put('blocks')
+  updateBlock(@Body() dto: UpdateBlocGroupesDto, @CentreId() centreId: string) {
+    return this.groupesService.enregistrerBloc(dto, centreId);
   }
 
   @ApiOperation({

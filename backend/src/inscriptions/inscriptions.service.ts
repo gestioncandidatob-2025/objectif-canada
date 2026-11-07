@@ -167,11 +167,15 @@ export class InscriptionsService {
       numeroRecu = formater(await this.centresService.prochainNumeroRecu(centreId));
     }
 
-    // 9.5 Groupe : le candidat entre automatiquement dans le premier groupe de
-    //     son régime (réglé par l'administrateur dans la page Groupes).
-    //     Aucun groupe si son régime n'a pas de premier groupe.
+    // 9.5 Groupe : le candidat entre automatiquement dans le groupe 1 de son
+    //     service (et de son régime), par exemple « TCF Soir 1 ».
+    //     La secrétaire ne choisit jamais le groupe.
     const regimeInscription = offre.regimeActif ? createInscriptionDto.regime : undefined;
-    const groupeDEntree = await this.groupesService.groupeDEntree(regimeInscription, centreId);
+    const groupeDEntree = await this.groupesService.groupeDEntree(
+      createInscriptionDto.service,
+      regimeInscription,
+      centreId,
+    );
 
     // 10. Assembler et sauvegarder l'inscription
     const inscription = new this.inscriptionModel({
@@ -480,12 +484,13 @@ export class InscriptionsService {
 
     const resteAPayer = montantTotal - montantPaye;
 
-    // 5.5 Si le régime change (correction), le candidat repart dans le premier
-    //     groupe de son nouveau régime
+    // 5.5 Si le service ou le régime change (correction), le candidat repart
+    //     dans le groupe 1 de son nouveau service / régime
     const nouveauRegime = offre.regimeActif ? regime : undefined;
-    const ancienRegime = inscription.regime;
-    if ((nouveauRegime ?? '').trim().toLowerCase() !== (ancienRegime ?? '').trim().toLowerCase()) {
-      const groupe = await this.groupesService.groupeDEntree(nouveauRegime, centreId);
+    const regimeChange =
+      (nouveauRegime ?? '').trim().toLowerCase() !== (inscription.regime ?? '').trim().toLowerCase();
+    if (service !== inscription.service || regimeChange) {
+      const groupe = await this.groupesService.groupeDEntree(service, nouveauRegime, centreId);
       inscription.groupeId = groupe?._id;
       inscription.dateEntreeGroupe = groupe ? dateDebutTest : undefined;
     }

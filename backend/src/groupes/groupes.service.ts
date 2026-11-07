@@ -1,26 +1,44 @@
-import {
-  BadRequestException,
-  ConflictException,
-  Injectable,
-  Logger,
-  NotFoundException,
-} from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Groupe, GroupeDocument } from './schemas/groupe.schema';
 import { Inscription, InscriptionDocument } from '../inscriptions/schemas/inscription.schema';
-import { CreateGroupeDto } from './dto/create-groupe.dto';
-import { UpdateGroupeDto } from './dto/update-groupe.dto';
+import { Tarif, TarifDocument } from '../tarifs/schemas/tarif.schema';
+import { UpdateBlocGroupesDto } from './dto/update-bloc-groupes.dto';
 
 // Comparaison des noms sans tenir compte des majuscules ("Soir 1" = "soir 1")
 const COLLATION_NOM = { locale: 'fr', strength: 2 };
 
-// Nombre maximal de passages enchaînés en une seule fois (ex : un candidat
-// en retard de 30 jours peut passer Soir 1 → Soir 2 → Soir 3 d'un coup)
+// Nombre maximal de passages enchaînés en une seule fois
 const MAX_TOURS_DE_PASSAGE = 10;
 
 const UN_JOUR_MS = 24 * 60 * 60 * 1000;
 
+// Libellés des anciens services (données existantes) ; tout autre service
+// est mis en forme automatiquement ("examen_blanc" → "Examen Blanc")
+const LABEL_SERVICE: Record<string, string> = {
+  tcf: 'TCF',
+  tcf_2mois: 'TCF 2 mois',
+  examen_blanc: 'Examen blanc',
+  tcf_special: 'TCF SPECIAL',
+};
+
+/**
+ * Groupes de candidats du centre (remplacent les classes Jour/Soir).
+ *
+ * Chaque service a ses groupes, et un service à régimes a des groupes par
+ * régime. Exemple : le service TCF avec les régimes Jour et Soir donne les
+ * blocs « TCF — Jour » (TCF Jour 1, TCF Jour 2) et « TCF — Soir »
+ * (TCF Soir 1, TCF Soir 2) ; le service Examen blanc, sans régime, donne
+ * le bloc « Examen blanc » (Examen blanc 1, Examen blanc 2).
+ *
+ * - Le groupe 1 d'un bloc existe toujours : les nouveaux inscrits y entrent
+ *   automatiquement.
+ * - Le groupe 2 est facultatif : l'administrateur le coche et choisit après
+ *   combien de jours les candidats y passent (automatiquement, chaque nuit).
+ * - La capacité de chaque groupe est facultative.
+ * La secrétaire n'intervient jamais sur les groupes.
+ */
 @Injectable()
 export class GroupesService {
   private readonly logger = new Logger(GroupesService.name);
@@ -28,6 +46,7 @@ export class GroupesService {
   constructor(
     @InjectModel(Groupe.name) private groupeModel: Model<GroupeDocument>,
     @InjectModel(Inscription.name) private inscriptionModel: Model<InscriptionDocument>,
+    @InjectModel(Tarif.name) private tarifModel: Model<TarifDocument>,
   ) {}
 
   /** Inscriptions "en cours" : la date de fin de formation n'est pas encore passée */
@@ -46,80 +65,30 @@ export class GroupesService {
     return groupe;
   }
 
-  private async verifierNomLibre(nom: string, centreId: string, idExclu?: string) {
-    const filtre: Record<string, unknown> = { centreId, nom };
-    if (idExclu) filtre._id = { $ne: idExclu };
-    const existant = await this.groupeModel.findOne(filtre).collation(COLLATION_NOM).exec();
-    if (existant) {
-      throw new ConflictException('Un groupe porte déjà ce nom dans ton centre');
-    }
-  }
-
   /** "Soir ", "SOIR" → "soir" ; vide → undefined */
   private normaliserRegime(regime?: string | null): string | undefined {
     const propre = (regime ?? '').trim().toLowerCase();
     return propre || undefined;
   }
 
-  /** Un seul groupe actif peut être le premier groupe d'un régime */
-  private async verifierRegimeLibre(regime: string, centreId: string, idExclu?: string) {
-    const filtre: Record<string, unknown> = { centreId, regimeEntree: regime, actif: true };
-    if (idExclu) filtre._id = { $ne: idExclu };
-    const existant = await this.groupeModel.findOne(filtre).exec();
-    if (existant) {
-      throw new ConflictException(
-        `« ${existant.nom} » est déjà le premier groupe du régime « ${regime} »`,
-      );
-    }
+  /** "soir" → "Soir" */
+  private libelleRegime(regime: string): string {
+    const propre = regime.trim();
+    return propre.charAt(0).toUpperCase() + propre.slice(1);
   }
 
-  /**
-   * Vérifie le passage automatique : groupe suivant et nombre de jours vont
-   * ensemble, le groupe suivant appartient au centre, et on ne crée pas de
-   * boucle (A → B → A).
-   */
-  private async verifierPassage(
-    centreId: string,
-    groupeSuivantId: string | undefined,
-    joursAvantPassage: number | undefined,
-    idGroupe?: string,
-  ) {
-    if (!groupeSuivantId && !joursAvantPassage) return;
-    if (!groupeSuivantId || !joursAvantPassage) {
-      throw new BadRequestException(
-        'Pour le passage automatique, indique à la fois le groupe suivant et le nombre de jours',
-      );
-    }
-    if (idGroupe && groupeSuivantId === idGroupe) {
-      throw new BadRequestException('Un groupe ne peut pas passer dans lui-même');
-    }
-
-    // On suit la chaîne des groupes suivants pour repérer une boucle
-    let courant: string | undefined = groupeSuivantId;
-    for (let etape = 0; etape < 50 && courant; etape++) {
-      const suivant = await this.trouverGroupe(courant, centreId);
-      const prochain = suivant.groupeSuivantId ? String(suivant.groupeSuivantId) : undefined;
-      if (idGroupe && prochain === idGroupe) {
-        throw new BadRequestException(
-          'Ce passage créerait une boucle entre les groupes (ex : A → B → A)',
-        );
-      }
-      courant = prochain;
-    }
+  /** "tcf" → "TCF", "examen_blanc" → "Examen blanc", "Cours intensif" → "Cours intensif" */
+  private libelleService(service: string): string {
+    if (LABEL_SERVICE[service]) return LABEL_SERVICE[service];
+    return service
+      .split(/[_\s]+/)
+      .filter(Boolean)
+      .map((mot) => mot.charAt(0).toUpperCase() + mot.slice(1))
+      .join(' ');
   }
 
-  /** Liste des groupes avec leur nombre de candidats en cours */
-  async lister(centreId: string, seulementActifs = false) {
-    const filtre: Record<string, unknown> = { centreId };
-    if (seulementActifs) filtre.actif = true;
-    const groupes = await this.groupeModel
-      .find(filtre)
-      .sort({ nom: 1 })
-      .collation(COLLATION_NOM)
-      .lean()
-      .exec();
-
-    // Nombre de candidats en cours par groupe, en une seule requête
+  /** Nombre de candidats en cours dans chaque groupe du centre (une seule requête) */
+  private async effectifsParGroupe(centreId: string): Promise<Map<string, number>> {
     const effectifs = await this.inscriptionModel.aggregate<{ _id: Types.ObjectId; total: number }>([
       {
         $match: {
@@ -131,77 +100,234 @@ export class GroupesService {
       },
       { $group: { _id: '$groupeId', total: { $sum: 1 } } },
     ]);
-    const effectifParGroupe = new Map(effectifs.map((e) => [String(e._id), e.total]));
+    return new Map(effectifs.map((e) => [String(e._id), e.total]));
+  }
 
+  /** Liste simple de tous les groupes du centre, avec leur nombre de candidats */
+  async lister(centreId: string) {
+    const groupes = await this.groupeModel
+      .find({ centreId })
+      .sort({ nom: 1 })
+      .collation(COLLATION_NOM)
+      .lean()
+      .exec();
+    const effectifParGroupe = await this.effectifsParGroupe(centreId);
     return groupes.map((groupe) => {
       const effectif = effectifParGroupe.get(String(groupe._id)) ?? 0;
+      return { ...groupe, effectif, plein: groupe.capacite ? effectif >= groupe.capacite : false };
+    });
+  }
+
+  // ---------------------------------------------------------------------
+  // Blocs de groupes : un par service, ou par service et régime
+  // ---------------------------------------------------------------------
+
+  /**
+   * Les blocs du centre, d'après ses services actifs : un bloc par service
+   * sans régime, un bloc par régime pour un service à régimes.
+   */
+  private async blocsDuCentre(centreId: string) {
+    const tarifs = await this.tarifModel
+      .find({ centreId, actif: { $ne: false } })
+      .sort({ createdAt: 1 })
+      .exec();
+
+    const blocs: { service: string; regime?: string; libelle: string; prefixeNom: string }[] = [];
+    const dejaVus = new Set<string>();
+
+    for (const tarif of tarifs) {
+      const libelleService = this.libelleService(tarif.service);
+      const regimes = tarif.regimeActif ? (tarif.regimes ?? []) : [];
+      const regimesPropres = regimes
+        .map((r) => ({ cle: this.normaliserRegime(r), libelle: this.libelleRegime(r) }))
+        .filter((r): r is { cle: string; libelle: string } => !!r.cle);
+
+      if (regimesPropres.length === 0) {
+        const cleBloc = `${tarif.service}|`;
+        if (dejaVus.has(cleBloc)) continue;
+        dejaVus.add(cleBloc);
+        blocs.push({ service: tarif.service, libelle: libelleService, prefixeNom: libelleService });
+        continue;
+      }
+
+      for (const regime of regimesPropres) {
+        const cleBloc = `${tarif.service}|${regime.cle}`;
+        if (dejaVus.has(cleBloc)) continue;
+        dejaVus.add(cleBloc);
+        blocs.push({
+          service: tarif.service,
+          regime: regime.cle,
+          libelle: `${libelleService} — ${regime.libelle}`,
+          prefixeNom: `${libelleService} ${regime.libelle}`,
+        });
+      }
+    }
+    return blocs;
+  }
+
+  /**
+   * Les deux groupes d'un bloc. Le groupe 1 (ex : « TCF Soir 1 ») est créé
+   * tout seul s'il n'existe pas encore ; le groupe 2 n'est créé que quand
+   * l'administrateur le coche.
+   */
+  private async groupesDuBloc(
+    service: string,
+    regime: string | undefined,
+    prefixeNom: string,
+    centreId: string,
+  ) {
+    // regimeEntree: null trouve aussi les groupes sans régime enregistré
+    let groupe1 = await this.groupeModel
+      .findOne({ centreId, serviceEntree: service, regimeEntree: regime ?? null })
+      .sort({ actif: -1 })
+      .exec();
+
+    if (!groupe1) {
+      const nom1 = `${prefixeNom} 1`;
+      // Un groupe du même nom existe déjà : on le réutilise
+      groupe1 = await this.groupeModel.findOne({ centreId, nom: nom1 }).collation(COLLATION_NOM).exec();
+      if (groupe1) {
+        groupe1.serviceEntree = service;
+        groupe1.regimeEntree = regime;
+        groupe1.actif = true;
+        await groupe1.save();
+      } else {
+        groupe1 = await this.groupeModel.create({
+          centreId,
+          nom: nom1,
+          serviceEntree: service,
+          regimeEntree: regime,
+        });
+      }
+    }
+
+    let groupe2: GroupeDocument | null = null;
+    if (groupe1.groupeSuivantId) {
+      groupe2 = await this.groupeModel.findOne({ _id: groupe1.groupeSuivantId, centreId }).exec();
+    }
+    if (!groupe2) {
+      groupe2 = await this.groupeModel
+        .findOne({ centreId, nom: `${prefixeNom} 2` })
+        .collation(COLLATION_NOM)
+        .exec();
+    }
+    return { groupe1, groupe2 };
+  }
+
+  /** Ce que la page Groupes affiche : un bloc par service (et par régime) */
+  async parBloc(centreId: string) {
+    const blocs = await this.blocsDuCentre(centreId);
+    const effectifs = await this.effectifsParGroupe(centreId);
+
+    const resume = (groupe: GroupeDocument) => {
+      const effectif = effectifs.get(String(groupe._id)) ?? 0;
       return {
-        ...groupe,
+        id: groupe._id,
+        nom: groupe.nom,
+        capacite: groupe.capacite ?? null,
+        actif: groupe.actif,
         effectif,
         plein: groupe.capacite ? effectif >= groupe.capacite : false,
       };
-    });
+    };
+
+    // Type indiqué : sans lui, TypeScript croit que la liste reste toujours vide
+    const resultat: Record<string, unknown>[] = [];
+    for (const bloc of blocs) {
+      const { groupe1, groupe2 } = await this.groupesDuBloc(
+        bloc.service,
+        bloc.regime,
+        bloc.prefixeNom,
+        centreId,
+      );
+      const deuxiemeGroupeActif =
+        !!groupe2 &&
+        groupe2.actif &&
+        !!groupe1.groupeSuivantId &&
+        String(groupe1.groupeSuivantId) === String(groupe2._id);
+
+      resultat.push({
+        service: bloc.service,
+        regime: bloc.regime ?? null,
+        libelle: bloc.libelle,
+        groupe1: resume(groupe1),
+        groupe2: groupe2 ? resume(groupe2) : null,
+        nomGroupe2: groupe2?.nom ?? `${bloc.prefixeNom} 2`,
+        deuxiemeGroupeActif,
+        joursAvantPassage: deuxiemeGroupeActif ? (groupe1.joursAvantPassage ?? null) : null,
+      });
+    }
+    return resultat;
   }
 
-  async creer(dto: CreateGroupeDto, centreId: string) {
-    await this.verifierNomLibre(dto.nom, centreId);
-    const regimeEntree = this.normaliserRegime(dto.regimeEntree);
-    if (regimeEntree) {
-      await this.verifierRegimeLibre(regimeEntree, centreId);
+  /** Enregistre les réglages d'un bloc (bouton « Enregistrer » de la page Groupes) */
+  async enregistrerBloc(dto: UpdateBlocGroupesDto, centreId: string) {
+    const regime = this.normaliserRegime(dto.regime);
+    const blocs = await this.blocsDuCentre(centreId);
+    const bloc = blocs.find((b) => b.service === dto.service && b.regime === regime);
+    if (!bloc) {
+      throw new NotFoundException("Ce service (ou ce régime) n'existe pas dans les services actifs");
     }
-    await this.verifierPassage(
+
+    const { groupe1, groupe2: groupe2Existant } = await this.groupesDuBloc(
+      bloc.service,
+      bloc.regime,
+      bloc.prefixeNom,
       centreId,
-      dto.groupeSuivantId ?? undefined,
-      dto.joursAvantPassage ?? undefined,
     );
+    groupe1.actif = true;
+    groupe1.capacite = dto.capacite1 ?? undefined;
 
-    return this.groupeModel.create({
-      centreId,
-      nom: dto.nom,
-      horaire: dto.horaire,
-      capacite: dto.capacite ?? undefined,
-      regimeEntree,
-      groupeSuivantId: dto.groupeSuivantId ?? undefined,
-      joursAvantPassage: dto.joursAvantPassage ?? undefined,
-    });
+    if (dto.deuxiemeGroupeActif) {
+      if (!dto.joursAvantPassage) {
+        throw new BadRequestException(
+          `Indique après combien de jours les candidats passent en « ${bloc.prefixeNom} 2 »`,
+        );
+      }
+      const groupe2 =
+        groupe2Existant ??
+        (await this.groupeModel.create({ centreId, nom: `${bloc.prefixeNom} 2` }));
+      groupe2.actif = true;
+      groupe2.capacite = dto.capacite2 ?? undefined;
+      await groupe2.save();
+
+      groupe1.groupeSuivantId = groupe2._id;
+      groupe1.joursAvantPassage = dto.joursAvantPassage;
+    } else {
+      // Plus de deuxième groupe : plus de passage. Le groupe 2 est désactivé
+      // (ses candidats actuels y restent jusqu'à la fin de leur formation).
+      groupe1.groupeSuivantId = undefined;
+      groupe1.joursAvantPassage = undefined;
+      if (groupe2Existant && groupe2Existant.actif) {
+        groupe2Existant.actif = false;
+        await groupe2Existant.save();
+      }
+    }
+
+    await groupe1.save();
+    return this.parBloc(centreId);
   }
 
-  /** null dans un champ = l'effacer ; champ absent = ne pas y toucher */
-  async modifier(id: string, dto: UpdateGroupeDto, centreId: string) {
-    const groupe = await this.trouverGroupe(id, centreId);
+  /**
+   * Groupe où entre automatiquement un nouvel inscrit : le groupe 1 du bloc
+   * de son service (et de son régime), par exemple « TCF Soir 1 ». S'il
+   * n'existe pas encore, il est créé tout de suite. Un groupe plein reçoit
+   * quand même le candidat.
+   */
+  async groupeDEntree(service: string, regime: string | undefined, centreId: string) {
+    const regimeNormalise = this.normaliserRegime(regime);
+    const existant = await this.groupeModel
+      .findOne({ centreId, serviceEntree: service, regimeEntree: regimeNormalise ?? null })
+      .sort({ actif: -1 })
+      .exec();
+    if (existant) return existant;
 
-    if (dto.nom !== undefined && dto.nom !== groupe.nom) {
-      await this.verifierNomLibre(dto.nom, centreId, id);
-      groupe.nom = dto.nom;
-    }
-    if (dto.horaire !== undefined) groupe.horaire = dto.horaire;
-    if (dto.capacite !== undefined) groupe.capacite = dto.capacite ?? undefined;
-    if (dto.actif !== undefined) groupe.actif = dto.actif;
-    if (dto.regimeEntree !== undefined) {
-      groupe.regimeEntree = this.normaliserRegime(dto.regimeEntree);
-    }
-    // Un groupe actif qui est premier groupe d'un régime doit être le seul
-    if (groupe.actif && groupe.regimeEntree) {
-      await this.verifierRegimeLibre(groupe.regimeEntree, centreId, id);
-    }
-
-    // Passage automatique : on vérifie la combinaison finale
-    const groupeSuivantId =
-      dto.groupeSuivantId !== undefined
-        ? (dto.groupeSuivantId ?? undefined)
-        : groupe.groupeSuivantId
-          ? String(groupe.groupeSuivantId)
-          : undefined;
-    const joursAvantPassage =
-      dto.joursAvantPassage !== undefined
-        ? (dto.joursAvantPassage ?? undefined)
-        : groupe.joursAvantPassage;
-    await this.verifierPassage(centreId, groupeSuivantId, joursAvantPassage, id);
-    groupe.groupeSuivantId = groupeSuivantId ? new Types.ObjectId(groupeSuivantId) : undefined;
-    groupe.joursAvantPassage = joursAvantPassage;
-
-    await groupe.save();
-    return groupe;
+    // Pas encore de groupe 1 pour ce bloc : on le crée
+    const blocs = await this.blocsDuCentre(centreId);
+    const bloc = blocs.find((b) => b.service === service && b.regime === regimeNormalise);
+    if (!bloc) return null;
+    const { groupe1 } = await this.groupesDuBloc(bloc.service, bloc.regime, bloc.prefixeNom, centreId);
+    return groupe1;
   }
 
   /** Candidats en cours d'un groupe, avec ce qu'ils doivent encore */
@@ -241,20 +367,6 @@ export class GroupesService {
       totalResteAPayer: lignes.reduce((total, ligne) => total + (ligne.resteAPayer ?? 0), 0),
       candidats: lignes,
     };
-  }
-
-  /**
-   * Premier groupe d'un régime : c'est là qu'entre automatiquement un nouvel
-   * inscrit. Renvoie null si le régime n'a pas de premier groupe actif
-   * (le candidat n'est alors dans aucun groupe). Un groupe plein reçoit
-   * quand même le candidat : la page Groupes affiche un avertissement.
-   */
-  async groupeDEntree(regime: string | undefined, centreId: string) {
-    const regimeNormalise = this.normaliserRegime(regime);
-    if (!regimeNormalise) return null;
-    return this.groupeModel
-      .findOne({ centreId, regimeEntree: regimeNormalise, actif: true })
-      .exec();
   }
 
   /**

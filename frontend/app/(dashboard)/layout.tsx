@@ -89,7 +89,8 @@ export default function DashboardLayout({
     { href: "/bienvenue", label: "Accueil", visible: true },
     { href: "/enregistrement", label: "Enregistrement", visible: true },
     { href: "/candidats", label: "Liste des candidats", visible: true },
-    { href: "/classes", label: "Classes", visible: true },
+    // Groupes de candidats (remplacent les anciennes classes Jour/Soir)
+    { href: "/groupes", label: "Groupes", visible: true },
     { href: "/tableau-de-bord", label: "Tableau de bord", visible: estAdmin },
     { href: "/utilisateurs", label: "Utilisateurs", visible: estAdmin },
     { href: "/factures", label: "Factures", visible: true },

@@ -5,10 +5,11 @@ import { centrePlugin } from '../../common/centre.plugin';
 export type GroupeDocument = HydratedDocument<Groupe>;
 
 /**
- * Un groupe de candidats créé par l'administrateur du centre (remplace les
- * classes fixes Jour/Soir). Exemple : « Soir 1 », lundi au vendredi 17h-19h,
- * 25 places, premier groupe du régime « soir », qui passe dans « Soir 2 »
- * après 14 jours. La secrétaire n'intervient pas : tout est automatique.
+ * Un groupe de candidats (remplace les classes fixes Jour/Soir).
+ * Les groupes sont créés automatiquement à partir des services et de leurs
+ * régimes (voir GroupesService). Exemple : « TCF Soir 1 », groupe d'entrée
+ * du service TCF en régime soir, qui passe dans « TCF Soir 2 » après
+ * 14 jours. La secrétaire n'intervient jamais sur les groupes.
  */
 @Schema({ timestamps: true })
 export class Groupe {
@@ -23,18 +24,22 @@ export class Groupe {
   @Prop({ trim: true })
   horaire?: string;
 
-  // Nombre de places. Absent = pas de limite. Un groupe plein continue de
-  // recevoir des candidats : la page Groupes affiche un avertissement.
+  // Nombre de places (facultatif). Absent = pas de limite. Un groupe plein
+  // continue de recevoir des candidats : la page Groupes affiche un avertissement.
   @Prop()
   capacite?: number;
 
-  // Régime dont ce groupe est le PREMIER groupe (ex : "soir") : chaque
-  // nouvel inscrit de ce régime y entre automatiquement. Un seul groupe
-  // actif par régime. Écrit en minuscules, sans espaces autour.
+  // Groupe d'entrée (groupe 1) d'un service, et de son régime s'il en a un :
+  // chaque nouvel inscrit de ce service (et de ce régime) y entre
+  // automatiquement. Absents sur un groupe 2.
+  @Prop({ trim: true })
+  serviceEntree?: string;
+
+  // Régime en minuscules (ex : "soir"). Absent pour un service sans régime.
   @Prop({ trim: true, lowercase: true })
   regimeEntree?: string;
 
-  // Un groupe désactivé ne reçoit plus de nouveaux inscrits
+  // Un groupe désactivé ne reçoit plus de candidats
   @Prop({ default: true })
   actif!: boolean;
 
