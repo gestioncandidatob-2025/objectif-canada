@@ -42,6 +42,7 @@ const MESSAGES_EN: Record<string, string> = {
   // Utilisateurs
   "Utilisateur introuvable": "User not found",
   "Un utilisateur avec cet email existe déjà": "A user with this email already exists",
+  "Un compte existe déjà avec cet email": "An account already exists with this email",
   "Rôle invalide": "Invalid role",
   "Le nom est obligatoire": "The name is required",
   "Le prénom est obligatoire": "The first name is required",

@@ -68,8 +68,8 @@ export class AuthService {
 
   /**
    * Inscription publique d'un centre : crée le centre et son premier
-   * administrateur, envoie le code de vérification par email, puis connecte
-   * directement la personne (même réponse que /auth/login).
+   * administrateur (sans vérification d'email), puis connecte directement
+   * la personne (même réponse que /auth/login).
    */
   async inscrireCentre(dto: RegisterCenterDto) {
     // 1. L'email ne doit appartenir à aucun compte, dans aucun centre
@@ -83,13 +83,14 @@ export class AuthService {
       telephone: dto.telephone,
     });
 
-    // 3. Créer l'administrateur du centre. Le code de vérification part par
-    //    email automatiquement. Si ça échoue, on supprime le centre pour ne
-    //    pas laisser un centre sans personne pour s'y connecter.
+    // 3. Créer l'administrateur du centre. Son email est considéré comme
+    //    vérifié : aucun code n'est envoyé. Si ça échoue, on supprime le centre
+    //    pour ne pas laisser un centre sans personne pour s'y connecter.
     try {
       await this.usersService.create(
         { nom: dto.nom, email: dto.email, motDePasse: dto.motDePasse, role: Role.ADMIN },
         String(centre._id),
+        { sansVerificationEmail: true },
       );
     } catch (erreur) {
       await this.centresService.supprimer(String(centre._id));
