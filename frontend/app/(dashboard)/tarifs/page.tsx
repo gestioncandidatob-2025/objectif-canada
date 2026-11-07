@@ -2,6 +2,7 @@
 
 import { useEffect, useState, Fragment } from "react";
 import { apiFetch } from "../../lib/api";
+import { useLangue } from "../../lib/langue";
 
 type Tarif = {
   _id: string;
@@ -90,6 +91,8 @@ export default function TarifsPage() {
   });
   const [enregistrementEnCours, setEnregistrementEnCours] = useState(false);
   const [suppressionEnCours, setSuppressionEnCours] = useState<string | null>(null);
+  // « tr » et pas « t » : dans cette page, « t » désigne déjà une offre
+  const { t: tr, locale } = useLangue();
 
   async function chargerTarifs() {
     setChargement(true);
@@ -98,7 +101,7 @@ export default function TarifsPage() {
     if (res.ok) {
       setTarifs(await res.json());
     } else {
-      setErreur("Impossible de charger les offres");
+      setErreur(tr("tarifs.erreurChargement"));
     }
     setChargement(false);
   }
@@ -136,7 +139,7 @@ export default function TarifsPage() {
       return;
     }
 
-    setMessage("Offre créée avec succès");
+    setMessage(tr("tarifs.offreCreee"));
     setForm(formulaireVide);
     setAfficherFormulaire(false);
     setEnvoiEnCours(false);
@@ -190,9 +193,7 @@ export default function TarifsPage() {
 
   async function supprimerTarif(t: Tarif) {
     const confirme = window.confirm(
-      `Supprimer l'offre "${formaterNomService(t.service)}" ?\n\n` +
-        "Si elle a déjà été utilisée sur une facture, elle sera seulement désactivée " +
-        "(elle n'apparaîtra plus dans le formulaire de facture, mais les anciennes factures restent intactes).",
+      tr("tarifs.confirmerSuppression", { service: formaterNomService(t.service) }),
     );
     if (!confirme) return;
 
@@ -210,7 +211,7 @@ export default function TarifsPage() {
     }
 
     // Le serveur indique s'il a supprimé l'offre ou s'il l'a désactivée
-    setMessage(data.message ?? "Offre supprimée");
+    setMessage(data.message ?? tr("tarifs.offreSupprimee"));
     chargerTarifs();
   }
 
@@ -225,7 +226,7 @@ export default function TarifsPage() {
     return (
       <div className="space-y-2 rounded-lg border border-ink/10 bg-paper p-3">
         <p className="text-xs font-semibold uppercase tracking-wide text-ink-soft">
-          Configuration du formulaire d&apos;inscription pour ce service
+          {tr("tarifs.configFormulaire")}
         </p>
         <label className={checkboxLigne}>
           <input
@@ -234,7 +235,7 @@ export default function TarifsPage() {
             checked={valeurs.regimeActif}
             onChange={(e) => onChange("regimeActif", e.target.checked)}
           />
-          Régime nécessaire (avec date de début du test)
+          {tr("tarifs.optionRegime")}
         </label>
         <label className={checkboxLigne}>
           <input
@@ -243,7 +244,7 @@ export default function TarifsPage() {
             checked={valeurs.dateFinNecessaire}
             onChange={(e) => onChange("dateFinNecessaire", e.target.checked)}
           />
-          Date de fin saisie manuellement (sinon calculée depuis la durée)
+          {tr("tarifs.optionDateFin")}
         </label>
         <label className={checkboxLigne}>
           <input
@@ -252,7 +253,7 @@ export default function TarifsPage() {
             checked={valeurs.remiseActive}
             onChange={(e) => onChange("remiseActive", e.target.checked)}
           />
-          Remise possible
+          {tr("tarifs.optionRemise")}
         </label>
         <label className={checkboxLigne}>
           <input
@@ -261,7 +262,7 @@ export default function TarifsPage() {
             checked={valeurs.montantNegociable}
             onChange={(e) => onChange("montantNegociable", e.target.checked)}
           />
-          Montant négocié librement (au lieu d&apos;un prix fixe)
+          {tr("tarifs.optionNegocie")}
         </label>
       </div>
     );
@@ -270,7 +271,7 @@ export default function TarifsPage() {
   function ListeRegimes({ regimes, onChange }: ListeRegimesProps) {
     return (
       <div>
-        <label className={labelClass}>Régimes proposés</label>
+        <label className={labelClass}>{tr("tarifs.regimesProposes")}</label>
         <div className="space-y-2">
           {regimes.map((r, i) => (
             <div key={i} className="flex gap-2">
@@ -281,7 +282,7 @@ export default function TarifsPage() {
                   copie[i] = e.target.value;
                   onChange(copie);
                 }}
-                placeholder="Ex : jour, soir, weekend..."
+                placeholder={tr("tarifs.regimesExemple")}
                 className={champClass}
               />
               {regimes.length > 1 && (
@@ -289,7 +290,8 @@ export default function TarifsPage() {
                   type="button"
                   onClick={() => onChange(regimes.filter((_, idx) => idx !== i))}
                   className="rounded-lg border border-ink/15 px-3 text-ink transition hover:bg-paper"
-                  title="Retirer ce régime"
+                  title={tr("tarifs.retirerRegime")}
+                  aria-label={tr("tarifs.retirerRegime")}
                 >
                   −
                 </button>
@@ -299,7 +301,8 @@ export default function TarifsPage() {
                   type="button"
                   onClick={() => onChange([...regimes, ""])}
                   className="rounded-lg border border-accent px-3 text-accent transition hover:bg-accent/10"
-                  title="Ajouter un autre régime"
+                  title={tr("tarifs.ajouterRegime")}
+                  aria-label={tr("tarifs.ajouterRegime")}
                 >
                   +
                 </button>
@@ -312,20 +315,20 @@ export default function TarifsPage() {
   }
 
   return (
-    <div className="px-4 py-10">
+    <div className="px-4 py-6 sm:py-10">
       <div className="mx-auto max-w-3xl">
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <h1
-            className="text-3xl text-ink"
+            className="text-2xl text-ink sm:text-3xl"
             style={{ fontFamily: "var(--font-display)" }}
           >
-            Offres de formation
+            {tr("tarifs.titre")}
           </h1>
           <button
             onClick={() => setAfficherFormulaire(!afficherFormulaire)}
             className="rounded-lg bg-accent px-5 py-2.5 text-sm font-medium text-white transition hover:bg-accent-hover"
           >
-            {afficherFormulaire ? "Annuler" : "+ Nouvelle offre"}
+            {afficherFormulaire ? tr("commun.annuler") : tr("tarifs.nouvelleOffre")}
           </button>
         </div>
 
@@ -345,11 +348,11 @@ export default function TarifsPage() {
             onSubmit={handleCreer}
             className="mb-6 space-y-3 rounded-2xl border border-ink/10 bg-white p-6 shadow-sm"
           >
-            <label className={labelClass}>Service</label>
+            <label className={labelClass}>{tr("facture.service")}</label>
             <input
               value={form.service}
               onChange={(e) => setForm({ ...form, service: e.target.value })}
-              placeholder="Ex : tcf, ou un nouveau nom de service"
+              placeholder={tr("tarifs.serviceExemple")}
               list="liste-services"
               className={champClass}
             />
@@ -359,7 +362,7 @@ export default function TarifsPage() {
               ))}
             </datalist>
             <p className="text-xs text-ink-soft">
-              Tape un service existant (suggestions automatiques) ou un nouveau nom pour créer un nouveau service.
+              {tr("tarifs.serviceAide")}
             </p>
 
             {form.regimeActif && (
@@ -371,7 +374,7 @@ export default function TarifsPage() {
 
             {!form.montantNegociable && (
               <>
-                <label className={labelClass}>Prix (FCFA)</label>
+                <label className={labelClass}>{tr("tarifs.prixFcfa")}</label>
                 <input
                   type="number"
                   value={form.prix}
@@ -383,7 +386,7 @@ export default function TarifsPage() {
 
             {!form.dateFinNecessaire && (
               <>
-                <label className={labelClass}>Durée de la formation (jours)</label>
+                <label className={labelClass}>{tr("tarifs.dureeFormation")}</label>
                 <input
                   type="number"
                   value={form.dureeJours}
@@ -404,23 +407,23 @@ export default function TarifsPage() {
               disabled={envoiEnCours}
               className="w-full rounded-lg bg-accent py-2.5 font-medium text-white transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 hover:bg-accent-hover"
             >
-              {envoiEnCours ? "Création..." : "Créer l'offre"}
+              {envoiEnCours ? tr("tarifs.creation") : tr("tarifs.creerOffre")}
             </button>
           </form>
         )}
 
-        {chargement && <p className="text-sm text-ink-soft">Chargement...</p>}
+        {chargement && <p className="text-sm text-ink-soft">{tr("commun.chargement")}</p>}
 
         <div className="overflow-x-auto rounded-2xl border border-ink/10 bg-white shadow-sm">
           <table className="w-full min-w-[700px] border-collapse text-sm">
             <thead>
               <tr className="border-b border-ink/10 bg-paper text-left text-ink-soft">
-                <th className="px-4 py-3 font-medium">Service</th>
-                <th className="px-4 py-3 font-medium">Régimes</th>
-                <th className="px-4 py-3 font-medium">Prix</th>
-                <th className="px-4 py-3 font-medium">Durée</th>
-                <th className="px-4 py-3 font-medium">Statut</th>
-                <th className="px-4 py-3 font-medium">Action</th>
+                <th className="px-4 py-3 font-medium">{tr("facture.service")}</th>
+                <th className="px-4 py-3 font-medium">{tr("tarifs.regimes")}</th>
+                <th className="px-4 py-3 font-medium">{tr("tarifs.prix")}</th>
+                <th className="px-4 py-3 font-medium">{tr("tarifs.duree")}</th>
+                <th className="px-4 py-3 font-medium">{tr("candidats.statut")}</th>
+                <th className="px-4 py-3 font-medium">{tr("candidats.action")}</th>
               </tr>
             </thead>
             <tbody>
@@ -431,11 +434,13 @@ export default function TarifsPage() {
                     <td className="px-4 py-3">{t.regimes && t.regimes.length > 0 ? t.regimes.join(", ") : "—"}</td>
                     <td className="px-4 py-3">
                       {t.montantNegociable
-                        ? "Négocié"
-                        : `${(t.prix ?? 0).toLocaleString("fr-FR")} FCFA`}
+                        ? tr("tarifs.negocie")
+                        : `${(t.prix ?? 0).toLocaleString(locale)} FCFA`}
                     </td>
                     <td className="px-4 py-3">
-                      {t.dateFinNecessaire ? "Manuelle" : `${t.dureeJours ?? 0} jours`}
+                      {t.dateFinNecessaire
+                        ? tr("tarifs.manuelle")
+                        : tr("tarifs.nJours", { n: t.dureeJours ?? 0 })}
                     </td>
                     <td className="px-4 py-3">
                       <span
@@ -445,7 +450,7 @@ export default function TarifsPage() {
                             : "rounded-full bg-error/10 px-3 py-1 text-xs font-medium text-error"
                         }
                       >
-                        {t.actif ? "Active" : "Inactive"}
+                        {t.actif ? tr("tarifs.active") : tr("tarifs.inactive")}
                       </span>
                     </td>
                     <td className="px-4 py-3">
@@ -454,14 +459,14 @@ export default function TarifsPage() {
                           onClick={() => ouvrirEdition(t)}
                           className="font-medium text-seal hover:underline"
                         >
-                          Modifier
+                          {tr("candidats.modifier")}
                         </button>
                         <button
                           onClick={() => supprimerTarif(t)}
                           disabled={suppressionEnCours === t._id}
                           className="font-medium text-error hover:underline disabled:cursor-not-allowed disabled:opacity-60"
                         >
-                          {suppressionEnCours === t._id ? "Suppression..." : "Supprimer"}
+                          {suppressionEnCours === t._id ? tr("candidats.suppressionEnCours") : tr("candidats.supprimer")}
                         </button>
                       </div>
                     </td>
@@ -470,10 +475,10 @@ export default function TarifsPage() {
                   {ligneEnEdition === t._id && (
                     <tr className="border-b border-ink/5 bg-accent/5">
                       <td colSpan={6} className="space-y-3 px-4 py-4">
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                           <div>
                             <label className="mb-1 block text-xs font-medium text-ink-soft">
-                              Service
+                              {tr("facture.service")}
                             </label>
                             <input
                               value={editForm.service}
@@ -487,7 +492,7 @@ export default function TarifsPage() {
                           {!editForm.montantNegociable && (
                             <div>
                               <label className="mb-1 block text-xs font-medium text-ink-soft">
-                                Prix (FCFA)
+                                {tr("tarifs.prixFcfa")}
                               </label>
                               <input
                                 type="number"
@@ -502,7 +507,7 @@ export default function TarifsPage() {
                           {!editForm.dateFinNecessaire && (
                             <div>
                               <label className="mb-1 block text-xs font-medium text-ink-soft">
-                                Durée (jours)
+                                {tr("tarifs.dureeJours")}
                               </label>
                               <input
                                 type="number"
@@ -516,7 +521,7 @@ export default function TarifsPage() {
                           )}
                           <div>
                             <label className="mb-1 block text-xs font-medium text-ink-soft">
-                              Statut
+                              {tr("candidats.statut")}
                             </label>
                             <select
                               value={editForm.actif ? "actif" : "inactif"}
@@ -525,8 +530,8 @@ export default function TarifsPage() {
                               }
                               className={`${champClass} bg-white`}
                             >
-                              <option value="actif">Active</option>
-                              <option value="inactif">Inactive</option>
+                              <option value="actif">{tr("tarifs.active")}</option>
+                              <option value="inactif">{tr("tarifs.inactive")}</option>
                             </select>
                           </div>
                         </div>
@@ -552,14 +557,14 @@ export default function TarifsPage() {
                             disabled={enregistrementEnCours}
                             className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
                           >
-                            {enregistrementEnCours ? "Enregistrement..." : "Enregistrer"}
+                            {enregistrementEnCours ? tr("facture.enregistrementCourt") : tr("commun.enregistrer")}
                           </button>
                           <button
                             onClick={() => setLigneEnEdition(null)}
                             disabled={enregistrementEnCours}
                             className="rounded-lg border border-ink/15 px-4 py-2 text-sm font-medium text-ink transition hover:bg-paper disabled:cursor-not-allowed disabled:opacity-60"
                           >
-                            Annuler
+                            {tr("commun.annuler")}
                           </button>
                         </div>
                       </td>
@@ -572,7 +577,7 @@ export default function TarifsPage() {
 
           {tarifs.length === 0 && !chargement && (
             <p className="px-4 py-8 text-center text-ink-soft">
-              Aucune offre créée pour le moment.
+              {tr("tarifs.aucune")}
             </p>
           )}
         </div>

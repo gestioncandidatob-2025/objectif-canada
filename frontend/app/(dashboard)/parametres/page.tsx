@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { apiFetch, getToken } from "../../lib/api";
 import { signalerCentreModifie } from "../../lib/centre";
+import { useLangue } from "../../lib/langue";
 import TarifsPage from "../tarifs/page";
 
 type Parametres = {
@@ -22,23 +23,20 @@ type ChampTexte = "nom" | "ville" | "telephone" | "adresse" | "niu" | "rccm" | "
 
 type Onglet = "centre" | "recu" | "services" | "paiements";
 
+// label et description : clés de traduction (lib/traductions.ts)
 const ONGLETS: { cle: Onglet; label: string }[] = [
-  { cle: "centre", label: "Centre" },
-  { cle: "recu", label: "Reçu" },
-  { cle: "services", label: "Services" },
-  { cle: "paiements", label: "Paiements" },
+  { cle: "centre", label: "parametres.ongletCentre" },
+  { cle: "recu", label: "parametres.ongletRecu" },
+  { cle: "services", label: "parametres.ongletServices" },
+  { cle: "paiements", label: "parametres.ongletPaiements" },
 ];
 
 // Mêmes valeurs que dans le backend (ModePaiement)
 const MODES_PAIEMENT: { cle: string; label: string; description: string }[] = [
-  { cle: "especes", label: "Espèces", description: "Paiement en liquide au guichet" },
-  { cle: "orange_money", label: "Orange Money", description: "Paiement par Orange Money" },
-  { cle: "mobile_money", label: "MTN Mobile Money", description: "Paiement par MTN MoMo" },
-  {
-    cle: "mobile_especes",
-    label: "Mixte",
-    description: "Une partie en Mobile Money, le reste en espèces",
-  },
+  { cle: "especes", label: "paiement.especes", description: "parametres.especesDetail" },
+  { cle: "orange_money", label: "paiement.orangeMoney", description: "parametres.orangeDetail" },
+  { cle: "mobile_money", label: "paiement.mobileMoney", description: "parametres.mtnDetail" },
+  { cle: "mobile_especes", label: "parametres.mixte", description: "parametres.mixteDetail" },
 ];
 
 const TAILLE_MAX_LOGO = 1024 * 1024; // 1 Mo
@@ -59,6 +57,7 @@ export default function ParametresPage() {
   const [envoiLogoEnCours, setEnvoiLogoEnCours] = useState(false);
   const [message, setMessage] = useState("");
   const [erreur, setErreur] = useState("");
+  const { t } = useLangue();
 
   const champClass =
     "w-full rounded-lg border border-ink/15 px-3 py-2.5 text-ink outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20";
@@ -88,12 +87,12 @@ export default function ParametresPage() {
       const res = await apiFetch("/center/settings");
       const data = await res.json();
       if (!res.ok) {
-        setErreur(messageErreur(data, "Impossible de charger les paramètres"));
+        setErreur(messageErreur(data, t("parametres.erreurChargement")));
         return;
       }
       setFormulaire(data);
     } catch {
-      setErreur("Impossible de contacter le serveur");
+      setErreur(t("connexion.erreurServeur"));
     } finally {
       setChargement(false);
     }
@@ -129,7 +128,7 @@ export default function ParametresPage() {
     setErreur("");
 
     if (champs.includes("nom") && !formulaire.nom.trim()) {
-      setErreur("Le nom du centre est obligatoire");
+      setErreur(t("parametres.erreurNom"));
       return;
     }
 
@@ -146,16 +145,16 @@ export default function ParametresPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setErreur(messageErreur(data, "Enregistrement impossible"));
+        setErreur(messageErreur(data, t("parametres.erreurEnregistrement")));
         return;
       }
       setFormulaire(data);
       mettreAJourNomCentreLocal(data.nom);
       // Le menu se met à jour tout de suite (nom du centre)
       signalerCentreModifie();
-      setMessage("Modifications enregistrées");
+      setMessage(t("parametres.modificationsEnregistrees"));
     } catch {
-      setErreur("Impossible de contacter le serveur");
+      setErreur(t("connexion.erreurServeur"));
     } finally {
       setEnregistrementEnCours(false);
     }
@@ -171,11 +170,11 @@ export default function ParametresPage() {
     setErreur("");
 
     if (!["image/png", "image/jpeg"].includes(fichier.type)) {
-      setErreur("Le logo doit être une image PNG ou JPG");
+      setErreur(t("parametres.erreurLogoType"));
       return;
     }
     if (fichier.size > TAILLE_MAX_LOGO) {
-      setErreur("Le logo ne doit pas dépasser 1 Mo");
+      setErreur(t("parametres.erreurLogoTaille"));
       return;
     }
 
@@ -193,15 +192,15 @@ export default function ParametresPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setErreur(messageErreur(data, "Le logo n'a pas pu être envoyé"));
+        setErreur(messageErreur(data, t("parametres.erreurLogoEnvoi")));
         return;
       }
       setFormulaire((f) => (f ? { ...f, logoUrl: data.logoUrl } : data));
       // Le menu affiche tout de suite le nouveau logo
       signalerCentreModifie();
-      setMessage("Logo enregistré");
+      setMessage(t("parametres.logoEnregistre"));
     } catch {
-      setErreur("Impossible de contacter le serveur");
+      setErreur(t("connexion.erreurServeur"));
     } finally {
       setEnvoiLogoEnCours(false);
     }
@@ -213,7 +212,7 @@ export default function ParametresPage() {
     setErreur("");
     const dejaCoche = formulaire.modesPaiement.includes(cle);
     if (dejaCoche && formulaire.modesPaiement.length === 1) {
-      setErreur("Garde au moins un mode de paiement");
+      setErreur(t("parametres.erreurAuMoinsUnMode"));
       return;
     }
     const nouveauxModes = dejaCoche
@@ -231,7 +230,7 @@ export default function ParametresPage() {
     return (
       <div className="px-4 py-10">
         <div className="mx-auto max-w-3xl rounded-2xl border border-ink/10 bg-white p-8 text-center text-ink-soft shadow-sm">
-          Cette page est réservée à l&apos;administrateur du centre.
+          {t("parametres.reserveAdmin")}
         </div>
       </div>
     );
@@ -245,7 +244,7 @@ export default function ParametresPage() {
             className="mb-6 text-3xl text-ink"
             style={{ fontFamily: "var(--font-display)" }}
           >
-            Paramètres
+            {t("menu.parametres")}
           </h1>
 
           {/* Onglets */}
@@ -262,7 +261,7 @@ export default function ParametresPage() {
                     : "border-transparent text-ink-soft hover:text-ink")
                 }
               >
-                {o.label}
+                {t(o.label)}
               </button>
             ))}
           </div>
@@ -275,7 +274,7 @@ export default function ParametresPage() {
           )}
 
           {onglet !== "services" && chargement && (
-            <p className="text-sm text-ink-soft">Chargement...</p>
+            <p className="text-sm text-ink-soft">{t("commun.chargement")}</p>
           )}
         </div>
       </div>
@@ -285,17 +284,17 @@ export default function ParametresPage() {
         <div className="px-4 pb-10">
           <div className="mx-auto max-w-3xl space-y-6">
             <div className="rounded-2xl border border-ink/10 bg-white p-6 shadow-sm">
-              <h2 className="mb-4 text-lg font-semibold text-ink">Logo</h2>
+              <h2 className="mb-4 text-lg font-semibold text-ink">{t("parametres.logo")}</h2>
               <div className="flex flex-wrap items-center gap-6">
                 <div className="flex h-24 w-40 items-center justify-center overflow-hidden rounded-lg border border-dashed border-ink/20 bg-paper">
                   {formulaire.logoUrl ? (
                     <img
                       src={formulaire.logoUrl}
-                      alt="Logo du centre"
+                      alt={t("menu.logoDuCentre")}
                       className="h-full w-full object-contain"
                     />
                   ) : (
-                    <span className="text-xs text-ink-soft">Aucun logo</span>
+                    <span className="text-xs text-ink-soft">{t("parametres.aucunLogo")}</span>
                   )}
                 </div>
                 <div>
@@ -306,10 +305,10 @@ export default function ParametresPage() {
                     }
                   >
                     {envoiLogoEnCours
-                      ? "Envoi en cours..."
+                      ? t("parametres.envoiEnCours")
                       : formulaire.logoUrl
-                        ? "Changer le logo"
-                        : "Choisir un logo"}
+                        ? t("parametres.changerLogo")
+                        : t("parametres.choisirLogo")}
                     <input
                       type="file"
                       accept="image/png,image/jpeg"
@@ -317,17 +316,17 @@ export default function ParametresPage() {
                       className="hidden"
                     />
                   </label>
-                  <p className="mt-2 text-xs text-ink-soft">PNG ou JPG, 1 Mo maximum.</p>
+                  <p className="mt-2 text-xs text-ink-soft">{t("parametres.formatLogo")}</p>
                 </div>
               </div>
             </div>
 
             <div className="rounded-2xl border border-ink/10 bg-white p-6 shadow-sm">
-              <h2 className="mb-4 text-lg font-semibold text-ink">Informations du centre</h2>
+              <h2 className="mb-4 text-lg font-semibold text-ink">{t("parametres.infosCentre")}</h2>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="sm:col-span-2">
                   <label className={labelClass}>
-                    Nom du centre <span className="text-error">*</span>
+                    {t("parametres.nomCentre")} <span className="text-error">*</span>
                   </label>
                   <input
                     value={formulaire.nom}
@@ -337,17 +336,17 @@ export default function ParametresPage() {
                   />
                 </div>
                 <div>
-                  <label className={labelClass}>Ville</label>
+                  <label className={labelClass}>{t("parametres.ville")}</label>
                   <input
                     value={formulaire.ville}
                     onChange={(e) => modifierChamp("ville", e.target.value)}
-                    placeholder="Ex : Douala"
+                    placeholder={t("parametres.villeExemple")}
                     maxLength={100}
                     className={champClass}
                   />
                 </div>
                 <div>
-                  <label className={labelClass}>Téléphone</label>
+                  <label className={labelClass}>{t("facture.telephone")}</label>
                   <input
                     type="tel"
                     value={formulaire.telephone}
@@ -358,11 +357,11 @@ export default function ParametresPage() {
                   />
                 </div>
                 <div className="sm:col-span-2">
-                  <label className={labelClass}>Adresse</label>
+                  <label className={labelClass}>{t("parametres.adresse")}</label>
                   <input
                     value={formulaire.adresse}
                     onChange={(e) => modifierChamp("adresse", e.target.value)}
-                    placeholder="Ex : Bonamoussadi, face pharmacie"
+                    placeholder={t("parametres.adresseExemple")}
                     maxLength={200}
                     className={champClass}
                   />
@@ -372,7 +371,7 @@ export default function ParametresPage() {
                   <input
                     value={formulaire.niu}
                     onChange={(e) => modifierChamp("niu", e.target.value)}
-                    placeholder="Numéro d'identifiant unique"
+                    placeholder={t("parametres.niuDetail")}
                     maxLength={50}
                     className={champClass}
                   />
@@ -382,7 +381,7 @@ export default function ParametresPage() {
                   <input
                     value={formulaire.rccm}
                     onChange={(e) => modifierChamp("rccm", e.target.value)}
-                    placeholder="Registre du commerce"
+                    placeholder={t("parametres.rccmDetail")}
                     maxLength={50}
                     className={champClass}
                   />
@@ -396,7 +395,7 @@ export default function ParametresPage() {
                   disabled={enregistrementEnCours}
                   className={boutonClass}
                 >
-                  {enregistrementEnCours ? "Enregistrement..." : "Enregistrer"}
+                  {enregistrementEnCours ? t("facture.enregistrementCourt") : t("commun.enregistrer")}
                 </button>
               </div>
             </div>
@@ -409,21 +408,20 @@ export default function ParametresPage() {
         <div className="px-4 pb-10">
           <div className="mx-auto grid max-w-3xl grid-cols-1 gap-6 md:grid-cols-2">
             <div className="rounded-2xl border border-ink/10 bg-white p-6 shadow-sm">
-              <h2 className="mb-4 text-lg font-semibold text-ink">Texte en bas du reçu</h2>
+              <h2 className="mb-4 text-lg font-semibold text-ink">{t("parametres.texteBasRecu")}</h2>
               <textarea
                 value={formulaire.piedDePageRecu}
                 onChange={(e) => modifierChamp("piedDePageRecu", e.target.value)}
                 maxLength={LONGUEUR_MAX_PIED_DE_PAGE}
                 rows={4}
-                placeholder="Ex : Merci de votre confiance"
+                placeholder={t("parametres.texteBasExemple")}
                 className={champClass}
               />
               <p className="mt-1 text-right text-xs text-ink-soft">
                 {formulaire.piedDePageRecu.length} / {LONGUEUR_MAX_PIED_DE_PAGE}
               </p>
               <p className="mt-3 text-xs text-ink-soft">
-                Le nom, le logo, le NIU, le téléphone et l&apos;adresse se règlent dans
-                l&apos;onglet Centre.
+                {t("parametres.recuAide")}
               </p>
 
               <div className="mt-6 flex justify-end">
@@ -433,14 +431,14 @@ export default function ParametresPage() {
                   disabled={enregistrementEnCours}
                   className={boutonClass}
                 >
-                  {enregistrementEnCours ? "Enregistrement..." : "Enregistrer"}
+                  {enregistrementEnCours ? t("facture.enregistrementCourt") : t("commun.enregistrer")}
                 </button>
               </div>
             </div>
 
             {/* Aperçu simplifié de l'en-tête et du bas du reçu */}
             <div className="rounded-2xl border border-ink/10 bg-white p-6 shadow-sm">
-              <h2 className="mb-4 text-lg font-semibold text-ink">Aperçu</h2>
+              <h2 className="mb-4 text-lg font-semibold text-ink">{t("parametres.apercu")}</h2>
               <div className="mx-auto w-full max-w-[240px] rounded-lg border border-ink/15 bg-white p-4 text-center font-mono text-[11px] leading-relaxed text-ink">
                 {formulaire.logoUrl && (
                   <img
@@ -459,11 +457,11 @@ export default function ParametresPage() {
                 <p className="my-2">------------------------</p>
                 <p className="font-bold">REÇU DE PAIEMENT</p>
                 <p className="my-2">------------------------</p>
-                <p className="text-ink-soft">… détail de la facture …</p>
+                <p className="text-ink-soft">{t("parametres.detailFacture")}</p>
                 <p className="my-2">------------------------</p>
                 <p className="whitespace-pre-line">
                   {formulaire.piedDePageRecu || (
-                    <span className="text-ink-soft">(pas de texte)</span>
+                    <span className="text-ink-soft">{t("parametres.pasDeTexte")}</span>
                   )}
                 </p>
               </div>
@@ -479,11 +477,8 @@ export default function ParametresPage() {
       {onglet === "paiements" && formulaire && (
         <div className="px-4 pb-10">
           <div className="mx-auto max-w-3xl rounded-2xl border border-ink/10 bg-white p-6 shadow-sm">
-            <h2 className="mb-1 text-lg font-semibold text-ink">Modes de paiement acceptés</h2>
-            <p className="mb-5 text-sm text-ink-soft">
-              Un mode décoché n&apos;apparaît plus dans le formulaire de facture. Il en faut au
-              moins un.
-            </p>
+            <h2 className="mb-1 text-lg font-semibold text-ink">{t("parametres.modesAcceptes")}</h2>
+            <p className="mb-5 text-sm text-ink-soft">{t("parametres.modesAide")}</p>
 
             <div className="space-y-3">
               {MODES_PAIEMENT.map((mode) => {
@@ -503,8 +498,8 @@ export default function ParametresPage() {
                       className="mt-1 h-4 w-4 accent-[var(--color-accent)]"
                     />
                     <span>
-                      <span className="block text-sm font-medium text-ink">{mode.label}</span>
-                      <span className="block text-xs text-ink-soft">{mode.description}</span>
+                      <span className="block text-sm font-medium text-ink">{t(mode.label)}</span>
+                      <span className="block text-xs text-ink-soft">{t(mode.description)}</span>
                     </span>
                   </label>
                 );
@@ -518,7 +513,7 @@ export default function ParametresPage() {
                 disabled={enregistrementEnCours}
                 className={boutonClass}
               >
-                {enregistrementEnCours ? "Enregistrement..." : "Enregistrer"}
+                {enregistrementEnCours ? t("facture.enregistrementCourt") : t("commun.enregistrer")}
               </button>
             </div>
           </div>
