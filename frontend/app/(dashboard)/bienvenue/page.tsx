@@ -99,8 +99,8 @@ export default function BienvenuePage() {
       ),
     },
     {
-      href: "/classes",
-      label: t("menu.classes"),
+      href: "/groupes",
+      label: t("menu.groupes"),
       icone: (
         <>
           <rect x="3" y="3" width="7" height="7" rx="1.5" />

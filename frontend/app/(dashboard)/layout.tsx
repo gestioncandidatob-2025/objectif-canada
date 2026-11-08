@@ -195,7 +195,7 @@ export default function DashboardLayout({
   const liens: { href: string; label: string; icone: NomIcone; visible: boolean }[] = [
     { href: "/bienvenue", label: t("menu.accueil"), icone: "accueil", visible: true },
     { href: "/candidats", label: t("menu.listeCandidats"), icone: "candidats", visible: true },
-    { href: "/classes", label: t("menu.classes"), icone: "classes", visible: true },
+    { href: "/groupes", label: t("menu.groupes"), icone: "classes", visible: true },
     { href: "/factures", label: t("menu.factures"), icone: "factures", visible: true },
     { href: "/tableau-de-bord", label: t("menu.tableauDeBord"), icone: "tableau", visible: estAdmin },
     { href: "/utilisateurs", label: t("menu.utilisateurs"), icone: "utilisateurs", visible: estAdmin },
