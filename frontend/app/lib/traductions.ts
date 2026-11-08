@@ -27,6 +27,7 @@ export const fr = {
     listeCandidats: "Liste des candidats",
     candidats: "Candidats",
     classes: "Classes",
+    groupes: "Groupes",
     factures: "Factures",
     tableauDeBord: "Tableau de bord",
     utilisateurs: "Utilisateurs",
@@ -428,6 +429,13 @@ export const fr = {
       secretaire: "Créer un compte secrétaire",
     },
   },
+  groupes: {
+    titre: "Groupes",
+    consigne: "Un groupe par service. Clique sur un groupe pour voir les candidats inscrits à ce service.",
+    groupe: "Groupe {service}",
+    aucunService: "Aucun service créé pour le moment. Crée tes services dans Paramètres → Services.",
+    erreurChargement: "Impossible de charger les groupes",
+  },
 };
 
 export type Dictionnaire = typeof fr;
@@ -455,6 +463,7 @@ export const en: Dictionnaire = {
     listeCandidats: "Candidate list",
     candidats: "Candidates",
     classes: "Classes",
+    groupes: "Groups",
     factures: "Invoices",
     tableauDeBord: "Dashboard",
     utilisateurs: "Users",
@@ -854,5 +863,12 @@ export const en: Dictionnaire = {
       paiement: "Choose at least one payment method",
       secretaire: "Create a front desk account",
     },
+  },
+  groupes: {
+    titre: "Groups",
+    consigne: "One group per service. Click a group to see the candidates registered for that service.",
+    groupe: "{service} group",
+    aucunService: "No service created yet. Create your services in Settings → Services.",
+    erreurChargement: "Unable to load the groups",
   },
 };
