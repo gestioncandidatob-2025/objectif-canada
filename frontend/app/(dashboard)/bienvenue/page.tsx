@@ -110,6 +110,17 @@ export default function BienvenuePage() {
         </>
       ),
     },
+    {
+      href: "/point-de-caisse",
+      label: t("menu.pointDeCaisse"),
+      icone: (
+        <>
+          <rect x="2" y="6" width="20" height="13" rx="2" />
+          <circle cx="12" cy="12.5" r="2.5" />
+          <path d="M6 9.5h.01M18 15.5h.01" />
+        </>
+      ),
+    },
   ];
   if (estAdmin) {
     raccourcis.push({
@@ -119,6 +130,16 @@ export default function BienvenuePage() {
         <>
           <path d="M3 3v18h18" />
           <path d="M7 15l4-4 3 3 5-6" />
+        </>
+      ),
+    });
+    raccourcis.push({
+      href: "/parametres",
+      label: t("menu.parametres"),
+      icone: (
+        <>
+          <circle cx="12" cy="12" r="3" />
+          <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" />
         </>
       ),
     });
@@ -135,41 +156,48 @@ export default function BienvenuePage() {
           </h1>
         </div>
 
-        {/* ---------- Nouvelle facture + raccourcis ---------- */}
-        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-          <Link
-            href="/enregistrement"
-            className="col-span-2 flex items-center gap-4 rounded-2xl bg-accent p-5 text-white transition hover:bg-accent-hover sm:p-6"
-          >
-            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/20">
-              <svg
-                width="26"
-                height="26"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.2"
-                strokeLinecap="round"
-                aria-hidden="true"
-              >
-                <path d="M12 5v14M5 12h14" />
-              </svg>
+        {/* ---------- Nouvelle facture : toute la largeur ---------- */}
+        <Link
+          href="/enregistrement"
+          className="flex items-center gap-4 rounded-2xl bg-accent p-5 text-white transition hover:bg-accent-hover sm:p-6"
+        >
+          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/20">
+            <svg
+              width="26"
+              height="26"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+              aria-hidden="true"
+            >
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+          </span>
+          <span>
+            <span className="block text-[17px] font-semibold sm:text-lg">
+              {t("menu.nouvelleFacture")}
             </span>
-            <span>
-              <span className="block text-[17px] font-semibold sm:text-lg">
-                {t("menu.nouvelleFacture")}
-              </span>
-              <span className="block text-sm text-white/90">
-                {t("accueil.nouvelleFactureDetail")}
-              </span>
+            <span className="block text-sm text-white/90">
+              {t("accueil.nouvelleFactureDetail")}
             </span>
-          </Link>
+          </span>
+        </Link>
 
+        {/* ---------- Raccourcis : toutes les cartes ont la même taille ---------- */}
+        <div
+          className={
+            // Secrétaire : 4 cartes (2 × 2, puis 4 sur une ligne).
+            // Administrateur : 6 cartes (2 × 3, puis 3 × 2) — jamais de carte seule sur sa ligne.
+            "grid grid-cols-2 gap-3 sm:gap-4 " + (estAdmin ? "sm:grid-cols-3" : "lg:grid-cols-4")
+          }
+        >
           {raccourcis.map((raccourci) => (
             <Link
               key={raccourci.href}
               href={raccourci.href}
-              className="flex min-h-[92px] flex-col gap-2.5 rounded-2xl border border-ink/10 bg-white p-4 text-ink transition hover:border-accent/40 sm:p-5"
+              className="flex h-full min-h-[104px] flex-col justify-between gap-3 rounded-2xl border border-ink/10 bg-white p-4 text-ink transition hover:border-accent/40 sm:p-5"
             >
               <svg
                 width="22"

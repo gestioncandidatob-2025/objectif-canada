@@ -70,6 +70,8 @@ export default function EnregistrementPage() {
   const [detteInfo, setDetteInfo] = useState<DetteInfo | null>(null);
   const [verificationDetteEnCours, setVerificationDetteEnCours] = useState(false);
   const [montantComplement, setMontantComplement] = useState("");
+  // Comment le reste est payé (espèces ou mobile), pour le point de caisse
+  const [modeComplement, setModeComplement] = useState("especes");
   const [paiementEnCours, setPaiementEnCours] = useState(false);
 
   const [nouveauNom, setNouveauNom] = useState("");
@@ -135,6 +137,11 @@ export default function EnregistrementPage() {
 
   // Modes affichés dans la liste, toujours dans le même ordre
   const modesAffiches = ORDRE_MODES_PAIEMENT.filter((m) => modesAcceptes.includes(m));
+  // Pour un reste à payer, un seul mode à la fois (pas de mixte)
+  const modesComplement = modesAffiches.filter((m) => m !== "mobile_especes");
+  const modeComplementValide = modesComplement.includes(modeComplement)
+    ? modeComplement
+    : (modesComplement[0] ?? "especes");
 
   // Il n'y a qu'une seule offre active par service (elle porte elle-même
   // sa liste de régimes le cas échéant).
@@ -264,7 +271,7 @@ export default function EnregistrementPage() {
     setPaiementEnCours(true);
     const res = await apiFetch(`/registrations/${detteInfo.inscription._id}/payment`, {
       method: "PATCH",
-      body: JSON.stringify({ montant }),
+      body: JSON.stringify({ montant, modePaiement: modeComplementValide }),
     });
     setPaiementEnCours(false);
 
@@ -609,6 +616,20 @@ export default function EnregistrementPage() {
                   onChange={(e) => setMontantComplement(e.target.value)}
                   className={champClass}
                 />
+              </div>
+              <div>
+                <label className={labelClass}>{t("facture.modeComplement")}</label>
+                <select
+                  value={modeComplementValide}
+                  onChange={(e) => setModeComplement(e.target.value)}
+                  className={champClass}
+                >
+                  {modesComplement.map((mode) => (
+                    <option key={mode} value={mode}>
+                      {modePaiementLabels[mode] ?? mode}
+                    </option>
+                  ))}
+                </select>
               </div>
               <button
                 type="button"

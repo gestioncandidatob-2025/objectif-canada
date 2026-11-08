@@ -14,6 +14,7 @@ import { MailModule } from './mail/mail.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { HistoriqueModule } from './historique/historique.module';
 import { CentresModule } from './centres/centres.module';
+import { CaisseModule } from './caisse/caisse.module';
 import { validerEnvironnement } from './config/environnement';
 
 @Module({
@@ -41,6 +42,7 @@ import { validerEnvironnement } from './config/environnement';
     NotificationsModule,
     HistoriqueModule,
     CentresModule,
+    CaisseModule,
   ],
   controllers: [AppController],
   providers: [AppService],

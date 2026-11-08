@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query, UseGuards, Req } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { InscriptionsService } from './inscriptions.service';
 import { CreateInscriptionDto } from './dto/create-inscription.dto';
@@ -17,8 +17,13 @@ export class InscriptionsController {
 
   @ApiOperation({ summary: 'Créer une inscription (calcule automatiquement montant, dates et numéro de reçu)' })
   @Post()
-  create(@Body() createInscriptionDto: CreateInscriptionDto, @CentreId() centreId: string) {
-    return this.inscriptionsService.create(createInscriptionDto, centreId);
+  create(
+    @Body() createInscriptionDto: CreateInscriptionDto,
+    @CentreId() centreId: string,
+    @Req() req: any,
+  ) {
+    // req.user.userId : la personne connectée, qui encaisse (point de caisse)
+    return this.inscriptionsService.create(createInscriptionDto, centreId, req.user.userId);
   }
 
   @ApiOperation({ summary: 'Lister les inscriptions, avec filtres optionnels par nom/service/régime/candidat/statut/dates/paiement' })
@@ -94,8 +99,15 @@ export class InscriptionsController {
     @Param('id') id: string,
     @Body() dto: AjouterPaiementDto,
     @CentreId() centreId: string,
+    @Req() req: any,
   ) {
-    return this.inscriptionsService.ajouterPaiement(id, dto.montant, centreId);
+    return this.inscriptionsService.ajouterPaiement(
+      id,
+      dto.montant,
+      dto.modePaiement ?? 'especes',
+      centreId,
+      req.user.userId,
+    );
   }
 
   @ApiOperation({ summary: "Modifier une inscription (justification obligatoire)" })
@@ -106,8 +118,9 @@ export class InscriptionsController {
     @Param('id') id: string,
     @Body() updateInscriptionDto: UpdateInscriptionDto,
     @CentreId() centreId: string,
+    @Req() req: any,
   ) {
-    return this.inscriptionsService.update(id, updateInscriptionDto, centreId);
+    return this.inscriptionsService.update(id, updateInscriptionDto, centreId, req.user.userId);
   }
 
   @ApiOperation({ summary: "Supprimer une inscription (réservé à l'administrateur)" })
