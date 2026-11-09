@@ -61,8 +61,9 @@ const LIBELLES_CHAMPS: Record<string, string> = {
 const CHAMPS_IGNORES = new Set(['raison']);
 
 // Segments d'URL à ne jamais journaliser automatiquement (déjà gérés à part,
-// ou non pertinents).
-const MODULES_IGNORES = new Set(['historique', 'api', 'auth']);
+// ou non pertinents). Les questions posées à l'assistant ne sont pas des
+// actions sur les données : elles ne vont pas dans le journal.
+const MODULES_IGNORES = new Set(['historique', 'api', 'auth', 'assistant']);
 
 const METHODES_JOURNALISEES = new Set(['POST', 'PATCH', 'PUT', 'DELETE']);
 
