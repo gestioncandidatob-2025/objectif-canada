@@ -8,6 +8,8 @@ import { apiFetch } from "../lib/api";
 import { EVENEMENT_CENTRE_MODIFIE } from "../lib/centre";
 import { useLangue } from "../lib/langue";
 import BoutonLangue from "../components/BoutonLangue";
+import BarreRecherche from "../components/BarreRecherche";
+import AssistantFlottant from "../components/AssistantFlottant";
 
 type User = {
   nom: string;
@@ -297,12 +299,21 @@ export default function DashboardLayout({
       </aside>
 
       {/* ---------- Téléphone : barre du haut ---------- */}
-      <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-ink/10 bg-white px-4 py-3 lg:hidden">
-        <div className="min-w-0 flex-1">{marqueCentre}</div>
+      <header className="sticky top-0 z-20 flex flex-col gap-3 border-b border-ink/10 bg-white px-4 py-3 lg:hidden">
+        <div className="min-w-0">{marqueCentre}</div>
+        <BarreRecherche />
       </header>
 
       {/* Sur téléphone, on laisse de la place en bas pour la barre de menu */}
-      <main className="min-w-0 flex-1 pb-24 lg:pb-0">{children}</main>
+      <main className="min-w-0 flex-1 pb-24 lg:pb-0">
+        {/* ---------- Ordinateur : barre de recherche en haut de chaque page ---------- */}
+        <div className="sticky top-0 z-20 hidden border-b border-ink/10 bg-paper/95 px-8 py-3 backdrop-blur lg:block">
+          <div className="mx-auto max-w-5xl">
+            <BarreRecherche />
+          </div>
+        </div>
+        {children}
+      </main>
 
       {/* ---------- Téléphone : barre du bas ---------- */}
       <nav
@@ -406,6 +417,9 @@ export default function DashboardLayout({
           </div>
         </div>
       )}
+
+      {/* Assistant IA : bouton rond en bas à droite, administrateur uniquement */}
+      {estAdmin && <AssistantFlottant />}
 
       {/* Rappel de configuration : administrateur uniquement */}
       {estAdmin && user.centreId && <DialogueConfiguration centreId={String(user.centreId)} />}
