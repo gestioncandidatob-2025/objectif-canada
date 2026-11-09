@@ -75,6 +75,7 @@ export class PdfService {
     inscription: InscriptionPourFacture,
     candidat: CandidatPourFacture,
     centreFacture: CentrePourFacture,
+    options: { duplicata?: boolean } = {},
   ): Promise<Buffer> {
     return new Promise((resolve, reject) => {
       const doc = new PDFDocument({ size: [LARGEUR_TICKET, 700], margin: 16 });
@@ -135,6 +136,11 @@ export class PdfService {
 
       separateur();
       centre('REÇU DE PAIEMENT', 11, true);
+      // Réimpression : la copie ne peut pas passer pour l'original
+      if (options.duplicata) {
+        doc.moveDown(0.2);
+        centre('*** DUPLICATA ***', 12, true);
+      }
       separateur();
 
       // ---- Le reçu ----

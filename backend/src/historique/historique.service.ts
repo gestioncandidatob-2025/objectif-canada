@@ -13,6 +13,8 @@ export interface EnregistrerActionParams {
   route?: string;
   statut?: 'succès' | 'échec';
   details?: string;
+  motif?: string;
+  changements?: { champ: string; avant: string; apres: string }[];
 }
 
 export interface FiltresHistorique {

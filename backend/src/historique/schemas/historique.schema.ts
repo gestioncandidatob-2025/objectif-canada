@@ -38,6 +38,17 @@ export class Historique {
   @Prop()
   details?: string;
 
+  // Motif donné pour une modification
+  @Prop()
+  motif?: string;
+
+  // Ce qui a changé : ancienne et nouvelle valeur de chaque champ
+  @Prop({
+    type: [{ champ: String, avant: String, apres: String, _id: false }],
+    default: undefined,
+  })
+  changements?: { champ: string; avant: string; apres: string }[];
+
   @Prop({ default: () => new Date() })
   date!: Date;
 }

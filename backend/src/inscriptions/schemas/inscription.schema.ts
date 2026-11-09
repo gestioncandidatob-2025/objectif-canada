@@ -75,6 +75,11 @@ export class Inscription {
   // Clé S3 du PDF de la facture stockée sur AWS (pour la compta/les impôts)
   @Prop()
   factureS3Key?: string;
+
+  // Nombre de fois où le reçu a été imprimé : à partir de la 2e impression,
+  // le reçu porte la mention « DUPLICATA »
+  @Prop({ default: 0 })
+  nombreImpressions!: number;
 }
 
 export const InscriptionSchema = SchemaFactory.createForClass(Inscription);

@@ -85,6 +85,14 @@ const MESSAGES_EN: Record<string, string> = {
   "La durée en jours est obligatoire (sauf si la date de fin est saisie manuellement)":
     "The duration in days is required (unless the end date is entered manually)",
   "Il faut au moins un régime": "At least one schedule is required",
+
+  // Corrections et export
+  "Seul l'administrateur peut modifier les montants, le service et le paiement d'une facture":
+    "Only the administrator can change the amounts, the service and the payment of an invoice",
+  "Ce candidat a des factures : il ne peut pas être supprimé":
+    "This candidate has invoices: they cannot be deleted",
+  "Choisis une date de début et une date de fin": "Choose a start date and an end date",
+  "La date de début doit être avant la date de fin": "The start date must be before the end date",
 };
 
 // Messages qui contiennent une valeur (montant, nom, nombre)
