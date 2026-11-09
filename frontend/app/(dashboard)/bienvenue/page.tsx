@@ -76,74 +76,51 @@ export default function BienvenuePage() {
     month: "long",
   });
 
-  const raccourcis: Raccourci[] = [
-    {
-      href: "/candidats",
-      label: t("menu.candidats"),
-      icone: (
-        <>
-          <circle cx="9" cy="7" r="4" />
-          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-          <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-        </>
-      ),
-    },
-    {
-      href: "/factures",
-      label: t("menu.factures"),
-      icone: (
-        <>
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-          <path d="M14 2v6h6M8 13h8M8 17h5" />
-        </>
-      ),
-    },
-    {
-      href: "/groupes",
-      label: t("menu.groupes"),
-      icone: (
-        <>
-          <rect x="3" y="3" width="7" height="7" rx="1.5" />
-          <rect x="14" y="3" width="7" height="7" rx="1.5" />
-          <rect x="3" y="14" width="7" height="7" rx="1.5" />
-          <rect x="14" y="14" width="7" height="7" rx="1.5" />
-        </>
-      ),
-    },
-    {
-      href: "/point-de-caisse",
-      label: t("menu.pointDeCaisse"),
-      icone: (
-        <>
-          <rect x="2" y="6" width="20" height="13" rx="2" />
-          <circle cx="12" cy="12.5" r="2.5" />
-          <path d="M6 9.5h.01M18 15.5h.01" />
-        </>
-      ),
-    },
-  ];
-  if (estAdmin) {
-    raccourcis.push({
-      href: "/tableau-de-bord",
-      label: t("menu.tableauDeBord"),
-      icone: (
-        <>
-          <path d="M3 3v18h18" />
-          <path d="M7 15l4-4 3 3 5-6" />
-        </>
-      ),
-    });
-    raccourcis.push({
-      href: "/parametres",
-      label: t("menu.parametres"),
-      icone: (
-        <>
-          <circle cx="12" cy="12" r="3" />
-          <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" />
-        </>
-      ),
-    });
-  }
+  // Icônes au trait des raccourcis
+  const ICONES = {
+    candidats: (
+      <>
+        <circle cx="9" cy="7" r="4" />
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+      </>
+    ),
+    factures: (
+      <>
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+        <path d="M14 2v6h6M8 13h8M8 17h5" />
+      </>
+    ),
+    caisse: (
+      <>
+        <rect x="2" y="6" width="20" height="13" rx="2" />
+        <circle cx="12" cy="12.5" r="2.5" />
+        <path d="M6 9.5h.01M18 15.5h.01" />
+      </>
+    ),
+    tableau: (
+      <>
+        <path d="M3 3v18h18" />
+        <path d="M7 15l4-4 3 3 5-6" />
+      </>
+    ),
+  };
+
+  // Trois raccourcis seulement : ce qu'on ouvre le plus souvent. Le reste
+  // est dans le menu.
+  // - Secrétaire : Candidats, Factures, Ma caisse
+  // - Administrateur : Candidats, Point de caisse, Tableau de bord
+  const raccourcis: Raccourci[] = estAdmin
+    ? [
+        { href: "/candidats", label: t("menu.candidats"), icone: ICONES.candidats },
+        { href: "/point-de-caisse", label: t("menu.pointDeCaisse"), icone: ICONES.caisse },
+        { href: "/tableau-de-bord", label: t("menu.tableauDeBord"), icone: ICONES.tableau },
+      ]
+    : [
+        { href: "/candidats", label: t("menu.candidats"), icone: ICONES.candidats },
+        { href: "/factures", label: t("menu.factures"), icone: ICONES.factures },
+        { href: "/point-de-caisse", label: t("caisse.maCaisse"), icone: ICONES.caisse },
+      ];
 
   return (
     <div className="px-4 py-6 sm:px-8 sm:py-9">
@@ -185,19 +162,13 @@ export default function BienvenuePage() {
           </span>
         </Link>
 
-        {/* ---------- Raccourcis : toutes les cartes ont la même taille ---------- */}
-        <div
-          className={
-            // Secrétaire : 4 cartes (2 × 2, puis 4 sur une ligne).
-            // Administrateur : 6 cartes (2 × 3, puis 3 × 2) — jamais de carte seule sur sa ligne.
-            "grid grid-cols-2 gap-3 sm:gap-4 " + (estAdmin ? "sm:grid-cols-3" : "lg:grid-cols-4")
-          }
-        >
+        {/* ---------- Trois raccourcis, toujours sur une seule ligne ---------- */}
+        <div className="grid grid-cols-3 gap-3 sm:gap-4">
           {raccourcis.map((raccourci) => (
             <Link
               key={raccourci.href}
               href={raccourci.href}
-              className="flex h-full min-h-[104px] flex-col justify-between gap-3 rounded-2xl border border-ink/10 bg-white p-4 text-ink transition hover:border-accent/40 sm:p-5"
+              className="flex h-full min-h-[96px] flex-col justify-between gap-3 rounded-2xl border border-ink/10 bg-white p-3.5 text-ink transition hover:border-accent/40 sm:p-5"
             >
               <svg
                 width="22"
@@ -213,7 +184,7 @@ export default function BienvenuePage() {
               >
                 {raccourci.icone}
               </svg>
-              <span className="text-[15px] font-semibold">{raccourci.label}</span>
+              <span className="text-sm font-semibold leading-tight sm:text-[15px]">{raccourci.label}</span>
             </Link>
           ))}
         </div>
