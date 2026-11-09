@@ -29,6 +29,7 @@ type NomIcone =
   | "tableau"
   | "utilisateurs"
   | "factures"
+  | "caisse"
   | "historique"
   | "parametres"
   | "plus"
@@ -71,6 +72,13 @@ function Icone({ nom, taille = 20 }: { nom: NomIcone; taille?: number }) {
       <>
         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
         <path d="M14 2v6h6M8 13h8M8 17h5" />
+      </>
+    ),
+    caisse: (
+      <>
+        <rect x="2" y="6" width="20" height="13" rx="2" />
+        <circle cx="12" cy="12.5" r="2.5" />
+        <path d="M6 9.5h.01M18 15.5h.01" />
       </>
     ),
     historique: (
@@ -197,6 +205,8 @@ export default function DashboardLayout({
     { href: "/candidats", label: t("menu.listeCandidats"), icone: "candidats", visible: true },
     { href: "/groupes", label: t("menu.groupes"), icone: "classes", visible: true },
     { href: "/factures", label: t("menu.factures"), icone: "factures", visible: true },
+    // Point de caisse : l'admin voit celui de chaque personne, la secrétaire le sien
+    { href: "/point-de-caisse", label: t("menu.pointDeCaisse"), icone: "caisse", visible: true },
     { href: "/tableau-de-bord", label: t("menu.tableauDeBord"), icone: "tableau", visible: estAdmin },
     { href: "/utilisateurs", label: t("menu.utilisateurs"), icone: "utilisateurs", visible: estAdmin },
     { href: "/historique", label: t("menu.historique"), icone: "historique", visible: estAdmin },

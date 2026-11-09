@@ -11,6 +11,9 @@ import { UsersService } from '../users/users.service';
 import { PdfService } from '../factures/pdf.service';
 import { S3Service } from '../factures/s3.service';
 import { CentresService } from '../centres/centres.service';
+import { CaisseService } from '../caisse/caisse.service';
+import { repartir } from '../caisse/repartir';
+import { TypePaiement } from '../caisse/schemas/paiement.schema';
 
 /**
  * Charge le candidat lié à une inscription, en restant dans le centre.
@@ -31,9 +34,10 @@ export class InscriptionsService {
     private pdfService: PdfService,
     private s3Service: S3Service,
     private centresService: CentresService,
+    private caisseService: CaisseService,
   ) {}
 
-  async create(createInscriptionDto: CreateInscriptionDto, centreId: string) {
+  async create(createInscriptionDto: CreateInscriptionDto, centreId: string, utilisateurId?: string) {
     // 1. Vérifier que le candidat existe dans ce centre
     const candidat = await this.candidatModel.findOne({
       _id: createInscriptionDto.candidatId,
@@ -187,6 +191,26 @@ export class InscriptionsService {
     });
 
     await inscription.save();
+
+    // Point de caisse : l'avance reçue à l'inscription, au nom de la personne connectée
+    const avance = repartir(
+      inscription.modePaiement,
+      montantPaye,
+      inscription.montantMobile,
+      inscription.montantEspeces,
+    );
+    await this.caisseService.enregistrer({
+      centreId,
+      inscriptionId: inscription._id,
+      numeroRecu: inscription.numeroRecu,
+      candidatNom: `${candidat.nom} ${candidat.prenom}`,
+      type: TypePaiement.INSCRIPTION,
+      especes: avance.especes,
+      mobile: avance.mobile,
+      modePaiement: inscription.modePaiement,
+      utilisateurId,
+      nomParDefaut: inscription.facturePar,
+    });
 
     // Génère la facture PDF et la stocke sur AWS S3 (pour la compta/les impôts).
     // Non bloquant : si ça échoue, l'inscription reste valide, la facture
@@ -361,11 +385,19 @@ export class InscriptionsService {
       .exec();
   }
 
-  async update(id: string, dto: UpdateInscriptionDto, centreId: string) {
+  async update(id: string, dto: UpdateInscriptionDto, centreId: string, utilisateurId?: string) {
     const inscription = await this.inscriptionModel.findOne({ _id: id, centreId });
     if (!inscription) {
       throw new NotFoundException('Inscription introuvable');
     }
+
+    // Répartition espèces / mobile AVANT la modification (pour le point de caisse)
+    const avant = repartir(
+      inscription.modePaiement,
+      inscription.montantPaye,
+      inscription.montantMobile,
+      inscription.montantEspeces,
+    );
 
     // 1. Déterminer le service final (nouveau si fourni, sinon on garde l'ancien)
     //    et recharger l'offre tarifaire correspondante, car changer de service
@@ -485,6 +517,29 @@ export class InscriptionsService {
     if (dto.reference !== undefined) inscription.reference = dto.reference;
 
     await inscription.save();
+
+    // Point de caisse : si le montant payé (ou le mode) a changé, on ajoute
+    // une ligne de correction avec la différence, au nom de la personne qui modifie
+    const apres = repartir(
+      inscription.modePaiement,
+      inscription.montantPaye,
+      inscription.montantMobile,
+      inscription.montantEspeces,
+    );
+    const candidat = await this.candidatModel.findOne({ _id: inscription.candidatId, centreId });
+    await this.caisseService.enregistrer({
+      centreId,
+      inscriptionId: inscription._id,
+      numeroRecu: inscription.numeroRecu,
+      candidatNom: candidat ? `${candidat.nom} ${candidat.prenom}` : undefined,
+      type: TypePaiement.CORRECTION,
+      especes: apres.especes - avant.especes,
+      mobile: apres.mobile - avant.mobile,
+      modePaiement: inscription.modePaiement,
+      utilisateurId,
+      nomParDefaut: inscription.facturePar,
+    });
+
     return this.findOne(id, centreId);
   }
 
@@ -493,6 +548,9 @@ export class InscriptionsService {
     if (!inscription) {
       throw new NotFoundException('Inscription introuvable');
     }
+
+    // Ses paiements sortent aussi du point de caisse
+    await this.caisseService.supprimerPourInscription(String(inscription._id), centreId);
 
     const inscriptionsRestantes = await this.inscriptionModel.countDocuments({
       centreId,
@@ -508,7 +566,13 @@ export class InscriptionsService {
     return inscription;
   }
 
-  async ajouterPaiement(id: string, montant: number, centreId: string) {
+  async ajouterPaiement(
+    id: string,
+    montant: number,
+    modePaiement: string,
+    centreId: string,
+    utilisateurId?: string,
+  ) {
     const inscription = await this.inscriptionModel.findOne({ _id: id, centreId });
     if (!inscription) {
       throw new NotFoundException('Inscription introuvable');
@@ -520,9 +584,27 @@ export class InscriptionsService {
     if (nouveauMontantPaye > inscription.montantTotal) {
       throw new BadRequestException('Ce paiement dépasserait le montant total dû');
     }
+    await this.verifierModePaiementAccepte(modePaiement, centreId);
+
     inscription.montantPaye = nouveauMontantPaye;
     inscription.resteAPayer = inscription.montantTotal - inscription.montantPaye;
     await inscription.save();
+
+    // Point de caisse : le reste encaissé, au nom de la personne connectée
+    const versement = repartir(modePaiement, montant);
+    const candidat = await this.candidatModel.findOne({ _id: inscription.candidatId, centreId });
+    await this.caisseService.enregistrer({
+      centreId,
+      inscriptionId: inscription._id,
+      numeroRecu: inscription.numeroRecu,
+      candidatNom: candidat ? `${candidat.nom} ${candidat.prenom}` : undefined,
+      type: TypePaiement.RESTE,
+      especes: versement.especes,
+      mobile: versement.mobile,
+      modePaiement,
+      utilisateurId,
+      nomParDefaut: inscription.facturePar,
+    });
 
     return inscription;
   }
