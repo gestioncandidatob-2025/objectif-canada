@@ -1,6 +1,8 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Query, UseGuards, Req } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Query, UseGuards, Req, Res } from '@nestjs/common';
+import type { Response } from 'express';
 import { ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { InscriptionsService } from './inscriptions.service';
+import type { Changement } from './inscriptions.service';
 import { CreateInscriptionDto } from './dto/create-inscription.dto';
 import { UpdateInscriptionDto } from './dto/update-inscription.dto';
 import { AjouterPaiementDto } from './dto/ajouter-paiement.dto';
@@ -59,6 +61,27 @@ export class InscriptionsController {
     });
   }
 
+  @ApiOperation({ summary: "Exporter en Excel les factures d'une période (réservé à l'administrateur)" })
+  @ApiQuery({ name: 'debut', required: true, description: 'Date de début (YYYY-MM-DD)' })
+  @ApiQuery({ name: 'fin', required: true, description: 'Date de fin (YYYY-MM-DD)' })
+  @UseGuards(RolesGuard)
+  @Roles('admin')
+  @Get('export')
+  async exporter(
+    @CentreId() centreId: string,
+    @Res() res: Response,
+    @Query('debut') debut?: string,
+    @Query('fin') fin?: string,
+  ) {
+    const fichier = await this.inscriptionsService.exporterExcel(centreId, debut, fin);
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
+    res.setHeader('Content-Disposition', `attachment; filename="factures-${debut}-au-${fin}.xlsx"`);
+    res.send(fichier);
+  }
+
   @ApiOperation({ summary: "Vérifier si un candidat (par téléphone) existe déjà et a une dette en cours" })
   @Get('dette/:telephone')
   verifierDette(@Param('telephone') telephone: string, @CentreId() centreId: string) {
@@ -93,6 +116,12 @@ export class InscriptionsController {
     return this.inscriptionsService.urlFacture(id, centreId);
   }
 
+  @ApiOperation({ summary: "Noter une impression du reçu (à partir de la 2e : DUPLICATA)" })
+  @Post(':id/print')
+  imprimer(@Param('id') id: string, @CentreId() centreId: string) {
+    return this.inscriptionsService.enregistrerImpression(id, centreId);
+  }
+
   @ApiOperation({ summary: 'Ajouter un paiement complémentaire' })
   @Patch(':id/payment')
   ajouterPaiement(
@@ -110,24 +139,32 @@ export class InscriptionsController {
     );
   }
 
-  @ApiOperation({ summary: "Modifier une inscription (justification obligatoire)" })
+  @ApiOperation({
+    summary:
+      "Corriger une facture (motif obligatoire). La secrétaire ne change que le régime et les dates ; les montants sont réservés à l'administrateur",
+  })
   @UseGuards(RolesGuard)
   @Roles('admin', 'secretariat')
   @Patch(':id')
-  update(
+  async update(
     @Param('id') id: string,
     @Body() updateInscriptionDto: UpdateInscriptionDto,
     @CentreId() centreId: string,
     @Req() req: any,
   ) {
-    return this.inscriptionsService.update(id, updateInscriptionDto, centreId, req.user.userId);
+    const sortie: { changements?: Changement[] } = {};
+    const resultat = await this.inscriptionsService.update(
+      id,
+      updateInscriptionDto,
+      centreId,
+      req.user.userId,
+      req.user.role,
+      sortie,
+    );
+    // Lu par le journal (historique) : ancienne et nouvelle valeur de chaque champ
+    req.changementsHistorique = sortie.changements ?? [];
+    return resultat;
   }
 
-  @ApiOperation({ summary: "Supprimer une inscription (réservé à l'administrateur)" })
-  @UseGuards(RolesGuard)
-  @Roles('admin')
-  @Delete(':id')
-  remove(@Param('id') id: string, @CentreId() centreId: string) {
-    return this.inscriptionsService.remove(id, centreId);
-  }
+  // Pas de route de suppression : une facture ne s'efface jamais, elle se corrige.
 }

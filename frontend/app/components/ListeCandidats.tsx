@@ -150,8 +150,6 @@ export default function ListeCandidats({
 
   const [ligneOuverte, setLigneOuverte] = useState<string | null>(null);
   const [ligneEnEdition, setLigneEnEdition] = useState<string | null>(null);
-  const [ligneASupprimer, setLigneASupprimer] = useState<string | null>(null);
-  const [lettreConfirmation, setLettreConfirmation] = useState("");
 
   const [editService, setEditService] = useState("tcf");
   const [editRegime, setEditRegime] = useState("jour");
@@ -161,7 +159,6 @@ export default function ListeCandidats({
   const [editReference, setEditReference] = useState("");
   const [editRaison, setEditRaison] = useState("");
   const [enregistrementEnCours, setEnregistrementEnCours] = useState(false);
-  const [suppressionEnCours, setSuppressionEnCours] = useState(false);
 
   const [triColonne, setTriColonne] = useState<ColonneTri | null>(null);
   const [triOrdre, setTriOrdre] = useState<OrdreTri>("asc");
@@ -234,7 +231,6 @@ export default function ListeCandidats({
  function ouvrirEdition(insc: Inscription) {
     setLigneEnEdition(insc._id);
     setLigneOuverte(null);
-    setLigneASupprimer(null);
     setEditService(insc.service);
     setEditRegime(insc.regime ?? "jour");
     setEditDateDebutTest(insc.dateDebutTest ? insc.dateDebutTest.slice(0, 10) : "");
@@ -250,15 +246,23 @@ export default function ListeCandidats({
       return;
     }
     setEnregistrementEnCours(true);
-    const body: Record<string, unknown> = {
-      service: editService,
-      regime: editRegime,
-      dateDebutTest: editDateDebutTest || undefined,
-      montantPaye: Number(editMontantPaye),
-      facturePar: editFacturePar,
-      reference: editReference || undefined,
-      raison: editRaison,
-    };
+    // La secrétaire ne corrige que le régime et les dates ; les montants,
+    // le service et le paiement sont réservés à l'administrateur
+    const body: Record<string, unknown> = estAdmin
+      ? {
+          service: editService,
+          regime: editRegime,
+          dateDebutTest: editDateDebutTest || undefined,
+          montantPaye: Number(editMontantPaye),
+          facturePar: editFacturePar,
+          reference: editReference || undefined,
+          raison: editRaison,
+        }
+      : {
+          regime: editRegime,
+          dateDebutTest: editDateDebutTest || undefined,
+          raison: editRaison,
+        };
     const res = await apiFetch(`/registrations/${id}`, {
       method: "PATCH",
       body: JSON.stringify(body),
@@ -271,20 +275,6 @@ export default function ListeCandidats({
     }
     setLigneEnEdition(null);
     setEnregistrementEnCours(false);
-    chargerInscriptions();
-  }
-
-  async function confirmerSuppression(id: string) {
-    setSuppressionEnCours(true);
-    const res = await apiFetch(`/registrations/${id}`, { method: "DELETE" });
-    if (!res.ok) {
-      setErreur(t("candidats.erreurSuppression"));
-      setSuppressionEnCours(false);
-      return;
-    }
-    setLigneASupprimer(null);
-    setLettreConfirmation("");
-    setSuppressionEnCours(false);
     chargerInscriptions();
   }
 
@@ -555,31 +545,6 @@ export default function ListeCandidats({
                             />
                           </svg>
                         </button>
-                        {estAdmin && (
-                          <>
-                            <button
-                              onClick={() => {
-                                setLigneASupprimer(insc._id);
-                                setLigneOuverte(null);
-                                setLigneEnEdition(null);
-                                setLettreConfirmation("");
-                              }}
-                              title={t("candidats.supprimer")}
-                              aria-label={t("candidats.supprimer")}
-                              className="text-error transition hover:scale-110 active:scale-95"
-                            >
-                              <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
-                                <path
-                                  d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m2 0-1 13a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1L6 7"
-                                  stroke="currentColor"
-                                  strokeWidth="1.8"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                />
-                              </svg>
-                            </button>
-                          </>
-                        )}
                       </div>
                     </td>
                   </tr>
@@ -608,9 +573,15 @@ export default function ListeCandidats({
                     <tr className="border-b border-ink/5 bg-accent/5">
                       <td colSpan={9} className="space-y-3 px-4 py-4">
                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                          {!estAdmin && (
+                            <p className="rounded-lg bg-seal/10 px-3 py-2 text-xs text-seal sm:col-span-2">
+                              {t("candidats.secretaireLimite")}
+                            </p>
+                          )}
                           <div className="sm:col-span-2">
                             <label className="mb-1 block text-xs font-medium text-ink-soft">
-                              {t("candidats.raison")} <span className="text-error">*</span>
+                              {estAdmin ? t("candidats.motifCorrection") : t("candidats.raison")}{" "}
+                              <span className="text-error">*</span>
                             </label>
                             <textarea
                               value={editRaison}
@@ -627,7 +598,8 @@ export default function ListeCandidats({
                             <select
                               value={editService}
                               onChange={(e) => setEditService(e.target.value)}
-                              className={`${champClass} bg-white`}
+                              disabled={!estAdmin}
+                              className={`${champClass} bg-white disabled:opacity-60`}
                             >
                               {Array.from(
                                 new Set([...servicesDisponibles, editService].filter(Boolean))
@@ -681,7 +653,8 @@ export default function ListeCandidats({
                               type="number"
                               value={editMontantPaye}
                               onChange={(e) => setEditMontantPaye(e.target.value)}
-                              className={`${champClass} bg-white`}
+                              disabled={!estAdmin}
+                              className={`${champClass} bg-white disabled:opacity-60`}
                             />
                           </div>
                           <div>
@@ -692,7 +665,8 @@ export default function ListeCandidats({
                             <input
                               value={editFacturePar}
                               onChange={(e) => setEditFacturePar(e.target.value)}
-                              className={`${champClass} bg-white`}
+                              disabled={!estAdmin}
+                              className={`${champClass} bg-white disabled:opacity-60`}
                             />
                             </div>
                             <div className="sm:col-span-2">
@@ -702,7 +676,8 @@ export default function ListeCandidats({
                             <input
                               value={editReference}
                               onChange={(e) => setEditReference(e.target.value)}
-                              className={`${champClass} bg-white`}
+                              disabled={!estAdmin}
+                              className={`${champClass} bg-white disabled:opacity-60`}
                             />
                           </div>
                         </div>
@@ -729,42 +704,6 @@ export default function ListeCandidats({
                     </tr>
                   )}
 
-                  {ligneASupprimer === insc._id && (
-                    <tr className="border-b border-ink/5 bg-error/5">
-                      <td  className="px-4 py-4">
-                        <p className="mb-2 text-sm font-medium text-error">
-                          {t("candidats.confirmerSuppressionTexte", {
-                            nom: `${insc.candidatId?.nom ?? ""} ${insc.candidatId?.prenom ?? ""}`.trim(),
-                          })}
-                        </p>
-                        <div className="flex items-center gap-2">
-                          <input
-                            value={lettreConfirmation}
-                            onChange={(e) => setLettreConfirmation(e.target.value)}
-                            maxLength={1}
-                            className="w-16 rounded-lg border border-error/30 px-3 py-2 text-center font-bold outline-none focus:border-error focus:ring-2 focus:ring-error/20"
-                          />
-                          <button
-                            onClick={() => confirmerSuppression(insc._id)}
-                            disabled={lettreConfirmation !== "S" || suppressionEnCours}
-                            className="rounded-lg bg-error px-4 py-2 text-sm font-medium text-white transition disabled:cursor-not-allowed disabled:opacity-40 hover:bg-red-700"
-                          >
-                            {suppressionEnCours ? t("candidats.suppressionEnCours") : t("candidats.confirmerSuppression")}
-                          </button>
-                          <button
-                            onClick={() => {
-                              setLigneASupprimer(null);
-                              setLettreConfirmation("");
-                            }}
-                            disabled={suppressionEnCours}
-                            className="rounded-lg border border-ink/15 px-4 py-2 text-sm font-medium text-ink transition hover:bg-paper disabled:cursor-not-allowed disabled:opacity-60"
-                          >
-                            {t("commun.annuler")}
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
                 </Fragment>
               ))}
             </tbody>

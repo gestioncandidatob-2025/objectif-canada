@@ -137,13 +137,21 @@ export class HistoriqueLogInterceptor implements NestInterceptor {
     }
 
     const module = LIBELLES_MODULE[segment] || segment;
-    const action = LIBELLES_ACTION[methode] || methode;
+    const chemin = String(req.url || '').split('?')[0];
+    // Une impression de reçu n'est pas une création : on l'appelle par son nom
+    const action = chemin.endsWith('/print')
+      ? 'Impression'
+      : LIBELLES_ACTION[methode] || methode;
     const route = `${methode} ${req.originalUrl || req.url}`;
 
     return next.handle().pipe(
       tap((reponse) => {
         const elementTouche = decrireElementTouche(methode, req.body, reponse);
         const raison = typeof req.body?.raison === 'string' ? req.body.raison : undefined;
+        // Valeurs avant / après, quand la route les a fournies (correction de facture)
+        const changements = Array.isArray(req.changementsHistorique)
+          ? (req.changementsHistorique as { champ: string; avant: string; apres: string }[])
+          : undefined;
         void this.historiqueService.enregistrer({
           centreId: utilisateur.centreId!,
           utilisateurEmail: utilisateur.email!,
@@ -154,6 +162,8 @@ export class HistoriqueLogInterceptor implements NestInterceptor {
           route,
           statut: 'succès',
           details: [elementTouche, raison].filter(Boolean).join(' — ') || undefined,
+          motif: raison,
+          changements: changements?.length ? changements : undefined,
         });
       }),
       catchError((erreur) => {

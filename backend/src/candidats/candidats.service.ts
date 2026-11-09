@@ -1,7 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Candidat, CandidatDocument } from './schemas/candidat.schema';
+import { Inscription, InscriptionDocument } from '../inscriptions/schemas/inscription.schema';
 import { CreateCandidatDto } from './dto/create-candidat.dto';
 import { UpdateCandidatDto } from './dto/update-candidat.dto';
 
@@ -9,6 +10,7 @@ import { UpdateCandidatDto } from './dto/update-candidat.dto';
 export class CandidatsService {
   constructor(
     @InjectModel(Candidat.name) private candidatModel: Model<CandidatDocument>,
+    @InjectModel(Inscription.name) private inscriptionModel: Model<InscriptionDocument>,
   ) {}
 
   create(createCandidatDto: CreateCandidatDto, centreId: string) {
@@ -71,6 +73,11 @@ export class CandidatsService {
     return candidat;
   }
   async remove(id: string, centreId: string) {
+    // Un candidat qui a des factures ne s'efface pas (on n'efface jamais une trace)
+    const nombreFactures = await this.inscriptionModel.countDocuments({ centreId, candidatId: id });
+    if (nombreFactures > 0) {
+      throw new BadRequestException('Ce candidat a des factures : il ne peut pas être supprimé');
+    }
     const candidat = await this.candidatModel.findOneAndDelete({ _id: id, centreId }).exec();
     if (!candidat) {
       throw new NotFoundException('Candidat introuvable');

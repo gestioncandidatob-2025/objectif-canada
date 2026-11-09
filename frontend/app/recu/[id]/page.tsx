@@ -26,6 +26,7 @@ type Inscription = {
   reference?: string;
   numeroRecu: string;
   dateInscription: string;
+  nombreImpressions?: number;
 };
 
 // En-tête et bas du reçu : viennent des Paramètres du centre
@@ -62,6 +63,8 @@ export default function RecuPage() {
   const [inscription, setInscription] = useState<Inscription | null>(null);
   const [infosCentre, setInfosCentre] = useState<InfosCentre | null>(null);
   const [erreur, setErreur] = useState("");
+  // Nombre d'impressions déjà faites : dès la 1re, le reçu affiché devient un DUPLICATA
+  const [nombreImpressions, setNombreImpressions] = useState(0);
   // Le reçu lui-même reste en français (document officiel du centre) :
   // seuls les messages et les boutons autour suivent la langue choisie
   const { t } = useLangue();
@@ -89,13 +92,39 @@ export default function RecuPage() {
         return;
       }
 
-      setInscription(await resRecu.json());
+      const donneesRecu: Inscription = await resRecu.json();
+      setInscription(donneesRecu);
+      setNombreImpressions(donneesRecu.nombreImpressions ?? 0);
       setInfosCentre(await resCentre.json());
     }
 
     charger().catch(() => setErreur(t("connexion.erreurServeur")));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, router]);
+
+  // Le serveur compte chaque impression : la 1re est l'original, les suivantes
+  // portent « DUPLICATA »
+  async function imprimer() {
+    let nouveauNombre = nombreImpressions + 1;
+    try {
+      const res = await apiFetch(`/registrations/${id}/print`, { method: "POST" });
+      if (res.ok) {
+        const data = await res.json();
+        nouveauNombre = data.nombreImpressions ?? nouveauNombre;
+      }
+    } catch {
+      // Sans réponse du serveur, on imprime quand même
+    }
+
+    if (nouveauNombre >= 2 && nombreImpressions === 0) {
+      // Déjà imprimé ailleurs entre-temps : on affiche DUPLICATA avant d'imprimer
+      setNombreImpressions(nouveauNombre);
+      setTimeout(() => window.print(), 100);
+      return;
+    }
+    window.print();
+    setNombreImpressions(nouveauNombre);
+  }
 
   if (erreur) {
     return (
@@ -154,6 +183,9 @@ export default function RecuPage() {
             ------------------------------------
           </p>
           <p className="font-bold">REÇU DE PAIEMENT</p>
+          {nombreImpressions >= 1 && (
+            <p className="my-1 text-lg font-bold tracking-[0.3em]">*** DUPLICATA ***</p>
+          )}
           <p className="tracking-widest">
             ------------------------------------
           </p>
@@ -240,7 +272,7 @@ export default function RecuPage() {
 
         <div className="mb-6 mt-6 flex justify-center gap-3 print:hidden">
           <button
-            onClick={() => window.print()}
+            onClick={imprimer}
             className="rounded-full bg-blue-100 px-6 py-2 font-medium text-blue-700 transition hover:bg-blue-200"
           >
             {t("recu.imprimer")}
