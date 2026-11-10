@@ -175,7 +175,7 @@ function langueChoisie(): string {
 export function traduireMessageServeur(message: string): string {
   if (langueChoisie() !== "en" || typeof message !== "string") return message;
   // Les espaces spéciaux des montants (65 000) deviennent des espaces normaux
-  const texte = message.replace(/[  ]/g, " ").trim();
+  const texte = message.replace(/[\u00a0\u202f]/g, " ").trim();
   if (MESSAGES_EN[texte]) return MESSAGES_EN[texte];
   for (const [modele, traduire] of MODELES_EN) {
     const trouve = texte.match(modele);

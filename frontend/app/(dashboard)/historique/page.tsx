@@ -14,6 +14,8 @@ type EntreeHistorique = {
   route?: string;
   statut: "succès" | "échec";
   details?: string;
+  motif?: string;
+  changements?: { champ: string; avant: string; apres: string }[];
   date: string;
 };
 
@@ -209,6 +211,24 @@ export default function HistoriquePage() {
                   </td>
                   <td className="max-w-xs px-4 py-3 text-xs text-ink-soft">
                     {entree.details || "—"}
+                    {/* Correction : ancienne et nouvelle valeur de chaque champ */}
+                    {entree.changements && entree.changements.length > 0 && (
+                      <ul className="mt-2 space-y-1">
+                        {entree.changements.map((c, i) => (
+                          <li key={i} className="rounded-md bg-paper px-2 py-1">
+                            <span className="font-medium text-ink">{c.champ}</span> :{" "}
+                            <span className="line-through">{c.avant}</span> →{" "}
+                            <span className="font-medium text-ink">{c.apres}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    {entree.motif && (
+                      <p className="mt-1">
+                        <span className="font-medium text-ink">{t("historique.motif")}</span> :{" "}
+                        {entree.motif}
+                      </p>
+                    )}
                   </td>
                 </tr>
               ))}
