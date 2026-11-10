@@ -85,6 +85,47 @@ const ICONES: Record<string, ReactNode> = {
   ),
 };
 
+// Une carte de statistiques : un titre, le nombre d'inscriptions et le montant encaissé
+function CarteStats({
+  icone,
+  titre,
+  libelleInscriptions,
+  libelleEncaisse,
+  inscriptions,
+  encaisse,
+  locale,
+}: {
+  icone: ReactNode;
+  titre: string;
+  libelleInscriptions: string;
+  libelleEncaisse: string;
+  inscriptions?: number;
+  encaisse?: number;
+  locale: string;
+}) {
+  return (
+    <div className="flex flex-col rounded-2xl border border-ink/10 bg-white p-5 shadow-sm sm:p-6">
+      <div className="mb-5 flex items-center gap-3 text-ink">
+        <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-accent/10 text-accent">
+          {icone}
+        </span>
+        <h2 className="text-lg font-semibold">{titre}</h2>
+      </div>
+
+      <p className="text-sm text-ink-soft">{libelleInscriptions}</p>
+      <p className="mt-1 text-4xl font-semibold text-ink">{inscriptions ?? "—"}</p>
+
+      <div className="my-4 border-t border-ink/10" />
+
+      <p className="text-sm text-ink-soft">{libelleEncaisse}</p>
+      <p className="mt-1 text-2xl font-semibold text-accent sm:text-3xl">
+        {encaisse !== undefined ? encaisse.toLocaleString(locale) : "—"}{" "}
+        <span className="text-base">FCFA</span>
+      </p>
+    </div>
+  );
+}
+
 export default function TableauDeBordPage() {
   const [jour, setJour] = useState<StatsJour | null>(null);
   const [semaine, setSemaine] = useState<StatsSemaine | null>(null);
@@ -172,7 +213,7 @@ export default function TableauDeBordPage() {
 
   return (
     <div className="px-4 py-6 sm:py-12">
-      <div className="mx-auto max-w-4xl">
+      <div className="mx-auto max-w-5xl">
         <h1
           className="mb-6 text-3xl text-ink sm:mb-10 sm:text-4xl"
           style={{ fontFamily: "var(--font-display)" }}
@@ -187,92 +228,63 @@ export default function TableauDeBordPage() {
         )}
         {chargement && <p className="mb-6 text-base text-ink-soft">{t("commun.chargement")}</p>}
 
-        {/* Section Aujourd'hui */}
-        <div className="mb-10">
-          <div className="mb-4 flex items-center gap-3 text-ink">
-            {ICONES.jour}
-            <h2 className="text-xl font-semibold">{t("tableau.aujourdhui")}</h2>
-          </div>
-          {jour && (
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-              <div className="rounded-2xl border border-ink/10 bg-white p-5 shadow-sm sm:p-8">
-                <p className="text-base text-ink-soft">{t("tableau.inscriptionsAujourdhui")}</p>
-                <p className="mt-3 text-5xl font-semibold text-ink">
-                  {jour.nombreInscriptionsJour}
-                </p>
-              </div>
-              <div className="rounded-2xl border border-ink/10 bg-white p-5 shadow-sm sm:p-8">
-                <p className="text-base text-ink-soft">{t("tableau.encaisseAujourdhui")}</p>
-                <p className="mt-3 text-4xl font-semibold text-accent">
-                  {jour.montantEncaisseJour.toLocaleString(locale)}{" "}
-                  <span className="text-xl">FCFA</span>
-                </p>
-              </div>
-            </div>
-          )}
+        {/* Les statistiques : trois cartes (jour, semaine, mois) */}
+        <div className="mb-10 grid grid-cols-1 gap-5 md:grid-cols-3">
+          <CarteStats
+            icone={ICONES.jour}
+            titre={t("tableau.aujourdhui")}
+            libelleInscriptions={t("tableau.inscriptionsAujourdhui")}
+            libelleEncaisse={t("tableau.encaisseAujourdhui")}
+            inscriptions={jour?.nombreInscriptionsJour}
+            encaisse={jour?.montantEncaisseJour}
+            locale={locale}
+          />
+          <CarteStats
+            icone={ICONES.semaine}
+            titre={t("tableau.cetteSemaine")}
+            libelleInscriptions={t("tableau.inscriptionsSemaine")}
+            libelleEncaisse={t("tableau.encaisseSemaine")}
+            inscriptions={semaine?.nombreInscriptionsSemaine}
+            encaisse={semaine?.montantEncaisseSemaine}
+            locale={locale}
+          />
+          <CarteStats
+            icone={ICONES.mois}
+            titre={t("tableau.ceMois")}
+            libelleInscriptions={t("tableau.inscriptionsMois")}
+            libelleEncaisse={t("tableau.encaisseMois")}
+            inscriptions={mois?.nombreInscriptionsMois}
+            encaisse={mois?.montantEncaisseMois}
+            locale={locale}
+          />
         </div>
 
-        {/* Section Cette semaine */}
-        <div className="mb-10">
-          <div className="mb-4 flex items-center gap-3 text-ink">
-            {ICONES.semaine}
-            <h2 className="text-xl font-semibold">{t("tableau.cetteSemaine")}</h2>
-          </div>
-          {semaine && (
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-              <div className="rounded-2xl border border-ink/10 bg-white p-5 shadow-sm sm:p-8">
-                <p className="text-base text-ink-soft">{t("tableau.inscriptionsSemaine")}</p>
-                <p className="mt-3 text-5xl font-semibold text-ink">
-                  {semaine.nombreInscriptionsSemaine}
-                </p>
-              </div>
-              <div className="rounded-2xl border border-ink/10 bg-white p-5 shadow-sm sm:p-8">
-                <p className="text-base text-ink-soft">{t("tableau.encaisseSemaine")}</p>
-                <p className="mt-3 text-4xl font-semibold text-accent">
-                  {semaine.montantEncaisseSemaine.toLocaleString(locale)}{" "}
-                  <span className="text-xl">FCFA</span>
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Section Ce mois */}
-        <div className="mb-10">
-          <div className="mb-4 flex items-center gap-3 text-ink">
-            {ICONES.mois}
-            <h2 className="text-xl font-semibold">{t("tableau.ceMois")}</h2>
-          </div>
-          {mois && (
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-              <div className="rounded-2xl border border-ink/10 bg-white p-5 shadow-sm sm:p-8">
-                <p className="text-base text-ink-soft">{t("tableau.inscriptionsMois")}</p>
-                <p className="mt-3 text-5xl font-semibold text-ink">
-                  {mois.nombreInscriptionsMois}
-                </p>
-              </div>
-              <div className="rounded-2xl border border-ink/10 bg-white p-5 shadow-sm sm:p-8">
-                <p className="text-base text-ink-soft">{t("tableau.encaisseMois")}</p>
-                <p className="mt-3 text-4xl font-semibold text-accent">
-                  {mois.montantEncaisseMois.toLocaleString(locale)}{" "}
-                  <span className="text-xl">FCFA</span>
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Section Graphique — reste cliquable comme avant */}
+        {/* Section Graphique : un vrai bouton qui ouvre / ferme les graphiques */}
         <div>
           <button
+            type="button"
             onClick={() => {
               setGraphiqueOuvert(!graphiqueOuvert);
               setSousGraphique(null);
             }}
-            className="mb-4 flex items-center gap-3 text-ink"
+            aria-expanded={graphiqueOuvert}
+            className="mb-5 inline-flex items-center gap-3 rounded-xl bg-accent px-6 py-3.5 text-base font-semibold text-white shadow-md transition hover:bg-accent-hover hover:shadow-lg active:scale-[0.97]"
           >
             {ICONES.graphique}
-            <h2 className="text-xl font-semibold">{t("tableau.graphique")}</h2>
+            <span>{t("tableau.graphique")}</span>
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              className={`h-5 w-5 transition-transform ${graphiqueOuvert ? "rotate-180" : ""}`}
+            >
+              <path
+                d="m6 9 6 6 6-6"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
           </button>
 
           {graphiqueOuvert && (
