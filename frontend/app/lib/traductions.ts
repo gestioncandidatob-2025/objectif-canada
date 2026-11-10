@@ -341,6 +341,8 @@ export const fr = {
     total: "Total : {montant} FCFA",
     aucuneDonnee: "Aucune donnée pour le moment.",
     semaineN: "Semaine {n}",
+    bandeTitre: "À quoi sert cette page ?",
+    bandeTexte: "Elle résume l'activité du centre : le nombre d'inscriptions et l'argent encaissé aujourd'hui, cette semaine et ce mois. Les chiffres se mettent à jour à chaque nouvelle facture ou correction. Clique sur « Graphique » pour voir l'évolution par jour, par semaine ou par mois.",
   },
   historique: {
     titre: "Historique des actions",
@@ -859,6 +861,8 @@ export const en: Dictionnaire = {
     total: "Total: {montant} FCFA",
     aucuneDonnee: "No data yet.",
     semaineN: "Week {n}",
+    bandeTitre: "What is this page for?",
+    bandeTexte: "It sums up the centre's activity: the number of registrations and the money collected today, this week and this month. The figures update with every new invoice or correction. Click “Chart” to see the trend by day, week or month.",
   },
   historique: {
     titre: "Action history",

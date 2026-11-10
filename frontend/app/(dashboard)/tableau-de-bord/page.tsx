@@ -214,6 +214,18 @@ export default function TableauDeBordPage() {
   return (
     <div className="px-4 py-6 sm:py-12">
       <div className="mx-auto max-w-5xl">
+        {/* Petite bande d'explication, tout en haut de la page */}
+        <div className="mb-6 flex items-start gap-3 rounded-xl border border-accent/20 bg-accent/5 px-4 py-3 text-sm text-ink">
+          <svg viewBox="0 0 24 24" fill="none" className="mt-0.5 h-5 w-5 shrink-0 text-accent">
+            <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" />
+            <path d="M12 11v5M12 8h.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+          </svg>
+          <p>
+            <span className="font-semibold">{t("tableau.bandeTitre")}</span>{" "}
+            {t("tableau.bandeTexte")}
+          </p>
+        </div>
+
         <h1
           className="mb-6 text-3xl text-ink sm:mb-10 sm:text-4xl"
           style={{ fontFamily: "var(--font-display)" }}
