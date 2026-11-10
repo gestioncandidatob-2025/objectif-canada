@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "../lib/api";
 
@@ -249,6 +250,13 @@ export default function SuperAdminPage() {
           </div>
           <div className="flex items-center gap-4 text-sm">
             <span className="hidden text-ink-soft sm:inline">{nomUtilisateur}</span>
+            {/* Abonnements des centres (jalon Abonnements) */}
+            <Link
+              href="/super-admin/abonnements"
+              className="rounded-lg bg-accent px-3 py-2 font-semibold text-white transition hover:bg-accent-hover"
+            >
+              Plans et paiements
+            </Link>
             <button
               onClick={deconnexion}
               className="rounded-lg border border-ink/15 px-3 py-2 text-ink transition hover:bg-ink/5"

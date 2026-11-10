@@ -85,6 +85,42 @@ const MESSAGES_EN: Record<string, string> = {
   "La durée en jours est obligatoire (sauf si la date de fin est saisie manuellement)":
     "The duration in days is required (unless the end date is entered manually)",
   "Il faut au moins un régime": "At least one schedule is required",
+
+  // Corrections et export
+  "Seul l'administrateur peut modifier les montants, le service et le paiement d'une facture":
+    "Only the administrator can change the amounts, the service and the payment of an invoice",
+  "Ce candidat a des factures : il ne peut pas être supprimé":
+    "This candidate has invoices: they cannot be deleted",
+  "Choisis une date de début et une date de fin": "Choose a start date and an end date",
+  "La date de début doit être avant la date de fin": "The start date must be before the end date",
+
+  // Abonnement et paiement CamPay
+  "L'abonnement du centre a expiré : plus de nouvelle facture. L'administrateur doit le renouveler (menu Abonnement).":
+    "The centre's subscription has expired: no new invoices. The administrator must renew it (Subscription menu).",
+  "L'abonnement du centre a expiré : renouvelle-le (menu Abonnement) pour créer un compte.":
+    "The centre's subscription has expired: renew it (Subscription menu) to create an account.",
+  "Numéro de téléphone invalide (exemple : 6 90 00 00 00)": "Invalid phone number (example: 6 90 00 00 00)",
+  "Numéro de téléphone invalide": "Invalid phone number",
+  "Seuls les numéros MTN et Orange sont acceptés": "Only MTN and Orange numbers are accepted",
+  "Montant invalide": "Invalid amount",
+  "Solde insuffisant": "Insufficient balance",
+  "CamPay a refusé la demande de paiement, réessaie": "CamPay refused the payment request, try again",
+  "Le serveur n'arrive pas à joindre CamPay, réessaie": "The server cannot reach CamPay, try again",
+  "Le paiement en ligne n'est pas encore configuré": "Online payment is not set up yet",
+  "Connexion à CamPay refusée : vérifie CAMPAY_USERNAME et CAMPAY_PASSWORD":
+    "CamPay login refused: check CAMPAY_USERNAME and CAMPAY_PASSWORD",
+  "CamPay n'a pas renvoyé de lien de paiement": "CamPay did not return a payment link",
+  "Le plan Gratuit ne se paie pas": "The Free plan is not paid",
+  "Le plan Sur mesure se demande à HREFF": "Ask HREFF for the Custom plan",
+  "Plan inconnu": "Unknown plan",
+  "Ce plan ne se paie pas à l'année": "This plan cannot be paid yearly",
+  "Ce plan ne se paie pas au mois": "This plan cannot be paid monthly",
+  "Paiement introuvable": "Payment not found",
+  "Choisis un plan": "Choose a plan",
+  "Durée invalide (mensuel ou annuel)": "Invalid duration (monthly or yearly)",
+  "Paiement refusé ou annulé": "Payment refused or cancelled",
+  "Montant reçu incorrect": "Incorrect amount received",
+  "Demande refusée": "Request refused",
 };
 
 // Messages qui contiennent une valeur (montant, nom, nombre)
@@ -114,6 +150,15 @@ const MODELES_EN: [RegExp, (...valeurs: string[]) => string][] = [
     /^Ce service a déjà été utilisé sur (\d+) facture\(s\) : il a été désactivé au lieu d'être supprimé\.$/,
     (nombre) =>
       `This service has already been used on ${nombre} invoice(s): it was deactivated instead of deleted.`,
+  ],
+  [
+    /^Limite de (\d+) factures ce mois atteinte \(plan (.+)\)\. L'administrateur peut passer à un plan supérieur \(menu Abonnement\)\.$/,
+    (limite, plan) =>
+      `${limite}-invoice monthly limit reached (${plan} plan). The administrator can upgrade (Subscription menu).`,
+  ],
+  [
+    /^Limite de (\d+) comptes atteinte \(plan (.+)\)\. Passe à un plan supérieur \(menu Abonnement\)\.$/,
+    (limite, plan) => `${limite}-account limit reached (${plan} plan). Upgrade your plan (Subscription menu).`,
   ],
 ];
 
