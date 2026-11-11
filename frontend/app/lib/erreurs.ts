@@ -111,7 +111,6 @@ const MESSAGES_EN: Record<string, string> = {
     "CamPay login refused: check CAMPAY_USERNAME and CAMPAY_PASSWORD",
   "CamPay n'a pas renvoyé de lien de paiement": "CamPay did not return a payment link",
   "Le plan Gratuit ne se paie pas": "The Free plan is not paid",
-  "Le plan Sur mesure se demande à HREFF": "Ask HREFF for the Custom plan",
   "Plan inconnu": "Unknown plan",
   "Ce plan ne se paie pas à l'année": "This plan cannot be paid yearly",
   "Ce plan ne se paie pas au mois": "This plan cannot be paid monthly",
@@ -121,6 +120,10 @@ const MESSAGES_EN: Record<string, string> = {
   "Paiement refusé ou annulé": "Payment refused or cancelled",
   "Montant reçu incorrect": "Incorrect amount received",
   "Demande refusée": "Request refused",
+  "Indique un nombre de factures par mois": "Enter a number of invoices per month",
+  "Indique un nombre de comptes": "Enter a number of accounts",
+  "Nombre de factures trop grand": "Number of invoices too large",
+  "Nombre de comptes trop grand": "Number of accounts too large",
 };
 
 // Messages qui contiennent une valeur (montant, nom, nombre)
@@ -175,7 +178,7 @@ function langueChoisie(): string {
 export function traduireMessageServeur(message: string): string {
   if (langueChoisie() !== "en" || typeof message !== "string") return message;
   // Les espaces spéciaux des montants (65 000) deviennent des espaces normaux
-  const texte = message.replace(/[\u00a0\u202f]/g, " ").trim();
+  const texte = message.replace(/[  ]/g, " ").trim();
   if (MESSAGES_EN[texte]) return MESSAGES_EN[texte];
   for (const [modele, traduire] of MODELES_EN) {
     const trouve = texte.match(modele);

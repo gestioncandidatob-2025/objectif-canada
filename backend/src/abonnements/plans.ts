@@ -25,10 +25,57 @@ export const PLANS_PAR_DEFAUT: PlanParDefaut[] = [
   { code: PLAN_GRATUIT, nom: 'Gratuit', ordre: 1, prixMensuel: 0, prixAnnuel: null, factures: 25, comptes: 2 },
   { code: 'standard', nom: 'Standard', ordre: 2, prixMensuel: 10000, prixAnnuel: 100000, factures: 100, comptes: 3 },
   { code: 'pro', nom: 'Pro', ordre: 3, prixMensuel: 20000, prixAnnuel: 200000, factures: 200, comptes: 5 },
-  // Sur mesure : prix et limites réglés centre par centre par le super admin.
-  // Les limites ci-dessous ne servent que si le super admin n'a rien réglé.
+  // Sur mesure : le centre choisit ses factures (et ses comptes), le prix est
+  // calculé avec TARIF_SUR_MESURE_PAR_DEFAUT. Les limites ci-dessous ne
+  // servent que pour un centre Sur mesure sans valeurs enregistrées.
   { code: PLAN_SUR_MESURE, nom: 'Sur mesure', ordre: 4, prixMensuel: null, prixAnnuel: null, factures: 200, comptes: 5 },
 ];
+
+/**
+ * Prix du plan Sur mesure (modifiables par le super admin) :
+ * - prixParFacture           : prix d'une facture par mois (100 F = même prix que Standard et Pro)
+ * - facturesParCompte        : 1 compte inclus pour ce nombre de factures (40 → Standard 3, Pro 5)
+ * - prixCompteSupplementaire : prix par mois d'un compte en plus de ceux inclus
+ */
+export interface TarifSurMesure {
+  prixParFacture: number;
+  facturesParCompte: number;
+  prixCompteSupplementaire: number;
+}
+
+export const TARIF_SUR_MESURE_PAR_DEFAUT: TarifSurMesure = {
+  prixParFacture: 100,
+  facturesParCompte: 40,
+  prixCompteSupplementaire: 1000,
+};
+
+/** Comptes toujours inclus, même avec peu de factures (comme le plan Gratuit) */
+export const COMPTES_MINIMUM = 2;
+
+/** Abonnement annuel : 12 mois pour le prix de 10 (2 mois offerts) */
+export const MOIS_PAYES_PAR_AN = 10;
+
+/**
+ * Calcule l'abonnement Sur mesure pour un nombre de factures par mois et un
+ * nombre de comptes souhaité. Les comptes inclus sont offerts ; on ne paie
+ * que les comptes au-delà. Demander moins de comptes que ceux inclus ne
+ * baisse pas le prix (on reçoit quand même les comptes inclus).
+ */
+export function calculerSurMesure(factures: number, comptesSouhaites: number | undefined, tarif: TarifSurMesure) {
+  const nbFactures = Math.max(1, Math.floor(factures));
+  const comptesInclus = Math.max(COMPTES_MINIMUM, Math.ceil(nbFactures / Math.max(1, tarif.facturesParCompte)));
+  const comptes = Math.max(comptesInclus, Math.floor(comptesSouhaites ?? comptesInclus));
+  const comptesEnPlus = comptes - comptesInclus;
+  const prixMensuel = nbFactures * tarif.prixParFacture + comptesEnPlus * tarif.prixCompteSupplementaire;
+  return {
+    factures: nbFactures,
+    comptesInclus,
+    comptes,
+    comptesEnPlus,
+    prixMensuel,
+    prixAnnuel: prixMensuel * MOIS_PAYES_PAR_AN,
+  };
+}
 
 /** Jours pendant lesquels un centre peut encore travailler après l'échéance */
 export const JOURS_DE_GRACE = 7;

@@ -38,6 +38,25 @@ export class ModifierPlanDto {
   @IsInt()
   @Min(1, { message: 'Au moins 1 compte' })
   comptes?: number;
+
+  // Plan Sur mesure seulement
+  @ApiPropertyOptional({ example: 100, description: 'Sur mesure : prix d\'une facture par mois' })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  prixParFacture?: number;
+
+  @ApiPropertyOptional({ example: 40, description: 'Sur mesure : 1 compte inclus pour ce nombre de factures' })
+  @IsOptional()
+  @IsInt()
+  @Min(1, { message: 'Au moins 1 facture par compte' })
+  facturesParCompte?: number;
+
+  @ApiPropertyOptional({ example: 1000, description: "Sur mesure : prix par mois d'un compte en plus" })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  prixCompteSupplementaire?: number;
 }
 
 /** Prix et limites d'un centre au plan Sur mesure */

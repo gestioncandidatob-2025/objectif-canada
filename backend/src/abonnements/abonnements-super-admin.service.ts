@@ -104,6 +104,9 @@ export class AbonnementsSuperAdminService {
         prixAnnuel: p.prixAnnuel,
         factures: p.factures,
         comptes: p.comptes,
+        prixParFacture: p.prixParFacture ?? null,
+        facturesParCompte: p.facturesParCompte ?? null,
+        prixCompteSupplementaire: p.prixCompteSupplementaire ?? null,
         nombreCentres: parPlan[p.code] ?? 0,
       })),
       aSuivre,
@@ -122,6 +125,13 @@ export class AbonnementsSuperAdminService {
     if (dto.prixAnnuel !== undefined) plan.prixAnnuel = dto.prixAnnuel;
     if (dto.factures !== undefined) plan.factures = dto.factures;
     if (dto.comptes !== undefined) plan.comptes = dto.comptes;
+    if (plan.code === PLAN_SUR_MESURE) {
+      if (dto.prixParFacture !== undefined) plan.prixParFacture = dto.prixParFacture;
+      if (dto.facturesParCompte !== undefined) plan.facturesParCompte = dto.facturesParCompte;
+      if (dto.prixCompteSupplementaire !== undefined) {
+        plan.prixCompteSupplementaire = dto.prixCompteSupplementaire;
+      }
+    }
     await plan.save();
     return plan;
   }

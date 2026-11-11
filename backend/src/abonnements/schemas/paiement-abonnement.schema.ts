@@ -57,6 +57,13 @@ export class PaiementAbonnement {
   @Prop()
   raisonEchec?: string;
 
+  // Plan Sur mesure : factures par mois et comptes achetés
+  @Prop()
+  factures?: number;
+
+  @Prop()
+  comptes?: number;
+
   // Qui a lancé le paiement
   @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User' })
   payeParId?: Types.ObjectId;

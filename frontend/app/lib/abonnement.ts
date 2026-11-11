@@ -56,3 +56,38 @@ export function nomDuPlan(code: string, t: (cle: string) => string, nomServeur?:
   const traduit = t(cle);
   return traduit === cle ? (nomServeur ?? code) : traduit;
 }
+
+/** Prix du plan Sur mesure (réglés par le super admin) */
+export type TarifSurMesure = {
+  prixParFacture: number;
+  facturesParCompte: number;
+  prixCompteSupplementaire: number;
+};
+
+/** Comptes toujours inclus, même avec peu de factures */
+const COMPTES_MINIMUM = 2;
+
+/**
+ * Même calcul que le serveur (backend/src/abonnements/plans.ts) : sert à
+ * afficher le prix en direct. Le serveur refait le calcul au moment de payer.
+ */
+export function calculerSurMesure(
+  factures: number,
+  comptesSouhaites: number | undefined,
+  tarif: TarifSurMesure,
+  moisPayesParAn: number,
+) {
+  const nbFactures = Math.max(1, Math.floor(factures || 1));
+  const comptesInclus = Math.max(COMPTES_MINIMUM, Math.ceil(nbFactures / Math.max(1, tarif.facturesParCompte)));
+  const comptes = Math.max(comptesInclus, Math.floor(comptesSouhaites || comptesInclus));
+  const comptesEnPlus = comptes - comptesInclus;
+  const prixMensuel = nbFactures * tarif.prixParFacture + comptesEnPlus * tarif.prixCompteSupplementaire;
+  return {
+    factures: nbFactures,
+    comptesInclus,
+    comptes,
+    comptesEnPlus,
+    prixMensuel,
+    prixAnnuel: prixMensuel * moisPayesParAn,
+  };
+}

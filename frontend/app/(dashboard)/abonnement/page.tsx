@@ -4,7 +4,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "../../lib/api";
 import { useLangue } from "../../lib/langue";
-import { EVENEMENT_ABONNEMENT_MODIFIE, nomDuPlan, type EtatAbonnement } from "../../lib/abonnement";
+import {
+  EVENEMENT_ABONNEMENT_MODIFIE,
+  calculerSurMesure,
+  nomDuPlan,
+  type EtatAbonnement,
+  type TarifSurMesure,
+} from "../../lib/abonnement";
 
 type PlanPayable = {
   code: string;
@@ -26,12 +32,19 @@ type Paiement = {
   payeParNom: string;
   date: string | null;
   finPeriode: string | null;
+  factures: number | null;
 };
 
 type Resume = EtatAbonnement & {
   paiementEnLigne: boolean;
   plansGratuits: { code: string; nom: string; factures: number; comptes: number }[];
   plans: PlanPayable[];
+  surMesure: {
+    tarif: TarifSurMesure;
+    moisPayesParAn: number;
+    // Factures et comptes actuels si le centre est déjà en Sur mesure
+    actuel: { factures: number; comptes: number } | null;
+  };
   paiements: Paiement[];
 };
 
@@ -69,6 +82,10 @@ export default function AbonnementPage() {
   const [resultat, setResultat] = useState<{ type: "succes" | "echec" | "attente"; texte: string } | null>(null);
   const minuterie = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Plan Sur mesure : factures par mois et comptes choisis (texte tapé)
+  const [smFactures, setSmFactures] = useState("300");
+  const [smComptes, setSmComptes] = useState("");
+
   const formaterMontant = (montant: number) => `${montant.toLocaleString(locale)} FCFA`;
   const formaterDate = (valeur: string | null) =>
     valeur ? new Date(valeur).toLocaleDateString(locale, { day: "numeric", month: "long", year: "numeric" }) : "";
@@ -98,6 +115,11 @@ export default function AbonnementPage() {
       setResume(data);
       setErreurChargement("");
       if (data.periodicite) setPeriodicite(data.periodicite);
+      // Déjà en Sur mesure : on part de ses valeurs actuelles
+      if (data.surMesure.actuel) {
+        setSmFactures(String(data.surMesure.actuel.factures));
+        setSmComptes(String(data.surMesure.actuel.comptes));
+      }
     } catch {
       setErreurChargement(t("abonnement.erreurChargement"));
     }
@@ -187,6 +209,12 @@ export default function AbonnementPage() {
     setErreurPaiement("");
   }
 
+  /** Pour le Sur mesure : on envoie les factures et comptes choisis (le serveur recalcule le prix) */
+  function extraSurMesure() {
+    if (planChoisi?.code !== "sur_mesure") return {};
+    return { factures: planChoisi.factures, comptes: planChoisi.comptes };
+  }
+
   async function payer() {
     if (!planChoisi) return;
     setEnvoi(true);
@@ -195,7 +223,7 @@ export default function AbonnementPage() {
       if (moyen === "mobile") {
         const res = await apiFetch("/subscription/pay/mobile", {
           method: "POST",
-          body: JSON.stringify({ plan: planChoisi.code, periodicite, telephone }),
+          body: JSON.stringify({ plan: planChoisi.code, periodicite, telephone, ...extraSurMesure() }),
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
@@ -208,7 +236,7 @@ export default function AbonnementPage() {
       } else {
         const res = await apiFetch("/subscription/pay/card", {
           method: "POST",
-          body: JSON.stringify({ plan: planChoisi.code, periodicite }),
+          body: JSON.stringify({ plan: planChoisi.code, periodicite, ...extraSurMesure() }),
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok || !data.lien) {
@@ -261,7 +289,7 @@ export default function AbonnementPage() {
 
   return (
     <div className="px-4 py-6 sm:py-10">
-      <div className="mx-auto max-w-5xl">
+      <div className="mx-auto max-w-6xl">
         <h1 className="text-3xl text-ink sm:text-4xl" style={{ fontFamily: "var(--font-display)" }}>
           {t("abonnement.titre")}
         </h1>
@@ -338,8 +366,13 @@ export default function AbonnementPage() {
             </section>
 
             {/* Choix d'un plan */}
-            <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-              <h2 className="text-xl font-semibold text-ink">{t("abonnement.choisirPlan")}</h2>
+            <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+              <div>
+                <h2 className="text-2xl text-ink sm:text-3xl" style={{ fontFamily: "var(--font-display)" }}>
+                  {t("abonnement.choisirPlan")}
+                </h2>
+                <p className="mt-1 text-sm text-ink-soft">{t("abonnement.sousTitrePlans")}</p>
+              </div>
               <div role="tablist" className="flex rounded-full border border-ink/15 bg-white p-1">
                 {(["mensuel", "annuel"] as Periodicite[]).map((p) => (
                   <button
@@ -348,90 +381,221 @@ export default function AbonnementPage() {
                     aria-selected={periodicite === p}
                     onClick={() => setPeriodicite(p)}
                     className={
-                      "rounded-full px-4 py-1.5 text-sm font-semibold transition " +
-                      (periodicite === p ? "bg-accent text-white" : "text-ink hover:bg-paper")
+                      "flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition " +
+                      (periodicite === p ? "bg-ink text-white" : "text-ink hover:bg-paper")
                     }
                   >
                     {p === "annuel" ? t("abonnement.parAn") : t("abonnement.parMois")}
+                    {p === "annuel" && (
+                      <span
+                        className={
+                          "rounded-full px-2 py-0.5 text-[11px] font-semibold " +
+                          (periodicite === p ? "bg-white/20 text-white" : "bg-accent/10 text-accent")
+                        }
+                      >
+                        {t("abonnement.moisOfferts")}
+                      </span>
+                    )}
                   </button>
                 ))}
               </div>
             </div>
 
             {!resume.paiementEnLigne && (
-              <p className="mb-4 rounded-xl bg-seal/15 px-4 py-3 text-sm text-ink">{t("abonnement.paiementIndisponible")}</p>
+              <p className="mb-6 rounded-xl bg-seal/15 px-4 py-3 text-sm text-ink">{t("abonnement.paiementIndisponible")}</p>
             )}
 
-            <div className="mb-10 grid grid-cols-1 gap-4 md:grid-cols-3">
-              {/* Plan Gratuit : rien à payer */}
-              {resume.plansGratuits.map((plan) => (
-                <div key={plan.code} className="flex flex-col rounded-2xl border border-ink/10 bg-white p-5">
-                  <p className="text-lg font-semibold text-ink">{nomDuPlan(plan.code, t, plan.nom)}</p>
-                  <p className="mt-2 text-2xl font-semibold text-ink">0 FCFA</p>
-                  <ul className="mt-4 space-y-1.5 text-sm text-ink-soft">
-                    <li>{t("abonnement.nbFactures", { nombre: plan.factures })}</li>
-                    <li>{t("abonnement.nbComptes", { nombre: plan.comptes })}</li>
-                    <li>{t("abonnement.assistantInclus")}</li>
-                  </ul>
-                  {resume.plan.code === plan.code && (
-                    <p className="mt-auto pt-5 text-sm font-semibold text-accent">{t("abonnement.votrePlan")}</p>
-                  )}
-                </div>
-              ))}
-
-              {resume.plans.map((plan) => {
-                const prix = prixDe(plan);
+            <div className="grid grid-cols-1 gap-x-4 gap-y-8 pt-3 md:grid-cols-2 xl:grid-cols-4">
+              {/* Gratuit */}
+              {resume.plansGratuits.map((plan) => {
                 const estActuel = resume.plan.code === plan.code;
                 return (
                   <div
                     key={plan.code}
                     className={
-                      "flex flex-col rounded-2xl border bg-white p-5 " +
-                      (estActuel ? "border-accent ring-2 ring-accent/20" : "border-ink/10")
+                      "relative flex flex-col rounded-[20px] bg-white p-6 " +
+                      (estActuel ? "border-2 border-accent" : "border border-ink/10")
                     }
                   >
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="text-lg font-semibold text-ink">{nomDuPlan(plan.code, t, plan.nom)}</p>
-                      {estActuel && (
-                        <span className="rounded-full bg-accent/10 px-2.5 py-1 text-xs font-semibold text-accent">
-                          {t("abonnement.votrePlan")}
-                        </span>
-                      )}
-                    </div>
-                    <p className="mt-2 text-2xl font-semibold text-ink">
-                      {prix ? formaterMontant(prix) : "—"}
-                      {prix ? (
-                        <span className="text-sm font-medium text-ink-soft">
-                          {" "}
-                          / {periodicite === "annuel" ? t("abonnement.an") : t("abonnement.mois")}
+                    {estActuel && <EtiquetteCarte texte={t("abonnement.votrePlan")} couleur="bg-accent" />}
+                    <EnTeteCarte nom={nomDuPlan(plan.code, t, plan.nom)} description={t(`abonnement.desc.${plan.code}`)} />
+                    <PrixCarte prix="0 F" unite={t("abonnement.mois")} />
+                    <Separateur />
+                    <ListeAvantages
+                      lignes={[
+                        [String(plan.factures), t("abonnement.facturesParMois")],
+                        [String(plan.comptes), t("abonnement.comptesMot")],
+                        ["", t("abonnement.assistantIA")],
+                      ]}
+                    />
+                    <div className="mt-auto pt-6">
+                      {estActuel ? (
+                        <span className="flex h-12 items-center justify-center rounded-xl bg-paper text-sm font-semibold text-ink-soft">
+                          {t("abonnement.planActuelBouton")}
                         </span>
                       ) : null}
-                    </p>
-                    <ul className="mt-4 space-y-1.5 text-sm text-ink-soft">
-                      <li>{t("abonnement.nbFactures", { nombre: plan.factures })}</li>
-                      <li>{t("abonnement.nbComptes", { nombre: plan.comptes })}</li>
-                      <li>{t("abonnement.assistantInclus")}</li>
-                    </ul>
-                    <div className="mt-auto pt-5">
+                    </div>
+                  </div>
+                );
+              })}
+
+              {/* Standard et Pro */}
+              {resume.plans.map((plan) => {
+                const prix = prixDe(plan);
+                const estActuel = resume.plan.code === plan.code;
+                const enAvant = plan.code === "pro" && !estActuel;
+                const nom = nomDuPlan(plan.code, t, plan.nom);
+                return (
+                  <div
+                    key={plan.code}
+                    className={
+                      "relative flex flex-col rounded-[20px] bg-white p-6 " +
+                      (estActuel
+                        ? "border-2 border-accent"
+                        : enAvant
+                          ? "border-2 border-seal shadow-[0_12px_30px_-12px_rgba(192,138,40,0.35)]"
+                          : "border border-ink/10")
+                    }
+                  >
+                    {estActuel && <EtiquetteCarte texte={t("abonnement.votrePlan")} couleur="bg-accent" />}
+                    {enAvant && <EtiquetteCarte texte={t("abonnement.lePlusChoisi")} couleur="bg-seal" />}
+                    <EnTeteCarte nom={nom} description={t(`abonnement.desc.${plan.code}`)} />
+                    <PrixCarte
+                      prix={prix ? formaterMontant(prix) : "—"}
+                      unite={periodicite === "annuel" ? t("abonnement.an") : t("abonnement.mois")}
+                    />
+                    <Separateur />
+                    <ListeAvantages
+                      lignes={[
+                        [plan.factures.toLocaleString(locale), t("abonnement.facturesParMois")],
+                        ...(periodicite === "annuel"
+                          ? ([[(plan.factures * 12).toLocaleString(locale), t("abonnement.facturesSurAnnee")]] as [string, string][])
+                          : []),
+                        [String(plan.comptes), t("abonnement.comptesMot")],
+                        ["", t("abonnement.assistantIA")],
+                      ]}
+                    />
+                    <div className="mt-auto pt-6">
                       <button
                         type="button"
                         disabled={!prix || !resume.paiementEnLigne || Boolean(suivi)}
                         onClick={() => ouvrirPaiement(plan)}
-                        className="h-11 w-full rounded-xl bg-accent text-sm font-semibold text-white transition hover:bg-accent-hover disabled:opacity-50"
+                        className={
+                          "h-12 w-full rounded-xl text-sm font-semibold transition disabled:opacity-50 " +
+                          (enAvant || estActuel
+                            ? "bg-accent text-white hover:bg-accent-hover"
+                            : "border border-ink/20 bg-white text-ink hover:bg-paper")
+                        }
                       >
                         {!prix
                           ? t("abonnement.pasDisponible")
                           : estActuel
                             ? t("abonnement.renouveler")
-                            : t("abonnement.choisir")}
+                            : t("abonnement.choisirNom", { plan: nom })}
                       </button>
                     </div>
                   </div>
                 );
               })}
+
+              {/* Sur mesure : le centre choisit ses factures et ses comptes, le prix se calcule tout seul */}
+              {(() => {
+                const sm = resume.surMesure;
+                const facturesTapees = Number(smFactures.replace(/\D/g, ""));
+                const comptesTapes = Number(smComptes.replace(/\D/g, "")) || undefined;
+                const valide = facturesTapees >= 1;
+                const calcul = calculerSurMesure(facturesTapees || 1, comptesTapes, sm.tarif, sm.moisPayesParAn);
+                const prix = periodicite === "annuel" ? calcul.prixAnnuel : calcul.prixMensuel;
+                const estActuel = resume.plan.code === "sur_mesure";
+                const nom = nomDuPlan("sur_mesure", t);
+                const champ =
+                  "h-12 w-full rounded-xl border border-white/20 bg-white/10 px-3 text-base font-semibold text-white outline-none placeholder:text-white/50 focus:border-white/60 focus:ring-2 focus:ring-white/20";
+                return (
+                  <div className="relative flex flex-col rounded-[20px] bg-ink p-6 text-white">
+                    {estActuel && <EtiquetteCarte texte={t("abonnement.votrePlan")} couleur="bg-accent" />}
+                    <EnTeteCarte nom={nom} description={t("abonnement.desc.sur_mesure")} sombre />
+
+                    <div className="mt-5 grid grid-cols-2 gap-2.5">
+                      <label className="flex flex-col gap-1.5 text-xs font-medium text-white/75">
+                        {t("abonnement.sm.factures")}
+                        <input
+                          inputMode="numeric"
+                          value={smFactures}
+                          onChange={(e) => setSmFactures(e.target.value.replace(/[^\d\s]/g, ""))}
+                          className={champ}
+                        />
+                      </label>
+                      <label className="flex flex-col gap-1.5 text-xs font-medium text-white/75">
+                        {t("abonnement.sm.comptes")}
+                        <input
+                          inputMode="numeric"
+                          value={smComptes}
+                          placeholder={String(calcul.comptesInclus)}
+                          onChange={(e) => setSmComptes(e.target.value.replace(/[^\d\s]/g, ""))}
+                          className={champ}
+                        />
+                      </label>
+                    </div>
+
+                    <PrixCarte
+                      prix={valide ? formaterMontant(prix) : "—"}
+                      unite={periodicite === "annuel" ? t("abonnement.an") : t("abonnement.mois")}
+                      sombre
+                    />
+                    {valide && (
+                      <p className="mt-1 text-xs text-white/70">
+                        {t("abonnement.sm.calcul", {
+                          prix: formaterMontant(sm.tarif.prixParFacture),
+                          factures: calcul.factures.toLocaleString(locale),
+                          comptes: calcul.comptesInclus,
+                        })}
+                        {calcul.comptesEnPlus > 0 &&
+                          ` · ${t("abonnement.sm.comptesEnPlus", {
+                            nombre: calcul.comptesEnPlus,
+                            prix: formaterMontant(sm.tarif.prixCompteSupplementaire),
+                          })}`}
+                      </p>
+                    )}
+                    <Separateur sombre />
+                    {valide && (
+                      <ListeAvantages
+                        sombre
+                        lignes={[
+                          [calcul.factures.toLocaleString(locale), t("abonnement.facturesParMois")],
+                          ...(periodicite === "annuel"
+                            ? ([[(calcul.factures * 12).toLocaleString(locale), t("abonnement.facturesSurAnnee")]] as [string, string][])
+                            : []),
+                          [String(calcul.comptes), t("abonnement.comptesMot")],
+                          ["", t("abonnement.assistantIA")],
+                        ]}
+                      />
+                    )}
+
+                    <div className="mt-auto pt-6">
+                      <button
+                        type="button"
+                        disabled={!valide || !resume.paiementEnLigne || Boolean(suivi)}
+                        onClick={() =>
+                          ouvrirPaiement({
+                            code: "sur_mesure",
+                            nom,
+                            prixMensuel: calcul.prixMensuel,
+                            prixAnnuel: calcul.prixAnnuel,
+                            factures: calcul.factures,
+                            comptes: calcul.comptes,
+                          })
+                        }
+                        className="h-12 w-full rounded-xl bg-white text-sm font-semibold text-ink transition hover:bg-paper disabled:opacity-50"
+                      >
+                        {estActuel ? t("abonnement.renouveler") : t("abonnement.choisirNom", { plan: nom })}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
 
-            <p className="-mt-6 mb-10 text-sm text-ink-soft">{t("abonnement.surMesure")}</p>
+            <p className="mb-10 mt-5 text-center text-xs text-ink-soft">{t("abonnement.paiementSecurise")}</p>
 
             {/* Derniers paiements */}
             <h2 className="mb-3 text-xl font-semibold text-ink">{t("abonnement.historique")}</h2>
@@ -455,7 +619,8 @@ export default function AbonnementPage() {
                       <tr key={p.id} className="border-b border-ink/5 last:border-0">
                         <td className="px-4 py-3 text-ink-soft">{formaterDate(p.date)}</td>
                         <td className="px-4 py-3 text-ink">
-                          {nomDuPlan(p.plan, t)} ·{" "}
+                          {nomDuPlan(p.plan, t)}
+                          {p.factures ? ` (${p.factures.toLocaleString(locale)} ${t("abonnement.sm.facturesCourt")})` : ""} ·{" "}
                           {p.periodicite === "annuel" ? t("abonnement.annuel") : t("abonnement.mensuel")}
                         </td>
                         <td className="px-4 py-3 text-ink-soft">
@@ -505,6 +670,12 @@ export default function AbonnementPage() {
               {formaterMontant(prixDe(planChoisi) ?? 0)} ·{" "}
               {periodicite === "annuel" ? t("abonnement.unAn") : t("abonnement.unMois")}
             </p>
+            {planChoisi.code === "sur_mesure" && (
+              <p className="mt-1 text-sm text-ink-soft">
+                {t("abonnement.nbFactures", { nombre: planChoisi.factures.toLocaleString(locale) })} ·{" "}
+                {t("abonnement.nbComptes", { nombre: planChoisi.comptes })}
+              </p>
+            )}
             {resume && resume.plan.code !== planChoisi.code && resume.statut === "actif" && (
               <p className="mt-3 rounded-xl bg-seal/15 px-3 py-2 text-sm text-ink">{t("abonnement.changementPlan")}</p>
             )}
@@ -576,5 +747,69 @@ export default function AbonnementPage() {
         </div>
       )}
     </div>
+  );
+}
+
+// ---------- Petits morceaux des cartes de plans ----------
+
+/** Étiquette posée sur le bord haut d'une carte (« Ton plan », « Le plus choisi ») */
+function EtiquetteCarte({ texte, couleur }: { texte: string; couleur: string }) {
+  return (
+    <span className={`absolute -top-3 left-6 rounded-full px-2.5 py-1 text-xs font-bold text-white ${couleur}`}>
+      {texte}
+    </span>
+  );
+}
+
+function EnTeteCarte({ nom, description, sombre }: { nom: string; description: string; sombre?: boolean }) {
+  return (
+    <div>
+      <p className={"text-[13px] font-bold uppercase tracking-[0.08em] " + (sombre ? "text-white/70" : "text-ink-soft")}>
+        {nom}
+      </p>
+      <p className={"mt-1 min-h-9 text-[13px] " + (sombre ? "text-white/70" : "text-ink-soft")}>{description}</p>
+    </div>
+  );
+}
+
+function PrixCarte({ prix, unite, sombre }: { prix: string; unite: string; sombre?: boolean }) {
+  return (
+    <p className="mt-4 flex flex-wrap items-baseline gap-1.5">
+      <span className={"text-[32px] font-bold leading-tight tracking-tight " + (sombre ? "text-white" : "text-ink")}>
+        {prix}
+      </span>
+      <span className={"text-sm " + (sombre ? "text-white/70" : "text-ink-soft")}>/ {unite}</span>
+    </p>
+  );
+}
+
+function Separateur({ sombre }: { sombre?: boolean }) {
+  return <div className={"my-5 h-px " + (sombre ? "bg-white/15" : "bg-ink/10")} />;
+}
+
+/** Liste avec une coche devant chaque ligne ; le premier morceau (le chiffre) est en gras */
+function ListeAvantages({ lignes, sombre }: { lignes: [string, string][]; sombre?: boolean }) {
+  return (
+    <ul className="flex flex-col gap-3 text-sm">
+      {lignes.map(([chiffre, texte]) => (
+        <li key={texte} className="flex items-start gap-2.5">
+          <span
+            aria-hidden="true"
+            className={
+              "flex h-5 w-5 shrink-0 items-center justify-center rounded-full " +
+              (sombre ? "bg-white/15 text-white" : "bg-accent/10 text-accent")
+            }
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M5 12l5 5L20 7" />
+            </svg>
+          </span>
+          <span className={sombre ? "text-white" : "text-ink"}>
+            {chiffre && <strong className="font-bold">{chiffre} </strong>}
+            {texte}
+          </span>
+        </li>
+      ))}
+    </ul>
   );
 }

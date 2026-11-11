@@ -35,6 +35,16 @@ export class Plan {
   // Nombre maximum de comptes (admin + secrétaires)
   @Prop({ required: true })
   comptes!: number;
+
+  // Plan Sur mesure seulement : base du calcul du prix (voir plans.ts)
+  @Prop()
+  prixParFacture?: number;
+
+  @Prop()
+  facturesParCompte?: number;
+
+  @Prop()
+  prixCompteSupplementaire?: number;
 }
 
 export const PlanSchema = SchemaFactory.createForClass(Plan);

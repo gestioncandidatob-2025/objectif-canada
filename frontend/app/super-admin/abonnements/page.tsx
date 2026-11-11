@@ -19,6 +19,10 @@ type Plan = {
   prixAnnuel: number | null;
   factures: number;
   comptes: number;
+  // Sur mesure seulement
+  prixParFacture: number | null;
+  facturesParCompte: number | null;
+  prixCompteSupplementaire: number | null;
   nombreCentres: number;
 };
 
@@ -89,6 +93,13 @@ export default function PlansEtPaiementsPage() {
   const [vue, setVue] = useState<VueEnsemble | null>(null);
   const [erreur, setErreur] = useState("");
   const [succes, setSucces] = useState("");
+
+  // Prix du Sur mesure
+  const [tarifEnCours, setTarifEnCours] = useState<{
+    prixParFacture: string;
+    facturesParCompte: string;
+    prixCompteSupplementaire: string;
+  } | null>(null);
 
   // Modification d'un plan
   const [planEnCours, setPlanEnCours] = useState<{
@@ -188,6 +199,28 @@ export default function PlansEtPaiementsPage() {
     }
     setSucces(`Plan « ${planEnCours.nom} » enregistré. Les nouveaux prix valent pour les prochains paiements.`);
     setPlanEnCours(null);
+    charger();
+  }
+
+  async function enregistrerTarif(e: React.FormEvent) {
+    e.preventDefault();
+    if (!tarifEnCours) return;
+    setErreur("");
+    setSucces("");
+    const res = await apiFetch("/subscriptions/plans/sur_mesure", {
+      method: "PATCH",
+      body: JSON.stringify({
+        prixParFacture: versNombre(tarifEnCours.prixParFacture) ?? undefined,
+        facturesParCompte: versNombre(tarifEnCours.facturesParCompte) ?? undefined,
+        prixCompteSupplementaire: versNombre(tarifEnCours.prixCompteSupplementaire) ?? undefined,
+      }),
+    });
+    if (!res.ok) {
+      setErreur(await messageErreur(res));
+      return;
+    }
+    setSucces("Prix du Sur mesure enregistrés. Ils valent pour les prochains paiements.");
+    setTarifEnCours(null);
     charger();
   }
 
@@ -299,13 +332,38 @@ export default function PlansEtPaiementsPage() {
                     {vue.plans.map((plan) => (
                       <tr key={plan.code} className="border-b border-ink/5 last:border-0">
                         <td className="px-5 py-3 font-semibold text-ink">{plan.nom}</td>
-                        <td className="px-5 py-3">{plan.prixMensuel !== null ? montant(plan.prixMensuel) : "—"}</td>
-                        <td className="px-5 py-3">{plan.prixAnnuel !== null ? montant(plan.prixAnnuel) : "—"}</td>
+                        <td className="px-5 py-3">
+                          {plan.code === "sur_mesure"
+                            ? `${montant(plan.prixParFacture ?? 0)} / facture`
+                            : plan.prixMensuel !== null
+                              ? montant(plan.prixMensuel)
+                              : "—"}
+                        </td>
+                        <td className="px-5 py-3">
+                          {plan.code === "sur_mesure" ? "mois × 10" : plan.prixAnnuel !== null ? montant(plan.prixAnnuel) : "—"}
+                        </td>
                         <td className="px-5 py-3">{plan.code === "sur_mesure" ? "au choix" : plan.factures}</td>
-                        <td className="px-5 py-3">{plan.code === "sur_mesure" ? "au choix" : plan.comptes}</td>
+                        <td className="px-5 py-3">
+                          {plan.code === "sur_mesure"
+                            ? `1 / ${plan.facturesParCompte ?? 40} factures (+ ${montant(plan.prixCompteSupplementaire ?? 0)} en plus)`
+                            : plan.comptes}
+                        </td>
                         <td className="px-5 py-3">{plan.nombreCentres}</td>
                         <td className="px-5 py-3 text-right">
-                          {plan.code !== "sur_mesure" && (
+                          {plan.code === "sur_mesure" ? (
+                            <button
+                              onClick={() =>
+                                setTarifEnCours({
+                                  prixParFacture: String(plan.prixParFacture ?? ""),
+                                  facturesParCompte: String(plan.facturesParCompte ?? ""),
+                                  prixCompteSupplementaire: String(plan.prixCompteSupplementaire ?? ""),
+                                })
+                              }
+                              className="rounded-lg border border-ink/15 px-3 py-1.5 text-sm font-semibold text-ink hover:bg-ink/5"
+                            >
+                              Modifier
+                            </button>
+                          ) : (
                             <button
                               onClick={() =>
                                 setPlanEnCours({
@@ -328,6 +386,43 @@ export default function PlansEtPaiementsPage() {
                   </tbody>
                 </table>
               </div>
+
+              {tarifEnCours && (
+                <form onSubmit={enregistrerTarif} className="grid grid-cols-1 gap-3 border-t border-ink/10 p-5 sm:grid-cols-4">
+                  <p className="text-sm font-semibold text-ink sm:col-span-4">
+                    Prix du Sur mesure — le centre choisit ses factures, le prix se calcule tout seul (annuel = 10 mois)
+                  </p>
+                  {(
+                    [
+                      ["prixParFacture", "Prix d'une facture par mois (F)"],
+                      ["facturesParCompte", "1 compte inclus pour … factures"],
+                      ["prixCompteSupplementaire", "Compte en plus, par mois (F)"],
+                    ] as const
+                  ).map(([cle, libelle]) => (
+                    <label key={cle} className="flex flex-col gap-1 text-xs font-medium text-ink-soft">
+                      {libelle}
+                      <input
+                        inputMode="numeric"
+                        value={tarifEnCours[cle]}
+                        onChange={(e) => setTarifEnCours({ ...tarifEnCours, [cle]: e.target.value })}
+                        className={champClass}
+                      />
+                    </label>
+                  ))}
+                  <div className="flex items-end gap-2">
+                    <button type="submit" className="h-10 flex-1 rounded-lg bg-accent px-3 text-sm font-semibold text-white">
+                      Enregistrer
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTarifEnCours(null)}
+                      className="h-10 rounded-lg border border-ink/15 px-3 text-sm text-ink"
+                    >
+                      Annuler
+                    </button>
+                  </div>
+                </form>
+              )}
 
               {planEnCours && (
                 <form onSubmit={enregistrerPlan} className="grid grid-cols-2 gap-3 border-t border-ink/10 p-5 sm:grid-cols-5">

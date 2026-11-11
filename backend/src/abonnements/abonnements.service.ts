@@ -20,9 +20,13 @@ import {
 } from './schemas/paiement-abonnement.schema';
 import { CampayService, TransactionCampay } from './campay.service';
 import {
+  MOIS_PAYES_PAR_AN,
   PLANS_PAR_DEFAUT,
   PLAN_GRATUIT,
   PLAN_SUR_MESURE,
+  TARIF_SUR_MESURE_PAR_DEFAUT,
+  TarifSurMesure,
+  calculerSurMesure,
   Periodicite,
   SEUIL_ALERTE_QUOTA,
   ajouterMois,
@@ -45,6 +49,8 @@ export interface PaiementLisible {
   createdAt?: Date;
   dateConfirmation?: Date | null;
   finPeriode?: Date | null;
+  factures?: number | null;
+  comptes?: number | null;
 }
 
 /** Prix et limites qui s'appliquent à un centre */
@@ -89,12 +95,28 @@ export class AbonnementsService implements OnModuleInit {
           },
         })),
       );
+      // Prix de départ du Sur mesure, s'ils n'ont jamais été enregistrés
+      await this.planModel.updateOne(
+        { code: PLAN_SUR_MESURE, prixParFacture: { $exists: false } },
+        { $set: TARIF_SUR_MESURE_PAR_DEFAUT },
+      );
     } catch (erreur) {
       this.logger.warn(`Création des plans impossible : ${String(erreur)}`);
     }
   }
 
   // ---------- Plans et limites ----------
+
+  /** Prix du Sur mesure (enregistrés par le super admin, ou ceux de départ) */
+  async tarifSurMesure(): Promise<TarifSurMesure> {
+    const plan = await this.planModel.findOne({ code: PLAN_SUR_MESURE }).lean().exec();
+    return {
+      prixParFacture: plan?.prixParFacture ?? TARIF_SUR_MESURE_PAR_DEFAUT.prixParFacture,
+      facturesParCompte: plan?.facturesParCompte ?? TARIF_SUR_MESURE_PAR_DEFAUT.facturesParCompte,
+      prixCompteSupplementaire:
+        plan?.prixCompteSupplementaire ?? TARIF_SUR_MESURE_PAR_DEFAUT.prixCompteSupplementaire,
+    };
+  }
 
   async listerPlans() {
     return this.planModel.find().sort({ ordre: 1 }).lean().exec();
@@ -181,11 +203,10 @@ export class AbonnementsService implements OnModuleInit {
         factures: p.factures,
         comptes: p.comptes,
       }));
-    // Le Sur mesure n'apparaît que pour le centre qui l'a, avec ses propres prix
-    if (centre.plan === PLAN_SUR_MESURE) {
-      const sm = await this.planDuCentre(centre);
-      if (sm.prixMensuel || sm.prixAnnuel) plansPayables.push(sm);
-    }
+    // Sur mesure : le centre choisit ses factures et ses comptes, le prix est
+    // calculé (dans la page, puis recalculé ici au moment de payer)
+    const tarif = await this.tarifSurMesure();
+    const actuel = centre.plan === PLAN_SUR_MESURE ? await this.planDuCentre(centre) : null;
 
     const paiements = await this.paiementModel
       .find({ centreId })
@@ -201,6 +222,12 @@ export class AbonnementsService implements OnModuleInit {
         .filter((p) => p.code === PLAN_GRATUIT)
         .map((p) => ({ code: p.code, nom: p.nom, factures: p.factures, comptes: p.comptes })),
       plans: plansPayables,
+      surMesure: {
+        tarif,
+        moisPayesParAn: MOIS_PAYES_PAR_AN,
+        // Valeurs actuelles du centre s'il est déjà en Sur mesure (pour renouveler)
+        actuel: actuel ? { factures: actuel.factures, comptes: actuel.comptes } : null,
+      },
       paiements: paiements.map((p) => this.formaterPaiement(p as unknown as PaiementLisible)),
     };
   }
@@ -239,20 +266,32 @@ export class AbonnementsService implements OnModuleInit {
 
   // ---------- Paiement ----------
 
-  /** Prix du plan choisi pour ce centre, ou une erreur claire */
-  private async prixAPayer(centre: CentreDocument, codePlan: string, periodicite: Periodicite) {
+  /**
+   * Prix du plan choisi, ou une erreur claire. Pour le Sur mesure, le prix est
+   * toujours recalculé ici (on ne fait jamais confiance au montant affiché).
+   */
+  private async prixAPayer(
+    codePlan: string,
+    periodicite: Periodicite,
+    factures?: number,
+    comptes?: number,
+  ): Promise<{ prix: number; nomPlan: string; factures?: number; comptes?: number }> {
     if (codePlan === PLAN_GRATUIT) {
       throw new BadRequestException('Le plan Gratuit ne se paie pas');
     }
-    if (codePlan === PLAN_SUR_MESURE && centre.plan !== PLAN_SUR_MESURE) {
-      throw new BadRequestException('Le plan Sur mesure se demande à HREFF');
-    }
-    const plan =
-      codePlan === PLAN_SUR_MESURE
-        ? await this.planDuCentre(centre)
-        : await this.planModel.findOne({ code: codePlan }).lean().exec();
-    if (!plan) throw new BadRequestException('Plan inconnu');
 
+    if (codePlan === PLAN_SUR_MESURE) {
+      if (!factures || factures < 1) {
+        throw new BadRequestException('Indique un nombre de factures par mois');
+      }
+      const calcul = calculerSurMesure(factures, comptes, await this.tarifSurMesure());
+      const prix = periodicite === 'annuel' ? calcul.prixAnnuel : calcul.prixMensuel;
+      if (prix <= 0) throw new BadRequestException('Montant invalide');
+      return { prix, nomPlan: 'Sur mesure', factures: calcul.factures, comptes: calcul.comptes };
+    }
+
+    const plan = await this.planModel.findOne({ code: codePlan }).lean().exec();
+    if (!plan) throw new BadRequestException('Plan inconnu');
     const prix = periodicite === 'annuel' ? plan.prixAnnuel : plan.prixMensuel;
     if (!prix || prix <= 0) {
       throw new BadRequestException(
@@ -279,20 +318,27 @@ export class AbonnementsService implements OnModuleInit {
   async payerParMobile(
     centreId: string,
     userId: string,
-    dto: { plan: string; periodicite: Periodicite; telephone: string },
+    dto: { plan: string; periodicite: Periodicite; telephone: string; factures?: number; comptes?: number },
   ) {
     const telephone = normaliserTelephone(dto.telephone);
     if (!telephone) {
       throw new BadRequestException('Numéro de téléphone invalide (exemple : 6 90 00 00 00)');
     }
     const centre = await this.trouverCentre(centreId);
-    const { prix, nomPlan } = await this.prixAPayer(centre, dto.plan, dto.periodicite);
+    const { prix, nomPlan, factures, comptes } = await this.prixAPayer(
+      dto.plan,
+      dto.periodicite,
+      dto.factures,
+      dto.comptes,
+    );
 
     const paiement = await this.paiementModel.create({
       centreId,
       plan: dto.plan,
       periodicite: dto.periodicite,
       montant: prix,
+      factures,
+      comptes,
       moyen: 'mobile',
       telephone,
       payeParId: new Types.ObjectId(userId),
@@ -329,16 +375,23 @@ export class AbonnementsService implements OnModuleInit {
     centreId: string,
     userId: string,
     email: string | undefined,
-    dto: { plan: string; periodicite: Periodicite },
+    dto: { plan: string; periodicite: Periodicite; factures?: number; comptes?: number },
   ) {
     const centre = await this.trouverCentre(centreId);
-    const { prix, nomPlan } = await this.prixAPayer(centre, dto.plan, dto.periodicite);
+    const { prix, nomPlan, factures, comptes } = await this.prixAPayer(
+      dto.plan,
+      dto.periodicite,
+      dto.factures,
+      dto.comptes,
+    );
 
     const paiement = await this.paiementModel.create({
       centreId,
       plan: dto.plan,
       periodicite: dto.periodicite,
       montant: prix,
+      factures,
+      comptes,
       moyen: 'carte',
       payeParId: new Types.ObjectId(userId),
       payeParNom: await this.nomUtilisateur(userId, centreId),
@@ -468,6 +521,16 @@ export class AbonnementsService implements OnModuleInit {
     centre.plan = confirme.plan;
     centre.periodicite = confirme.periodicite;
     centre.finAbonnement = fin;
+    // Sur mesure payé : les factures et comptes achetés deviennent les limites du centre
+    if (confirme.plan === PLAN_SUR_MESURE && confirme.factures && confirme.comptes) {
+      centre.surMesure = {
+        factures: confirme.factures,
+        comptes: confirme.comptes,
+        ...(confirme.periodicite === 'annuel'
+          ? { prixAnnuel: confirme.montant, prixMensuel: Math.round(confirme.montant / MOIS_PAYES_PAR_AN) }
+          : { prixMensuel: confirme.montant, prixAnnuel: confirme.montant * MOIS_PAYES_PAR_AN }),
+      };
+    }
     await centre.save();
 
     await this.paiementModel.updateOne({ _id: confirme._id, centreId }, { debutPeriode: debut, finPeriode: fin });
@@ -492,6 +555,8 @@ export class AbonnementsService implements OnModuleInit {
       date: p.createdAt ?? null,
       dateConfirmation: p.dateConfirmation ?? null,
       finPeriode: p.finPeriode ?? null,
+      factures: p.factures ?? null,
+      comptes: p.comptes ?? null,
     };
   }
 }
