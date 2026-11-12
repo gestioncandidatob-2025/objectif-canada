@@ -5,6 +5,7 @@ import {
   IsInt,
   IsOptional,
   IsString,
+  Max,
   Min,
   ValidateIf,
   ValidateNested,
@@ -115,4 +116,27 @@ export class ReglerAbonnementDto {
   @ValidateNested()
   @Type(() => SurMesureDto)
   surMesure?: SurMesureDto;
+}
+
+/**
+ * Le super admin offre un plan à un centre pour une période (ex : 3 mois de
+ * Pro). À la fin, le centre revient tout seul à son plan d'avant.
+ */
+export class OffrirPlanDto {
+  @ApiProperty({ example: 'pro', description: 'standard ou pro' })
+  @IsString()
+  @IsIn(['standard', 'pro'], { message: 'On ne peut offrir que le plan Standard ou le plan Pro' })
+  plan!: string;
+
+  @ApiPropertyOptional({ example: 3, description: "Nombre de mois offerts (ou bien une date de fin)" })
+  @IsOptional()
+  @IsInt({ message: 'Le nombre de mois doit être un nombre entier' })
+  @Min(1, { message: 'Au moins 1 mois' })
+  @Max(36, { message: 'Au plus 36 mois' })
+  mois?: number;
+
+  @ApiPropertyOptional({ example: '2027-02-12', description: "Date de fin de l'offre (ou bien un nombre de mois)" })
+  @IsOptional()
+  @IsDateString({}, { message: 'Date de fin invalide' })
+  fin?: string;
 }
