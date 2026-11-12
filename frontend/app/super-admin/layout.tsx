@@ -60,17 +60,6 @@ const LIENS = [
       </svg>
     ),
   },
-  {
-    href: "/super-admin/reglage",
-    label: "Régler un abonnement",
-    icone: (
-      <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
-        <path d="M4 7h10M18 7h2M4 17h4M12 17h8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-        <circle cx="16" cy="7" r="2" stroke="currentColor" strokeWidth="1.8" />
-        <circle cx="10" cy="17" r="2" stroke="currentColor" strokeWidth="1.8" />
-      </svg>
-    ),
-  },
 ];
 
 export default function SuperAdminLayout({ children }: { children: React.ReactNode }) {
