@@ -13,6 +13,7 @@ import { Candidat, CandidatDocument } from '../candidats/schemas/candidat.schema
 import { Tarif, TarifDocument } from '../tarifs/schemas/tarif.schema';
 import { Historique, HistoriqueDocument } from '../historique/schemas/historique.schema';
 import { UsersService } from '../users/users.service';
+import { S3Service } from '../factures/s3.service';
 import { UpdateCentreDto } from './dto/update-centre.dto';
 
 /**
@@ -30,6 +31,7 @@ export class CentresSuperAdminService {
     @InjectModel(Tarif.name) private tarifModel: Model<TarifDocument>,
     @InjectModel(Historique.name) private historiqueModel: Model<HistoriqueDocument>,
     private usersService: UsersService,
+    private s3Service: S3Service,
   ) {}
 
   /** Premier administrateur créé pour ce centre (celui créé avec le centre) */
@@ -46,15 +48,18 @@ export class CentresSuperAdminService {
     return Promise.all(
       centres.map(async (centre) => {
         const centreId = String(centre._id);
-        const [admin, nombreFactures, nombreUtilisateurs] = await Promise.all([
+        const [admin, nombreFactures, nombreUtilisateurs, logoUrl] = await Promise.all([
           this.adminPrincipal(centreId),
           this.inscriptionModel.countDocuments({ centreId }),
           this.userModel.countDocuments({ centreId }),
+          // Logo du centre : lien temporaire vers S3 (null si pas de logo)
+          centre.logoKey ? this.s3Service.urlSignee(centre.logoKey) : Promise.resolve(null),
         ]);
         return {
           ...centre,
           nombreFactures,
           nombreUtilisateurs,
+          logoUrl,
           admin: admin
             ? { id: admin._id, nom: admin.nom, email: admin.email, emailVerifie: admin.emailVerifie }
             : null,
