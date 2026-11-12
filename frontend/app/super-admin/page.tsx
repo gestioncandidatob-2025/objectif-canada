@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useCallback, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { apiFetch } from "../lib/api";
 import { BadgePlan, CarteChiffre, ICONES, Notification } from "../components/SuperAdminUI";
+import DialoguePlanCentre from "../components/DialoguePlanCentre";
 
 /**
  * Espace super admin (équipe HREFF) — version simple.
@@ -87,8 +88,12 @@ async function messageErreur(res: Response) {
   }
 }
 
-export default function SuperAdminPage() {
+function PageCentres() {
   const router = useRouter();
+  const parametres = useSearchParams();
+  // Centre dont on change le plan (fenêtre « Changer le plan »).
+  // Les pages Paiements et À suivre l'ouvrent avec ?plan=<id du centre>.
+  const [centrePlan, setCentrePlan] = useState<string | null>(parametres.get("plan"));
   const [pret, setPret] = useState(false);
   const [centres, setCentres] = useState<Centre[]>([]);
   const [chargement, setChargement] = useState(true);
@@ -278,7 +283,7 @@ export default function SuperAdminPage() {
 
   function ActionsCentre({ centre }: { centre: Centre }) {
     return (
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-1.5">
         <button
           onClick={() => ouvrirModification(centre)}
           className="rounded-lg border border-ink/15 px-3 py-1.5 text-xs font-semibold text-ink transition hover:border-accent hover:text-accent"
@@ -312,7 +317,7 @@ export default function SuperAdminPage() {
 
   return (
     <>
-      <main className="mx-auto max-w-6xl px-4 py-6 sm:py-10">
+      <main className="mx-auto max-w-7xl px-3 py-6 sm:px-4 sm:py-10">
         <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-seal">HREFF</p>
@@ -527,109 +532,109 @@ export default function SuperAdminPage() {
         )}
 
         {!chargement && centres.length > 0 && (
-          <>
-            {/* Téléphone et tablette : une carte par centre */}
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:hidden">
-              {centres.map((centre) => (
-                <div key={centre._id} className="rounded-2xl border border-ink/10 bg-white p-4 shadow-sm">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex min-w-0 items-center gap-3">
-                      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-ink text-sm font-semibold text-white">
-                        {initiales(centre.nom)}
-                      </span>
-                      <div className="min-w-0">
-                        <p className="truncate font-semibold text-ink">{centre.nom}</p>
-                        <p className="text-xs text-ink-soft">{centre.ville || "—"}</p>
+          // Tableau qui tient toujours dans la largeur : sur petit écran, les
+          // colonnes moins utiles se cachent (leurs infos passent sous le nom)
+          <div className="rounded-2xl border border-ink/10 bg-white shadow-sm">
+            <table className="w-full table-fixed text-left text-sm">
+              <thead className="border-b border-ink/10 bg-paper text-xs uppercase tracking-wider text-ink-soft">
+                <tr>
+                  <th className="w-[38%] px-3 py-3.5 font-semibold sm:px-4 lg:w-[22%]">Centre</th>
+                  <th className="hidden px-4 py-3.5 font-semibold lg:table-cell lg:w-[22%]">Administrateur</th>
+                  <th className="w-[30%] px-3 py-3.5 font-semibold sm:px-4 lg:w-[15%]">Plan</th>
+                  <th className="w-[32%] px-3 py-3.5 font-semibold sm:px-4 md:w-[18%] lg:w-[13%]">Changer le plan</th>
+                  <th className="hidden px-4 py-3.5 font-semibold md:table-cell md:w-[10%] lg:w-[8%]">Factures</th>
+                  <th className="hidden px-4 py-3.5 font-semibold md:table-cell md:w-[12%] lg:w-[9%]">Statut</th>
+                  <th className="hidden px-4 py-3.5 font-semibold sm:table-cell sm:w-[20%] lg:w-[11%]">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {centres.map((centre) => (
+                  <tr key={centre._id} className="border-b border-ink/5 align-top transition last:border-0 hover:bg-paper/70">
+                    <td className="px-3 py-4 sm:px-4">
+                      <div className="flex items-center gap-3">
+                        <span className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-ink text-sm font-semibold text-white sm:flex">
+                          {initiales(centre.nom)}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="break-words font-semibold text-ink">{centre.nom}</p>
+                          <p className="text-xs text-ink-soft">
+                            {centre.ville || "—"} · créé le {new Date(centre.createdAt).toLocaleDateString("fr-FR")}
+                          </p>
+                          {/* Petits écrans : l'administrateur, le statut et les actions passent ici */}
+                          <p className="mt-1 break-all text-xs text-ink-soft lg:hidden">{centre.admin?.email ?? "—"}</p>
+                          <div className="mt-2 md:hidden">
+                            <PastilleStatut statut={centre.statut} />
+                          </div>
+                          <div className="mt-2 sm:hidden">
+                            <ActionsCentre centre={centre} />
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                    <PastilleStatut statut={centre.statut} />
-                  </div>
-                  <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
-                    <div>
-                      <p className="text-xs text-ink-soft">Plan</p>
-                      <div className="mt-1">
-                        <BadgePlan code={centre.plan || "gratuit"} />
-                      </div>
+                    </td>
+                    <td className="hidden px-4 py-4 lg:table-cell">
+                      <p className="break-all text-ink">{centre.admin?.email ?? "—"}</p>
+                      <p className="text-xs text-ink-soft">{centre.telephone || "—"}</p>
+                      {centre.admin && !centre.admin.emailVerifie && (
+                        <p className="text-xs text-seal">Email non vérifié</p>
+                      )}
+                    </td>
+                    <td className="px-3 py-4 sm:px-4">
+                      <BadgePlan code={centre.plan || "gratuit"} />
                       {etatPlan(centre) && (
                         <p className={`mt-1 text-xs ${etatPlan(centre)!.classe}`}>{etatPlan(centre)!.texte}</p>
                       )}
-                    </div>
-                    <div>
-                      <p className="text-xs text-ink-soft">Factures</p>
-                      <p className="mt-1 font-semibold text-ink">{centre.nombreFactures}</p>
-                    </div>
-                    <div className="col-span-2">
-                      <p className="text-xs text-ink-soft">Administrateur</p>
-                      <p className="mt-1 break-all text-ink">{centre.admin?.email ?? "—"}</p>
-                      <p className="text-xs text-ink-soft">
-                        {centre.telephone || "—"} · créé le {new Date(centre.createdAt).toLocaleDateString("fr-FR")}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="mt-4 border-t border-ink/10 pt-3">
-                    <ActionsCentre centre={centre} />
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Grand écran : tableau qui tient en largeur (aucun défilement) */}
-            <div className="hidden rounded-2xl border border-ink/10 bg-white shadow-sm xl:block">
-              <table className="w-full table-fixed text-left text-sm">
-                <thead className="border-b border-ink/10 bg-paper text-xs uppercase tracking-wider text-ink-soft">
-                  <tr>
-                    <th className="w-[24%] px-4 py-3.5 font-semibold">Centre</th>
-                    <th className="w-[24%] px-4 py-3.5 font-semibold">Administrateur</th>
-                    <th className="w-[15%] px-4 py-3.5 font-semibold">Plan</th>
-                    <th className="w-[8%] px-4 py-3.5 font-semibold">Factures</th>
-                    <th className="w-[10%] px-4 py-3.5 font-semibold">Statut</th>
-                    <th className="w-[19%] px-4 py-3.5 font-semibold">Actions</th>
+                    </td>
+                    <td className="px-3 py-4 sm:px-4">
+                      <button
+                        onClick={() => setCentrePlan(centre._id)}
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-accent-hover active:scale-[0.97]"
+                      >
+                        <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4 shrink-0">
+                          <path d="M7 4 3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                        Changer
+                      </button>
+                    </td>
+                    <td className="hidden px-4 py-4 font-semibold text-ink md:table-cell">{centre.nombreFactures}</td>
+                    <td className="hidden px-4 py-4 md:table-cell">
+                      <PastilleStatut statut={centre.statut} />
+                    </td>
+                    <td className="hidden px-4 py-4 sm:table-cell">
+                      <ActionsCentre centre={centre} />
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {centres.map((centre) => (
-                    <tr key={centre._id} className="border-b border-ink/5 align-top transition last:border-0 hover:bg-paper/70">
-                      <td className="px-4 py-4">
-                        <div className="flex items-center gap-3">
-                          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-ink text-sm font-semibold text-white">
-                            {initiales(centre.nom)}
-                          </span>
-                          <div className="min-w-0">
-                            <p className="truncate font-semibold text-ink">{centre.nom}</p>
-                            <p className="truncate text-xs text-ink-soft">
-                              {centre.ville || "—"} · créé le {new Date(centre.createdAt).toLocaleDateString("fr-FR")}
-                            </p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-4">
-                        <p className="break-all text-ink">{centre.admin?.email ?? "—"}</p>
-                        <p className="text-xs text-ink-soft">{centre.telephone || "—"}</p>
-                        {centre.admin && !centre.admin.emailVerifie && (
-                          <p className="text-xs text-seal">Email non vérifié</p>
-                        )}
-                      </td>
-                      <td className="px-4 py-4">
-                        <BadgePlan code={centre.plan || "gratuit"} />
-                        {etatPlan(centre) && (
-                          <p className={`mt-1 text-xs ${etatPlan(centre)!.classe}`}>{etatPlan(centre)!.texte}</p>
-                        )}
-                      </td>
-                      <td className="px-4 py-4 font-semibold text-ink">{centre.nombreFactures}</td>
-                      <td className="px-4 py-4">
-                        <PastilleStatut statut={centre.statut} />
-                      </td>
-                      <td className="px-4 py-4">
-                        <ActionsCentre centre={centre} />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Fenêtre « Changer le plan » */}
+        {centrePlan && (
+          <DialoguePlanCentre
+            centreId={centrePlan}
+            nomCentre={centres.find((c) => c._id === centrePlan)?.nom ?? "Centre"}
+            onFermer={() => {
+              setCentrePlan(null);
+              router.replace("/super-admin");
+            }}
+            onEnregistre={(message) => {
+              setCentrePlan(null);
+              router.replace("/super-admin");
+              setSucces(message);
+              chargerCentres();
+            }}
+          />
         )}
       </main>
     </>
+  );
+}
+
+export default function SuperAdminPage() {
+  return (
+    <Suspense>
+      <PageCentres />
+    </Suspense>
   );
 }

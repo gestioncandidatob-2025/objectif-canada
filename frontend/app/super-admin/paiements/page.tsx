@@ -22,12 +22,6 @@ import {
  * offerts en cours. Le super admin ne voit jamais le contenu des factures.
  */
 
-const SUIVI = {
-  echeance_proche: { texte: "Échéance proche", classe: "bg-accent/10 text-accent" },
-  grace: { texte: "Grâce", classe: "bg-seal/15 text-ink" },
-  lecture_seule: { texte: "Lecture seule", classe: "bg-error/10 text-error" },
-};
-
 /** Le code d'un plan à partir de son nom affiché ("Pro" → "pro") */
 function codeDuPlan(nom: string) {
   const n = nom.toLowerCase();
@@ -58,7 +52,7 @@ export default function PaiementsPage() {
     <main className="mx-auto flex max-w-6xl flex-col gap-8 px-4 py-6 sm:py-10">
       <EnTetePage
         titre="Paiements"
-        description="L'argent reçu des centres (CamPay : Mobile Money ou carte) et les abonnements à surveiller."
+        description="L'argent reçu des centres (CamPay : Mobile Money ou carte) et les plans offerts en cours."
       />
 
       <Notification message={erreur} type="erreur" onFermer={() => setErreur("")} />
@@ -105,41 +99,6 @@ export default function PaiementsPage() {
             )}
           </section>
 
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            {/* Abonnements à suivre */}
-            <section className="rounded-2xl border border-ink/10 bg-white shadow-sm">
-              <div className="border-b border-ink/10 px-5 py-4">
-                <h2 className="text-base font-semibold text-ink">Abonnements à suivre</h2>
-                <p className="mt-0.5 text-sm text-ink-soft">Échéance proche, période de grâce ou lecture seule</p>
-              </div>
-              {vue.aSuivre.length === 0 ? (
-                <p className="px-5 py-8 text-center text-sm text-ink-soft">Rien à suivre pour l&apos;instant.</p>
-              ) : (
-                <ul className="divide-y divide-ink/5">
-                  {vue.aSuivre.map((ligne) => (
-                    <li key={ligne.centreId} className="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
-                      <div className="min-w-0">
-                        <p className="font-semibold text-ink">{ligne.centre}</p>
-                        <p className="text-xs text-ink-soft">
-                          {ligne.plan} ·{" "}
-                          {ligne.statut === "grace"
-                            ? `payer avant le ${dateCourte(ligne.finGrace)}`
-                            : `échéance le ${dateCourte(ligne.finAbonnement)}`}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${SUIVI[ligne.statut].classe}`}>
-                          {SUIVI[ligne.statut].texte}
-                        </span>
-                        <Link href={`/super-admin/reglage?centre=${ligne.centreId}`} className={boutonSecondaire}>
-                          Régler
-                        </Link>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
 
             {/* Plans offerts en cours */}
             <section className="rounded-2xl border border-ink/10 bg-white shadow-sm">
@@ -161,7 +120,7 @@ export default function PaiementsPage() {
                       </div>
                       <div className="flex items-center gap-2">
                         <BadgePlan code={codeDuPlan(ligne.plan)} nom={ligne.plan} />
-                        <Link href={`/super-admin/reglage?centre=${ligne.centreId}`} className={boutonSecondaire}>
+                        <Link href={`/super-admin?plan=${ligne.centreId}`} className={boutonSecondaire}>
                           Voir
                         </Link>
                       </div>
@@ -170,7 +129,6 @@ export default function PaiementsPage() {
                 </ul>
               )}
             </section>
-          </div>
         </>
       )}
     </main>
