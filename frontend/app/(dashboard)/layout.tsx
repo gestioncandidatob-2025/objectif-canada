@@ -12,6 +12,7 @@ import BarreRecherche from "../components/BarreRecherche";
 import AssistantFlottant from "../components/AssistantFlottant";
 import BandeauAbonnement, { FacturationBloquee } from "../components/BandeauAbonnement";
 import { useEtatAbonnement } from "../lib/abonnement";
+import { jetonExpire, terminerSession, useSurveillanceSession } from "../lib/session";
 
 type User = {
   nom: string;
@@ -148,11 +149,19 @@ export default function DashboardLayout({
   // Abonnement du centre : rechargé à chaque changement de page (les quotas bougent)
   const etatAbonnement = useEtatAbonnement(pret, pathname);
 
+  // Session expirée pendant que la page est ouverte : retour à la connexion
+  useSurveillanceSession(pret);
+
   useEffect(() => {
     const token = localStorage.getItem("token");
     const userStr = localStorage.getItem("user");
     if (!token || !userStr) {
       router.push("/login");
+      return;
+    }
+    // Session déjà expirée en arrivant : directement la page de connexion
+    if (jetonExpire(token)) {
+      terminerSession("expiree");
       return;
     }
     const utilisateur = JSON.parse(userStr);

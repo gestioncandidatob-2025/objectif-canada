@@ -54,6 +54,7 @@ export const fr = {
     inscrireMonCentre: "Inscrire mon centre",
     erreurIdentifiants: "Email ou mot de passe incorrect",
     erreurServeur: "Impossible de contacter le serveur",
+    sessionExpiree: "Ta session a expiré. Reconnecte-toi pour continuer.",
   },
   motDePasse: {
     afficher: "Afficher le mot de passe",
@@ -689,6 +690,7 @@ export const en: Dictionnaire = {
     inscrireMonCentre: "Register my centre",
     erreurIdentifiants: "Incorrect email or password",
     erreurServeur: "Cannot reach the server",
+    sessionExpiree: "Your session has expired. Log in again to continue.",
   },
   motDePasse: {
     afficher: "Show password",

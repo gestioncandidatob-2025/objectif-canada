@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import ChampMotDePasse from "../components/ChampMotDePasse";
 import BoutonLangue from "../components/BoutonLangue";
 import { useLangue } from "../lib/langue";
+import { lireSessionExpiree } from "../lib/session";
 
 // Icône « maison » de l'Espace de gestion (nom neutre : on ne sait pas
 // encore de quel centre il s'agit avant la connexion)
@@ -33,8 +34,14 @@ export default function LoginPage() {
   const [motDePasse, setMotDePasse] = useState("");
   const [erreur, setErreur] = useState("");
   const [connexionEnCours, setConnexionEnCours] = useState(false);
+  // Arrivé ici parce que la session a expiré : on le dit
+  const [sessionExpiree, setSessionExpiree] = useState(false);
   const router = useRouter();
   const { t } = useLangue();
+
+  useEffect(() => {
+    setSessionExpiree(lireSessionExpiree());
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -126,6 +133,9 @@ export default function LoginPage() {
               onSubmit={handleSubmit}
               className="flex flex-col gap-4 rounded-2xl border border-ink/10 bg-white p-5 shadow-sm lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none"
             >
+              {sessionExpiree && !erreur && (
+                <p className="rounded-lg bg-seal/15 px-3 py-2.5 text-sm text-ink">{t("connexion.sessionExpiree")}</p>
+              )}
               {erreur && (
                 <p className="rounded-lg bg-error/10 px-3 py-2.5 text-sm text-error">{erreur}</p>
               )}

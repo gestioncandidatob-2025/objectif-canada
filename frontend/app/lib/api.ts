@@ -1,12 +1,26 @@
 import { traduireReponse } from "./erreurs";
+import { jetonExpire, terminerSession } from "./session";
 
 export function getToken() {
   if (typeof window === "undefined") return null;
   return localStorage.getItem("token");
 }
 
+// Une promesse qui ne se termine jamais : la page part vers la connexion,
+// inutile d'afficher une erreur entre-temps
+function attendreRedirection(): Promise<Response> {
+  return new Promise(() => {});
+}
+
 export async function apiFetch(path: string, options: RequestInit = {}) {
   const token = getToken();
+
+  // Session expirée : on ne contacte même pas le serveur
+  if (token && jetonExpire(token)) {
+    terminerSession("expiree");
+    return attendreRedirection();
+  }
+
   const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}${path}`, {
     ...options,
     headers: {
@@ -15,6 +29,13 @@ export async function apiFetch(path: string, options: RequestInit = {}) {
       ...options.headers,
     },
   });
+  // Le serveur refuse le jeton (expiré ou plus valable) : retour à la connexion.
+  // Sauf pour les pages de connexion elles-mêmes (mauvais mot de passe, etc.)
+  if (res.status === 401 && token && !path.startsWith("/auth/")) {
+    terminerSession("expiree");
+    return attendreRedirection();
+  }
+
   return traduireReponseServeur(res);
 }
 

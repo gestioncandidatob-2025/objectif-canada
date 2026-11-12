@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { jetonExpire, terminerSession, useSurveillanceSession } from "../lib/session";
 
 /**
  * Cadre commun de l'espace super admin (équipe HREFF) :
@@ -78,6 +79,9 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
   const [nom, setNom] = useState("");
   const [pret, setPret] = useState(false);
 
+  // Session expirée pendant que la page est ouverte : retour à la connexion
+  useSurveillanceSession(pret);
+
   // Seul le super admin a accès à cet espace (vérifié ici pour toutes les pages)
   useEffect(() => {
     try {
@@ -85,6 +89,10 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
       const utilisateur = JSON.parse(localStorage.getItem("user") ?? "{}");
       if (!token || !utilisateur.role) {
         router.replace("/login");
+        return;
+      }
+      if (jetonExpire(token)) {
+        terminerSession("expiree");
         return;
       }
       if (utilisateur.role !== "super_admin") {
