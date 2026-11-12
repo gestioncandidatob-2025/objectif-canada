@@ -84,6 +84,31 @@ export class Centre {
     prixAnnuel?: number;
   };
 
+  // Plan offert par le super admin pour une période (ex : 3 mois de Pro).
+  // Pendant l'offre, "plan" vaut le plan offert ; à la date "fin", le centre
+  // revient tout seul à son plan d'avant (avec le temps payé qu'il lui restait).
+  @Prop(
+    raw({
+      plan: { type: String },
+      debut: { type: Date },
+      fin: { type: Date },
+      planPrecedent: { type: String },
+      periodicitePrecedente: { type: String },
+      finAbonnementPrecedent: { type: Date },
+      // Temps payé qui restait sur l'ancien abonnement (rendu à la fin de l'offre)
+      resteMsPrecedent: { type: Number },
+    }),
+  )
+  offre?: {
+    plan?: string;
+    debut?: Date;
+    fin?: Date;
+    planPrecedent?: string;
+    periodicitePrecedente?: string;
+    finAbonnementPrecedent?: Date;
+    resteMsPrecedent?: number;
+  };
+
   @Prop({ type: String, enum: StatutCentre, default: StatutCentre.ACTIF })
   statut!: StatutCentre;
 }

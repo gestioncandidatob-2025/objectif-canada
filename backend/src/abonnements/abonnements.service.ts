@@ -7,6 +7,7 @@ import {
   OnModuleInit,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Cron } from '@nestjs/schedule';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Centre, CentreDocument } from '../centres/schemas/centre.schema';
@@ -152,7 +153,51 @@ export class AbonnementsService implements OnModuleInit {
   private async trouverCentre(centreId: string) {
     const centre = await this.centreModel.findById(centreId).exec();
     if (!centre) throw new NotFoundException('Centre introuvable');
+    await this.terminerOffreSiExpiree(centre);
     return centre;
+  }
+
+  // ---------- Plan offert par le super admin ----------
+
+  /**
+   * Remet le centre à son plan d'avant l'offre (avec le temps payé qu'il lui
+   * restait, compté à partir de la fin prévue de l'offre).
+   */
+  remettrePlanPrecedent(centre: CentreDocument, aPartirDe: Date) {
+    const offre = centre.offre;
+    if (!offre) return;
+    centre.plan = offre.planPrecedent || PLAN_GRATUIT;
+    centre.periodicite = offre.periodicitePrecedente || undefined;
+    if (offre.resteMsPrecedent && offre.resteMsPrecedent > 0) {
+      centre.finAbonnement = new Date(aPartirDe.getTime() + offre.resteMsPrecedent);
+    } else {
+      centre.finAbonnement = offre.finAbonnementPrecedent ?? undefined;
+    }
+    centre.offre = undefined;
+  }
+
+  /** Si l'offre du centre est terminée, il revient à son plan d'avant */
+  async terminerOffreSiExpiree(centre: CentreDocument, maintenant = new Date()) {
+    const fin = centre.offre?.fin;
+    if (!fin || new Date(fin) > maintenant) return false;
+    this.remettrePlanPrecedent(centre, new Date(fin));
+    await centre.save();
+    this.logger.log(`Offre terminée pour le centre ${String(centre._id)} : retour au plan ${centre.plan}`);
+    return true;
+  }
+
+  /** Toutes les 10 minutes : les offres arrivées à leur date de fin se terminent */
+  @Cron('*/10 * * * *')
+  async terminerOffresExpirees() {
+    try {
+      const maintenant = new Date();
+      const centres = await this.centreModel.find({ 'offre.fin': { $lte: maintenant } }).exec();
+      for (const centre of centres) {
+        await this.terminerOffreSiExpiree(centre, maintenant);
+      }
+    } catch (erreur) {
+      this.logger.warn(`Fin des offres impossible : ${String(erreur)}`);
+    }
   }
 
   /** Où en est le centre : plan, état, factures du mois et comptes utilisés */
@@ -179,6 +224,10 @@ export class AbonnementsService implements OnModuleInit {
       periodicite: centre.periodicite ?? null,
       finAbonnement: centre.finAbonnement ?? null,
       finGrace: etat.finGrace,
+      // Plan offert par HREFF (null si le centre n'a pas d'offre en cours)
+      offre: centre.offre?.fin
+        ? { fin: centre.offre.fin, planPrecedent: centre.offre.planPrecedent ?? PLAN_GRATUIT }
+        : null,
       factures: { utilisees: facturesCeMois, limite: plan.factures },
       comptes: { utilises: comptes, limite: plan.comptes },
       peutFacturer: raison === null,
@@ -521,6 +570,8 @@ export class AbonnementsService implements OnModuleInit {
     centre.plan = confirme.plan;
     centre.periodicite = confirme.periodicite;
     centre.finAbonnement = fin;
+    // Un paiement pendant une offre remplace l'offre (le centre a choisi son plan)
+    centre.offre = undefined;
     // Sur mesure payé : les factures et comptes achetés deviennent les limites du centre
     if (confirme.plan === PLAN_SUR_MESURE && confirme.factures && confirme.comptes) {
       centre.surMesure = {
