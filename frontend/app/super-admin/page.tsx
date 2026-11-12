@@ -22,11 +22,35 @@ type Centre = {
   nombreFactures: number;
   nombreUtilisateurs: number;
   admin: { id: string; nom: string; email: string; emailVerifie: boolean } | null;
+  // Logo du centre (lien temporaire), null s'il n'en a pas
+  logoUrl?: string | null;
   // Abonnement
   plan?: string;
   finAbonnement?: string;
   offre?: { fin?: string } | null;
 };
+
+/** Logo du centre, ou ses initiales s'il n'a pas de logo (ou si l'image ne charge pas) */
+function LogoCentre({ centre }: { centre: Centre }) {
+  const [enErreur, setEnErreur] = useState(false);
+  if (centre.logoUrl && !enErreur) {
+    return (
+      <span className="hidden h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-ink/10 bg-white p-1 sm:flex">
+        <img
+          src={centre.logoUrl}
+          alt={`Logo de ${centre.nom}`}
+          className="h-full w-full object-contain"
+          onError={() => setEnErreur(true)}
+        />
+      </span>
+    );
+  }
+  return (
+    <span className="hidden h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-ink text-sm font-semibold text-white sm:flex">
+      {initiales(centre.nom)}
+    </span>
+  );
+}
 
 /** Ce qu'il faut savoir sur l'abonnement (offert, payé jusqu'au…, grâce, lecture seule) */
 function etatPlan(centre: Centre): { texte: string; classe: string } | null {
@@ -552,9 +576,7 @@ function PageCentres() {
                   <tr key={centre._id} className="border-b border-ink/5 align-top transition last:border-0 hover:bg-paper/70">
                     <td className="px-3 py-4 sm:px-4">
                       <div className="flex items-center gap-3">
-                        <span className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-ink text-sm font-semibold text-white sm:flex">
-                          {initiales(centre.nom)}
-                        </span>
+                        <LogoCentre centre={centre} />
                         <div className="min-w-0">
                           <p className="break-words font-semibold text-ink">{centre.nom}</p>
                           <p className="text-xs text-ink-soft">
