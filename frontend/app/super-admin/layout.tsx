@@ -67,6 +67,13 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
   const chemin = usePathname();
   const [nom, setNom] = useState("");
   const [pret, setPret] = useState(false);
+  // Téléphone : menu ouvert depuis le bouton en haut à gauche
+  const [menuOuvert, setMenuOuvert] = useState(false);
+
+  // On change de page : le menu se referme
+  useEffect(() => {
+    setMenuOuvert(false);
+  }, [chemin]);
 
   // Session expirée pendant que la page est ouverte : retour à la connexion
   useSurveillanceSession(pret);
@@ -161,38 +168,97 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
         </div>
       </aside>
 
-      {/* ---------- Téléphone : barre en haut ---------- */}
-      <header className="sticky top-0 z-30 bg-ink text-white lg:hidden">
-        <div className="flex items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-2">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-seal text-sm font-bold text-ink">H</span>
-            <p className="text-sm font-semibold tracking-[0.2em]">HREFF</p>
+      {/* ---------- Téléphone : barre en haut, bouton menu à gauche ---------- */}
+      <header className="sticky top-0 z-30 flex items-center gap-3 bg-ink px-3 py-3 text-white shadow-md lg:hidden">
+        <button
+          onClick={() => setMenuOuvert(true)}
+          aria-label="Ouvrir le menu"
+          aria-expanded={menuOuvert}
+          className="flex h-10 w-10 items-center justify-center rounded-xl transition hover:bg-white/10 active:scale-95"
+        >
+          <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6">
+            <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+          </svg>
+        </button>
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-seal text-sm font-bold text-ink">H</span>
+          <p className="truncate text-sm font-semibold">
+            {LIENS.find((lien) => lien.href === chemin)?.label ?? "Espace super admin"}
+          </p>
+        </div>
+      </header>
+
+      {/* ---------- Téléphone : menu qui glisse depuis la gauche ---------- */}
+      <div
+        className={`fixed inset-0 z-40 bg-ink/50 transition-opacity lg:hidden ${
+          menuOuvert ? "opacity-100" : "pointer-events-none opacity-0"
+        }`}
+        onClick={() => setMenuOuvert(false)}
+        aria-hidden="true"
+      />
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85%] flex-col justify-between bg-ink px-4 py-5 text-white shadow-2xl transition-transform duration-200 lg:hidden ${
+          menuOuvert ? "translate-x-0" : "-translate-x-full"
+        }`}
+        aria-label="Menu"
+      >
+        <div>
+          <div className="mb-6 flex items-center justify-between px-1">
+            <div className="flex items-center gap-3">
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-seal font-bold text-ink">H</span>
+              <div>
+                <p className="text-sm font-semibold tracking-[0.2em]">HREFF</p>
+                <p className="text-xs text-white/60">Espace super admin</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setMenuOuvert(false)}
+              aria-label="Fermer le menu"
+              className="flex h-9 w-9 items-center justify-center rounded-lg text-white/80 hover:bg-white/10"
+            >
+              <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
+                <path d="M6 6l12 12M18 6 6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+            </button>
+          </div>
+          <nav className="flex flex-col gap-1">
+            {LIENS.map((lien) => {
+              const actif = chemin === lien.href;
+              return (
+                <Link
+                  key={lien.href}
+                  href={lien.href}
+                  onClick={() => setMenuOuvert(false)}
+                  className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition ${
+                    actif ? "bg-white text-ink shadow-sm" : "text-white/75 hover:bg-white/10 hover:text-white"
+                  }`}
+                >
+                  {lien.icone}
+                  {lien.label}
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
+
+        <div className="rounded-xl bg-white/5 p-3">
+          <div className="mb-3 flex items-center gap-3">
+            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/15 text-sm font-semibold">
+              {initiales}
+            </span>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium">{nom || "Super admin"}</p>
+              <p className="text-xs text-white/60">Équipe HREFF</p>
+            </div>
           </div>
           <button
             onClick={deconnexion}
-            className="rounded-lg border border-white/20 px-3 py-1.5 text-xs font-medium"
+            className="w-full rounded-lg border border-white/20 px-3 py-2 text-sm font-medium text-white/90 transition hover:bg-white/10"
           >
             Se déconnecter
           </button>
         </div>
-        <nav className="grid grid-cols-2 gap-1 px-2 pb-2 sm:grid-cols-3">
-          {LIENS.map((lien) => {
-            const actif = chemin === lien.href;
-            return (
-              <Link
-                key={lien.href}
-                href={lien.href}
-                className={`flex items-center justify-center gap-2 rounded-lg px-2 py-2 text-xs font-medium ${
-                  actif ? "bg-white text-ink" : "text-white/75"
-                }`}
-              >
-                {lien.icone}
-                {lien.label}
-              </Link>
-            );
-          })}
-        </nav>
-      </header>
+      </aside>
 
       <div className="min-w-0 flex-1">{children}</div>
     </div>
