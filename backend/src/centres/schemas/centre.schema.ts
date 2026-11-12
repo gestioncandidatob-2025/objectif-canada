@@ -1,4 +1,4 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { Prop, Schema, SchemaFactory, raw } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
 import { ModePaiement } from '../../inscriptions/schemas/inscription.schema';
 
@@ -54,10 +54,35 @@ export class Centre {
   @Prop({ default: 0 })
   dernierNumeroRecu!: number;
 
-  // Plan d'abonnement du centre. Tout nouveau centre démarre au plan Gratuit.
-  // Les limites de chaque plan (factures, comptes) viendront avec mc/abonnements.
+  // Plan d'abonnement du centre : gratuit, standard, pro ou sur_mesure.
+  // Tout nouveau centre démarre au plan Gratuit.
   @Prop({ default: 'gratuit' })
   plan!: string;
+
+  // Abonnement payé par mois ou par an (plans payants)
+  @Prop()
+  periodicite?: string;
+
+  // Date jusqu'à laquelle l'abonnement est payé. Après : 7 jours de grâce,
+  // puis lecture seule. Vide pour le plan Gratuit (ou un plan offert sans fin).
+  @Prop()
+  finAbonnement?: Date;
+
+  // Plan "Sur mesure" : prix et limites réglés par le super admin pour ce centre
+  @Prop(
+    raw({
+      factures: { type: Number },
+      comptes: { type: Number },
+      prixMensuel: { type: Number },
+      prixAnnuel: { type: Number },
+    }),
+  )
+  surMesure?: {
+    factures?: number;
+    comptes?: number;
+    prixMensuel?: number;
+    prixAnnuel?: number;
+  };
 
   @Prop({ type: String, enum: StatutCentre, default: StatutCentre.ACTIF })
   statut!: StatutCentre;

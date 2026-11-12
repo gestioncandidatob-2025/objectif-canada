@@ -7,17 +7,23 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { CentreId } from '../common/centre-id.decorator';
+import { AbonnementsService } from '../abonnements/abonnements.service';
 
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('admin')
 @Controller('users')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(
+    private readonly usersService: UsersService,
+    private readonly abonnementsService: AbonnementsService,
+  ) {}
 
   @ApiOperation({ summary: "Créer un utilisateur (secrétariat ou admin) — réservé à l'administrateur" })
   @Post()
-  create(@Body() createUserDto: CreateUserDto, @CentreId() centreId: string) {
+  async create(@Body() createUserDto: CreateUserDto, @CentreId() centreId: string) {
+    // Abonnement : refusé si le plan n'autorise pas un compte de plus
+    await this.abonnementsService.verifierPeutCreerCompte(centreId);
     return this.usersService.create(createUserDto, centreId);
   }
 

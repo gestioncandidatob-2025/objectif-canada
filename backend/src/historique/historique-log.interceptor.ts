@@ -22,6 +22,7 @@ const LIBELLES_MODULE: Record<string, string> = {
   factures: 'Factures',
   inscriptions: 'Inscriptions',
   auth: 'Authentification',
+  subscription: 'Abonnement',
 };
 
 // Traduction des noms de champs (tous modules confondus) en libellés lisibles,

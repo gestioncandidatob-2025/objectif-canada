@@ -10,20 +10,27 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { CentreId } from '../common/centre-id.decorator';
+import { AbonnementsService } from '../abonnements/abonnements.service';
 
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 @Controller('registrations')
 export class InscriptionsController {
-  constructor(private readonly inscriptionsService: InscriptionsService) {}
+  constructor(
+    private readonly inscriptionsService: InscriptionsService,
+    private readonly abonnementsService: AbonnementsService,
+  ) {}
 
   @ApiOperation({ summary: 'Créer une inscription (calcule automatiquement montant, dates et numéro de reçu)' })
   @Post()
-  create(
+  async create(
     @Body() createInscriptionDto: CreateInscriptionDto,
     @CentreId() centreId: string,
     @Req() req: any,
   ) {
+    // Abonnement : refusé si le quota de factures du mois est atteint,
+    // ou si le centre est en lecture seule (abonnement expiré)
+    await this.abonnementsService.verifierPeutCreerFacture(centreId);
     // req.user.userId : la personne connectée, qui encaisse (point de caisse)
     return this.inscriptionsService.create(createInscriptionDto, centreId, req.user.userId);
   }

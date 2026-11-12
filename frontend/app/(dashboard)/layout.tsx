@@ -10,6 +10,8 @@ import { useLangue } from "../lib/langue";
 import BoutonLangue from "../components/BoutonLangue";
 import BarreRecherche from "../components/BarreRecherche";
 import AssistantFlottant from "../components/AssistantFlottant";
+import BandeauAbonnement, { FacturationBloquee } from "../components/BandeauAbonnement";
+import { useEtatAbonnement } from "../lib/abonnement";
 
 type User = {
   nom: string;
@@ -32,6 +34,7 @@ type NomIcone =
   | "utilisateurs"
   | "factures"
   | "caisse"
+  | "abonnement"
   | "historique"
   | "parametres"
   | "plus"
@@ -81,6 +84,12 @@ function Icone({ nom, taille = 20 }: { nom: NomIcone; taille?: number }) {
         <rect x="2" y="6" width="20" height="13" rx="2" />
         <circle cx="12" cy="12.5" r="2.5" />
         <path d="M6 9.5h.01M18 15.5h.01" />
+      </>
+    ),
+    abonnement: (
+      <>
+        <rect x="2" y="5" width="20" height="14" rx="2" />
+        <path d="M2 10h20M6 15h4" />
       </>
     ),
     historique: (
@@ -136,6 +145,8 @@ export default function DashboardLayout({
   const router = useRouter();
   const pathname = usePathname();
   const { t } = useLangue();
+  // Abonnement du centre : rechargé à chaque changement de page (les quotas bougent)
+  const etatAbonnement = useEtatAbonnement(pret, pathname);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -212,6 +223,8 @@ export default function DashboardLayout({
     { href: "/tableau-de-bord", label: t("menu.tableauDeBord"), icone: "tableau", visible: estAdmin },
     { href: "/utilisateurs", label: t("menu.utilisateurs"), icone: "utilisateurs", visible: estAdmin },
     { href: "/historique", label: t("menu.historique"), icone: "historique", visible: estAdmin },
+    // Plan, quotas et paiement de l'abonnement (CamPay)
+    { href: "/abonnement", label: t("menu.abonnement"), icone: "abonnement", visible: estAdmin },
     // Paramètres du centre (les tarifs sont dans l'onglet Services)
     { href: "/parametres", label: t("menu.parametres"), icone: "parametres", visible: estAdmin },
   ];
@@ -312,7 +325,13 @@ export default function DashboardLayout({
             <BarreRecherche />
           </div>
         </div>
-        {children}
+        <BandeauAbonnement etat={etatAbonnement} estAdmin={estAdmin} />
+        {/* Plus de nouvelle facture possible : on l'explique au lieu d'afficher le formulaire */}
+        {etatAbonnement && !etatAbonnement.peutFacturer && estActif("/enregistrement") ? (
+          <FacturationBloquee estAdmin={estAdmin} />
+        ) : (
+          children
+        )}
       </main>
 
       {/* ---------- Téléphone : barre du bas ---------- */}
