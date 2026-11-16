@@ -78,9 +78,26 @@ export default function AbonnementPage() {
   const [erreurPaiement, setErreurPaiement] = useState("");
 
   // Paiement en cours de suivi (mobile, ou retour de la page carte)
-  const [suivi, setSuivi] = useState<{ id: string; ussdCode?: string | null } | null>(null);
+  const [suivi, setSuivi] = useState<{
+    id: string;
+    moyen: "mobile" | "carte";
+    ussdCode?: string | null;
+    montant?: number;
+    telephone?: string;
+  } | null>(null);
   const [resultat, setResultat] = useState<{ type: "succes" | "echec" | "attente"; texte: string } | null>(null);
   const minuterie = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Fenêtre qui reste ouverte pendant l'attente du paiement, puis montre le résultat
+  const [fenetreSuivi, setFenetreSuivi] = useState(false);
+  // Infos du dernier paiement lancé (gardées pour l'affichage et pour « Réessayer »)
+  const [dernierSuivi, setDernierSuivi] = useState<{
+    moyen: "mobile" | "carte";
+    ussdCode?: string | null;
+    montant?: number;
+    telephone?: string;
+  } | null>(null);
+  const [dernierPlan, setDernierPlan] = useState<PlanPayable | null>(null);
+  const [secondes, setSecondes] = useState(0);
 
   // Plan Sur mesure : factures par mois et comptes choisis (texte tapé)
   const [smFactures, setSmFactures] = useState("300");
@@ -136,7 +153,9 @@ export default function AbonnementPage() {
     const parametres = new URLSearchParams(window.location.search);
     const id = parametres.get("paiement");
     if (id) {
-      setSuivi({ id });
+      setSuivi({ id, moyen: "carte" });
+      setDernierSuivi({ moyen: "carte" });
+      setFenetreSuivi(true);
       setResultat({ type: "attente", texte: t("abonnement.verification") });
       // On retire le paramètre de l'adresse pour ne pas revérifier à chaque rechargement
       window.history.replaceState(null, "", "/abonnement");
@@ -196,6 +215,14 @@ export default function AbonnementPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [suivi?.id]);
 
+  // Chronomètre affiché pendant l'attente
+  useEffect(() => {
+    if (!suivi) return;
+    setSecondes(0);
+    const chrono = setInterval(() => setSecondes((s) => s + 1), 1000);
+    return () => clearInterval(chrono);
+  }, [suivi?.id]);
+
   function ouvrirPaiement(plan: PlanPayable) {
     setPlanChoisi(plan);
     setMoyen("mobile");
@@ -230,8 +257,17 @@ export default function AbonnementPage() {
           setErreurPaiement(typeof data.message === "string" ? data.message : t("abonnement.erreurPaiement"));
           return;
         }
+        const infos = {
+          moyen: "mobile" as const,
+          ussdCode: data.ussdCode ?? null,
+          montant: typeof data.montant === "number" ? data.montant : undefined,
+          telephone,
+        };
+        setDernierPlan(planChoisi);
         setPlanChoisi(null);
-        setSuivi({ id: data.id, ussdCode: data.ussdCode });
+        setSuivi({ id: data.id, ...infos });
+        setDernierSuivi(infos);
+        setFenetreSuivi(true);
         setResultat({ type: "attente", texte: t("abonnement.validerSurTelephone") });
       } else {
         const res = await apiFetch("/subscription/pay/card", {
@@ -300,7 +336,7 @@ export default function AbonnementPage() {
         )}
 
         {/* Résultat d'un paiement (en attente, réussi, échoué) */}
-        {resultat && (
+        {resultat && !fenetreSuivi && (
           <div
             role="status"
             className={
@@ -652,6 +688,131 @@ export default function AbonnementPage() {
           </>
         )}
       </div>
+
+      {/* Fenêtre d'attente du paiement, puis du résultat */}
+      {fenetreSuivi && resultat && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center" role="dialog" aria-modal="true" aria-live="polite" aria-label={t("abonnement.attente.titreMobile")}>
+          <div className="absolute inset-0 bg-ink/40" aria-hidden="true" />
+          <div className="relative w-full max-w-md rounded-t-3xl bg-white p-6 pb-[max(24px,env(safe-area-inset-bottom))] text-center sm:rounded-3xl">
+            {resultat.type === "attente" && suivi ? (
+              <>
+                {/* Roue qui tourne */}
+                <div className="mx-auto h-14 w-14 animate-spin rounded-full border-4 border-accent/20 border-t-accent" aria-hidden="true" />
+                {suivi.moyen === "mobile" ? (
+                  <>
+                    <h2 className="mt-5 text-xl font-semibold text-ink">{t("abonnement.attente.titreMobile")}</h2>
+                    <p className="mt-2 text-base text-ink-soft">
+                      {suivi.montant
+                        ? t("abonnement.attente.texteMobileMontant", {
+                            montant: formaterMontant(suivi.montant),
+                            numero: suivi.telephone ?? "",
+                          })
+                        : t("abonnement.attente.texteMobile", { numero: suivi.telephone ?? "" })}
+                    </p>
+                    <ol className="mt-5 space-y-2 rounded-2xl bg-paper p-4 text-left text-sm text-ink">
+                      {[t("abonnement.attente.etape1"), t("abonnement.attente.etape2"), t("abonnement.attente.etape3")].map(
+                        (etape, i) => (
+                          <li key={etape} className="flex gap-3">
+                            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-bold text-white">
+                              {i + 1}
+                            </span>
+                            <span className="pt-0.5">{etape}</span>
+                          </li>
+                        ),
+                      )}
+                    </ol>
+                    {suivi.ussdCode && (
+                      <p className="mt-3 text-sm text-ink-soft">{t("abonnement.codeUssd", { code: suivi.ussdCode })}</p>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <h2 className="mt-5 text-xl font-semibold text-ink">{t("abonnement.attente.titreCarte")}</h2>
+                    <p className="mt-2 text-base text-ink-soft">{t("abonnement.attente.texteCarte")}</p>
+                  </>
+                )}
+                <p className="mt-5 text-sm font-medium text-ink">
+                  {t("abonnement.attente.enAttente", {
+                    temps: `${Math.floor(secondes / 60)}:${String(secondes % 60).padStart(2, "0")}`,
+                  })}
+                </p>
+                <p className="mt-1 text-xs text-ink-soft">{t("abonnement.attente.nePasFermer")}</p>
+                <button
+                  type="button"
+                  onClick={() => setFenetreSuivi(false)}
+                  className="mt-5 h-11 w-full rounded-xl border border-ink/15 bg-white text-sm font-semibold text-ink hover:bg-paper"
+                >
+                  {t("abonnement.attente.fermerContinuer")}
+                </button>
+              </>
+            ) : (
+              <>
+                <div
+                  className={
+                    "mx-auto flex h-14 w-14 items-center justify-center rounded-full " +
+                    (resultat.type === "succes"
+                      ? "bg-accent/10 text-accent"
+                      : resultat.type === "echec"
+                        ? "bg-error/10 text-error"
+                        : "bg-seal/15 text-ink")
+                  }
+                  aria-hidden="true"
+                >
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    {resultat.type === "succes" ? (
+                      <path d="M5 12l5 5L20 7" />
+                    ) : resultat.type === "echec" ? (
+                      <path d="M6 6l12 12M18 6L6 18" />
+                    ) : (
+                      <>
+                        <circle cx="12" cy="12" r="9" />
+                        <path d="M12 7v5l3 2" />
+                      </>
+                    )}
+                  </svg>
+                </div>
+                <h2 className="mt-5 text-xl font-semibold text-ink">
+                  {resultat.type === "succes"
+                    ? t("abonnement.attente.titreSucces")
+                    : resultat.type === "echec"
+                      ? t("abonnement.attente.titreEchec")
+                      : t("abonnement.attente.titreDelai")}
+                </h2>
+                <p className="mt-2 text-base text-ink-soft">{resultat.texte}</p>
+                <div className="mt-6 flex gap-3">
+                  {resultat.type === "echec" && dernierPlan && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFenetreSuivi(false);
+                        setResultat(null);
+                        setPlanChoisi(dernierPlan);
+                        setMoyen(dernierSuivi?.moyen ?? "mobile");
+                        setErreurPaiement("");
+                      }}
+                      className="h-12 flex-1 rounded-xl bg-accent text-sm font-semibold text-white hover:bg-accent-hover"
+                    >
+                      {t("abonnement.attente.reessayer")}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setFenetreSuivi(false)}
+                    className={
+                      "h-12 flex-1 rounded-xl text-sm font-semibold " +
+                      (resultat.type === "echec" && dernierPlan
+                        ? "border border-ink/15 bg-white text-ink hover:bg-paper"
+                        : "bg-accent text-white hover:bg-accent-hover")
+                    }
+                  >
+                    {t("abonnement.attente.ok")}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Fenêtre de paiement */}
       {planChoisi && (
