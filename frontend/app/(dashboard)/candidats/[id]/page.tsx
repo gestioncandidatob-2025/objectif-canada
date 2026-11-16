@@ -33,6 +33,9 @@ type Inscription = {
   numeroRecu: string;
 };
 
+// Modes possibles pour encaisser un reste (un seul mode à la fois, pas de mixte)
+const MODES_RESTE = ["especes", "orange_money", "mobile_money"];
+
 const LABEL_SERVICE: Record<string, string> = {
   tcf: "TCF",
   examen_blanc: "Examen blanc",
@@ -57,11 +60,39 @@ export default function DossierCandidatPage() {
   const [editRaison, setEditRaison] = useState("");
   const [envoiEnCours, setEnvoiEnCours] = useState(false);
 
+  // Encaisser le reste d'une facture depuis la fiche
+  const [modesAcceptes, setModesAcceptes] = useState<string[]>(MODES_RESTE);
+  const [aEncaisser, setAEncaisser] = useState<Inscription | null>(null);
+  const [montantRecu, setMontantRecu] = useState("");
+  const [modeRecu, setModeRecu] = useState("especes");
+  const [encaissementEnCours, setEncaissementEnCours] = useState(false);
+  const [erreurEncaissement, setErreurEncaissement] = useState("");
+  // Dernier encaissement fait ici : message + lien vers le reçu
+  const [dernierEncaissement, setDernierEncaissement] = useState<{
+    id: string;
+    montant: number;
+    reste: number;
+  } | null>(null);
+
   useEffect(() => {
     const userStr = localStorage.getItem("user");
     if (userStr) {
       setRole(JSON.parse(userStr).role);
     }
+  }, []);
+
+  // Modes de paiement acceptés par le centre (Paramètres → Paiements)
+  useEffect(() => {
+    async function chargerModes() {
+      const res = await apiFetch("/center/settings");
+      if (!res.ok) return;
+      const data = await res.json();
+      const modes = Array.isArray(data.modesPaiement)
+        ? MODES_RESTE.filter((m) => data.modesPaiement.includes(m))
+        : [];
+      if (modes.length > 0) setModesAcceptes(modes);
+    }
+    chargerModes();
   }, []);
 
   async function charger() {
@@ -125,6 +156,61 @@ export default function DossierCandidatPage() {
     charger();
   }
 
+  function ouvrirEncaissement(insc: Inscription) {
+    setAEncaisser(insc);
+    setMontantRecu(String(insc.resteAPayer));
+    setModeRecu(modesAcceptes[0] ?? "especes");
+    setErreurEncaissement("");
+  }
+
+  async function encaisser() {
+    if (!aEncaisser) return;
+    setErreurEncaissement("");
+
+    const montant = Number(montantRecu.replace(/\D/g, ""));
+    if (!montant || montant <= 0) {
+      setErreurEncaissement(t("facture.erreurMontantPositif"));
+      return;
+    }
+    if (montant > aEncaisser.resteAPayer) {
+      setErreurEncaissement(t("facture.erreurMontantDepasse"));
+      return;
+    }
+
+    setEncaissementEnCours(true);
+    try {
+      const res = await apiFetch(`/registrations/${aEncaisser._id}/payment`, {
+        method: "PATCH",
+        body: JSON.stringify({ montant, modePaiement: modeRecu }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setErreurEncaissement(
+          Array.isArray(data.message) ? data.message.join(", ") : data.message ?? t("dossier.erreurEncaissement"),
+        );
+        return;
+      }
+      setDernierEncaissement({
+        id: aEncaisser._id,
+        montant,
+        reste: typeof data.resteAPayer === "number" ? data.resteAPayer : aEncaisser.resteAPayer - montant,
+      });
+      setAEncaisser(null);
+      setMessage("");
+      charger();
+    } catch {
+      setErreurEncaissement(t("dossier.erreurEncaissement"));
+    } finally {
+      setEncaissementEnCours(false);
+    }
+  }
+
+  const libellesModes: Record<string, string> = {
+    especes: t("paiement.especes"),
+    orange_money: t("paiement.orangeMoney"),
+    mobile_money: t("paiement.mobileMoney"),
+  };
+
   if (chargement) {
     return null;
   }
@@ -178,6 +264,24 @@ export default function DossierCandidatPage() {
             <p className="mt-4 rounded-lg bg-error/10 px-3 py-2 text-sm text-error">
               {erreur}
             </p>
+          )}
+
+          {dernierEncaissement && (
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-accent/10 px-3 py-2 text-sm text-accent">
+              <span>
+                {t("dossier.paiementEnregistre", {
+                  montant: dernierEncaissement.montant.toLocaleString(locale),
+                  reste: dernierEncaissement.reste.toLocaleString(locale),
+                })}
+              </span>
+              <a
+                href={`/recu/${dernierEncaissement.id}`}
+                target="_blank"
+                className="font-semibold underline underline-offset-2"
+              >
+                {t("dossier.voirRecu")}
+              </a>
+            </div>
           )}
 
           {modeEdition && (
@@ -259,6 +363,17 @@ export default function DossierCandidatPage() {
                     <p>{t("facture.montantTotal")} : {insc.montantTotal.toLocaleString(locale)} FCFA</p>
                     <p>{t("facture.resteAPayer")} : {insc.resteAPayer.toLocaleString(locale)} FCFA</p>
                   </div>
+                  {insc.resteAPayer > 0 && (
+                    <div className="mt-3 flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => ouvrirEncaissement(insc)}
+                        className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:bg-accent-hover"
+                      >
+                        {t("dossier.encaisserReste")}
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -289,6 +404,78 @@ export default function DossierCandidatPage() {
           )}
         </div>
       </div>
+
+      {/* Fenêtre « Encaisser le reste » */}
+      {aEncaisser && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center" role="dialog" aria-modal="true" aria-label={t("dossier.encaisserReste")}>
+          <button
+            type="button"
+            aria-label={t("commun.annuler")}
+            onClick={() => !encaissementEnCours && setAEncaisser(null)}
+            className="absolute inset-0 h-full w-full bg-ink/40"
+          />
+          <div className="relative w-full max-w-md rounded-t-3xl bg-white p-6 pb-[max(24px,env(safe-area-inset-bottom))] sm:rounded-3xl">
+            <h2 className="text-xl font-semibold text-ink">
+              {t("dossier.encaisserTitre", { recu: aEncaisser.numeroRecu })}
+            </h2>
+            <p className="mt-1 text-sm text-ink-soft">
+              {LABEL_SERVICE[aEncaisser.service] ?? aEncaisser.service} · {candidat.nom} {candidat.prenom}
+            </p>
+            <p className="mt-4 rounded-xl bg-paper px-4 py-3 text-base text-ink">
+              {t("facture.resteAPayer")} :{" "}
+              <strong>{aEncaisser.resteAPayer.toLocaleString(locale)} FCFA</strong>
+            </p>
+
+            <label className="mt-4 flex flex-col gap-1.5 text-sm font-medium text-ink">
+              {t("facture.montantRecuAujourdhui")}
+              <input
+                inputMode="numeric"
+                value={montantRecu}
+                onChange={(e) => setMontantRecu(e.target.value.replace(/[^\d\s]/g, ""))}
+                className="h-12 rounded-xl border border-ink/15 px-3 text-base text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+              />
+            </label>
+            <label className="mt-3 flex flex-col gap-1.5 text-sm font-medium text-ink">
+              {t("facture.modeComplement")}
+              <select
+                value={modeRecu}
+                onChange={(e) => setModeRecu(e.target.value)}
+                className="h-12 rounded-xl border border-ink/15 bg-white px-3 text-base text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+              >
+                {modesAcceptes.map((mode) => (
+                  <option key={mode} value={mode}>
+                    {libellesModes[mode] ?? mode}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <p className="mt-3 text-xs text-ink-soft">{t("dossier.compteDansMaCaisse")}</p>
+
+            {erreurEncaissement && (
+              <p className="mt-4 rounded-xl bg-error/10 px-3 py-2 text-sm text-error">{erreurEncaissement}</p>
+            )}
+
+            <div className="mt-6 flex gap-3">
+              <button
+                type="button"
+                onClick={() => setAEncaisser(null)}
+                disabled={encaissementEnCours}
+                className="h-12 flex-1 rounded-xl border border-ink/15 bg-white text-sm font-semibold text-ink hover:bg-paper disabled:opacity-50"
+              >
+                {t("commun.annuler")}
+              </button>
+              <button
+                type="button"
+                onClick={encaisser}
+                disabled={encaissementEnCours || !montantRecu.trim()}
+                className="h-12 flex-1 rounded-xl bg-accent text-sm font-semibold text-white hover:bg-accent-hover disabled:opacity-50"
+              >
+                {encaissementEnCours ? t("dossier.encaissementEnCours") : t("dossier.encaisser")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
