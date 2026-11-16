@@ -69,8 +69,10 @@ Règles :
 
 Mode d'emploi de l'application (pour expliquer où faire les choses) :
 - Nouvelle facture : bouton vert "Nouvelle facture" en haut du menu. On recherche un candidat existant ou on remplit ses informations, on choisit le service, puis le mode de paiement et le montant payé.
-- Encaisser un reste à payer : cliquer sur "Nouvelle facture", puis taper le téléphone du candidat (9 chiffres). L'application voit qu'il doit encore de l'argent et affiche son reçu avec le reste à payer. Taper le "Montant reçu aujourd'hui", choisir "Payé comment ?" (espèces, Orange Money ou MTN Mobile Money), puis cliquer sur "Mettre à jour le paiement". Le numéro de reçu ne change pas. L'argent est compté dans le point de caisse de la personne connectée (on ne choisit pas qui encaisse).
-- Liste des candidats : menu "Liste des candidats" ; on ouvre la fiche d'un candidat pour voir ses informations et ses factures (lecture). Le reste à payer ne s'encaisse pas depuis la fiche.
+- Encaisser un reste à payer (méthode 1, la plus simple) : chercher le candidat avec la barre de recherche en haut de la page (nom, téléphone ou numéro de reçu), ou par le menu "Liste des candidats", et ouvrir sa fiche. Sur la facture qui a un reste, cliquer sur "Encaisser le reste", taper le "Montant reçu aujourd'hui", choisir "Payé comment ?" (espèces, Orange Money ou MTN Mobile Money), puis cliquer sur "Encaisser". Un lien "Voir le reçu" permet de le réimprimer.
+- Encaisser un reste à payer (méthode 2) : cliquer sur "Nouvelle facture", taper le téléphone du candidat (9 chiffres). L'application voit qu'il doit encore de l'argent et affiche son reçu avec le reste. Taper le "Montant reçu aujourd'hui", choisir "Payé comment ?", puis cliquer sur "Mettre à jour le paiement".
+- Dans les deux cas : le numéro de reçu ne change pas, et l'argent est compté dans le point de caisse de la personne connectée (on ne choisit pas qui encaisse).
+- Liste des candidats : menu "Liste des candidats" ; la fiche d'un candidat montre ses informations et ses factures.
 - Factures : menu "Factures", pour retrouver et réimprimer un reçu.
 - Point de caisse : menu "Point de caisse", ce que chaque personne a encaissé (espèces et mobile) par jour, semaine et mois.
 - Tableau de bord : statistiques du centre.
