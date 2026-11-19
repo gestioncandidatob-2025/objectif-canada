@@ -4,6 +4,7 @@ import { useEffect, useState, Fragment } from "react";
 import { apiFetch } from "../../lib/api";
 import ChampMotDePasse from "../../components/ChampMotDePasse";
 import { useLangue } from "../../lib/langue";
+import Pagination, { usePagination } from "../../components/Pagination";
 
 type User = {
   _id: string;
@@ -38,6 +39,7 @@ export default function UtilisateursPage() {
   const [enregistrementEnCours, setEnregistrementEnCours] = useState(false);
   const [suppressionEnCours, setSuppressionEnCours] = useState<string | null>(null);
   const { t } = useLangue();
+  const pages = usePagination(users, 15);
 
   async function chargerUsers() {
     setChargement(true);
@@ -227,7 +229,7 @@ export default function UtilisateursPage() {
               </tr>
             </thead>
             <tbody>
-              {users.map((u) => (
+              {pages.elements.map((u) => (
                 <Fragment key={u._id}>
                   <tr className="border-b border-ink/5">
                     <td className="px-4 py-3">{u.nom}</td>
@@ -312,6 +314,15 @@ export default function UtilisateursPage() {
             </p>
           )}
         </div>
+
+        <Pagination
+          page={pages.page}
+          totalPages={pages.totalPages}
+          onChange={pages.setPage}
+          texte={t("utilisateurs.pagination", { page: pages.page, total: pages.totalPages, n: pages.total })}
+          precedent={t("candidats.precedent")}
+          suivant={t("candidats.suivant")}
+        />
       </div>
     </div>
   );

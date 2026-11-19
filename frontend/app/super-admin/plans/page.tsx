@@ -185,7 +185,10 @@ export default function PlansPage() {
                   ) : (
                     <>
                       <Ligne libelle="Par an" valeur={plan.prixAnnuel !== null ? montant(plan.prixAnnuel) : "—"} />
-                      <Ligne libelle="Factures / mois" valeur={String(plan.factures)} />
+                      <Ligne
+                        libelle={plan.code === "gratuit" ? "Factures au total" : "Factures / mois"}
+                        valeur={String(plan.factures)}
+                      />
                       <Ligne libelle="Comptes" valeur={String(plan.comptes)} />
                     </>
                   )}

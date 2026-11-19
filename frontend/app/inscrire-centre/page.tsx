@@ -6,6 +6,7 @@ import Link from "next/link";
 import ChampMotDePasse from "../components/ChampMotDePasse";
 import BoutonLangue from "../components/BoutonLangue";
 import { useLangue } from "../lib/langue";
+import ChampTelephone, { avecIndicatif } from "../components/ChampTelephone";
 import { traduireReponseServeur } from "../lib/api";
 
 // Mêmes règles que le backend (8 caractères, 1 majuscule, 1 minuscule, 1 chiffre, 1 caractère spécial)
@@ -53,7 +54,7 @@ export default function InscrireCentrePage() {
         await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/register-center`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ nomCentre, nom, email, telephone, motDePasse }),
+          body: JSON.stringify({ nomCentre, nom, email, telephone: avecIndicatif(telephone), motDePasse }),
         }),
       );
 
@@ -133,14 +134,7 @@ export default function InscrireCentrePage() {
           />
 
           <label className={labelClass}>{t("inscription.telephoneCentre")}</label>
-          <input
-            type="tel"
-            inputMode="tel"
-            value={telephone}
-            onChange={(e) => setTelephone(e.target.value)}
-            placeholder={t("inscription.telephoneExemple")}
-            className={champClass}
-          />
+          <ChampTelephone value={telephone} onChange={setTelephone} className="mb-1" />
 
           <label className={labelClass}>{t("connexion.motDePasse")}</label>
           <ChampMotDePasse

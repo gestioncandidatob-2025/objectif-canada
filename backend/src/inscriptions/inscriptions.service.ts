@@ -846,6 +846,21 @@ export class InscriptionsService {
   }
 
   /** Liste des factures disponibles, de la plus récente à la plus ancienne */
+  /**
+   * Nombre de personnes inscrites à chaque service (un candidat inscrit deux
+   * fois au même service ne compte qu'une fois). Sert aux cartes des Groupes.
+   */
+  async compterCandidatsParService(centreId: string) {
+    const resultats = await this.inscriptionModel
+      .aggregate<{ _id: string; candidats: number }>([
+        { $match: { centreId: new Types.ObjectId(centreId) } },
+        { $group: { _id: { service: '$service', candidat: '$candidatId' } } },
+        { $group: { _id: '$_id.service', candidats: { $sum: 1 } } },
+      ])
+      .exec();
+    return resultats.map((r) => ({ service: r._id, candidats: r.candidats }));
+  }
+
   async listerFactures(centreId: string) {
     return this.inscriptionModel
       .find({ centreId, factureS3Key: { $exists: true, $ne: null } })
