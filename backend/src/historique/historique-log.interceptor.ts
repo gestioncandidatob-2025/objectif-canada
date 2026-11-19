@@ -23,6 +23,7 @@ const LIBELLES_MODULE: Record<string, string> = {
   inscriptions: 'Inscriptions',
   auth: 'Authentification',
   subscription: 'Abonnement',
+  'cash-checks': 'Vérification de caisse',
 };
 
 // Traduction des noms de champs (tous modules confondus) en libellés lisibles,
@@ -55,6 +56,7 @@ const LIBELLES_CHAMPS: Record<string, string> = {
   remiseActive: 'Remise activée',
   montantNegociable: 'Montant négociable',
   dateFinNecessaire: 'Date de fin nécessaire',
+  action: 'Vérification de caisse',
 };
 
 // Champs techniques à ne jamais afficher comme "élément modifié" (déjà traités
