@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { apiFetch } from "../../../lib/api";
+import { useLangue } from "../../../lib/langue";
 
 type HistoriqueEntree = {
   raison: string;
@@ -32,6 +33,9 @@ type Inscription = {
   numeroRecu: string;
 };
 
+// Modes possibles pour encaisser un reste (un seul mode à la fois, pas de mixte)
+const MODES_RESTE = ["especes", "orange_money", "mobile_money"];
+
 const LABEL_SERVICE: Record<string, string> = {
   tcf: "TCF",
   examen_blanc: "Examen blanc",
@@ -40,6 +44,7 @@ const LABEL_SERVICE: Record<string, string> = {
 
 export default function DossierCandidatPage() {
   const { id } = useParams<{ id: string }>();
+  const { t, locale } = useLangue();
 
   const [candidat, setCandidat] = useState<Candidat | null>(null);
   const [inscriptions, setInscriptions] = useState<Inscription[]>([]);
@@ -55,11 +60,39 @@ export default function DossierCandidatPage() {
   const [editRaison, setEditRaison] = useState("");
   const [envoiEnCours, setEnvoiEnCours] = useState(false);
 
+  // Encaisser le reste d'une facture depuis la fiche
+  const [modesAcceptes, setModesAcceptes] = useState<string[]>(MODES_RESTE);
+  const [aEncaisser, setAEncaisser] = useState<Inscription | null>(null);
+  const [montantRecu, setMontantRecu] = useState("");
+  const [modeRecu, setModeRecu] = useState("especes");
+  const [encaissementEnCours, setEncaissementEnCours] = useState(false);
+  const [erreurEncaissement, setErreurEncaissement] = useState("");
+  // Dernier encaissement fait ici : message + lien vers le reçu
+  const [dernierEncaissement, setDernierEncaissement] = useState<{
+    id: string;
+    montant: number;
+    reste: number;
+  } | null>(null);
+
   useEffect(() => {
     const userStr = localStorage.getItem("user");
     if (userStr) {
       setRole(JSON.parse(userStr).role);
     }
+  }, []);
+
+  // Modes de paiement acceptés par le centre (Paramètres → Paiements)
+  useEffect(() => {
+    async function chargerModes() {
+      const res = await apiFetch("/center/settings");
+      if (!res.ok) return;
+      const data = await res.json();
+      const modes = Array.isArray(data.modesPaiement)
+        ? MODES_RESTE.filter((m) => data.modesPaiement.includes(m))
+        : [];
+      if (modes.length > 0) setModesAcceptes(modes);
+    }
+    chargerModes();
   }, []);
 
   async function charger() {
@@ -69,7 +102,7 @@ export default function DossierCandidatPage() {
     ]);
 
     if (!rCandidat.ok || !rInscriptions.ok) {
-      setErreur("Impossible de charger ce dossier");
+      setErreur(t("dossier.erreurChargement"));
       setChargement(false);
       return;
     }
@@ -94,7 +127,7 @@ export default function DossierCandidatPage() {
     setMessage("");
 
     if (!editRaison.trim()) {
-      setErreur("La raison de la modification est obligatoire");
+      setErreur(t("candidats.erreurRaison"));
       return;
     }
 
@@ -116,12 +149,67 @@ export default function DossierCandidatPage() {
       return;
     }
 
-    setMessage("Informations mises à jour");
+    setMessage(t("dossier.misAJour"));
     setModeEdition(false);
     setEditRaison("");
     setEnvoiEnCours(false);
     charger();
   }
+
+  function ouvrirEncaissement(insc: Inscription) {
+    setAEncaisser(insc);
+    setMontantRecu(String(insc.resteAPayer));
+    setModeRecu(modesAcceptes[0] ?? "especes");
+    setErreurEncaissement("");
+  }
+
+  async function encaisser() {
+    if (!aEncaisser) return;
+    setErreurEncaissement("");
+
+    const montant = Number(montantRecu.replace(/\D/g, ""));
+    if (!montant || montant <= 0) {
+      setErreurEncaissement(t("facture.erreurMontantPositif"));
+      return;
+    }
+    if (montant > aEncaisser.resteAPayer) {
+      setErreurEncaissement(t("facture.erreurMontantDepasse"));
+      return;
+    }
+
+    setEncaissementEnCours(true);
+    try {
+      const res = await apiFetch(`/registrations/${aEncaisser._id}/payment`, {
+        method: "PATCH",
+        body: JSON.stringify({ montant, modePaiement: modeRecu }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setErreurEncaissement(
+          Array.isArray(data.message) ? data.message.join(", ") : data.message ?? t("dossier.erreurEncaissement"),
+        );
+        return;
+      }
+      setDernierEncaissement({
+        id: aEncaisser._id,
+        montant,
+        reste: typeof data.resteAPayer === "number" ? data.resteAPayer : aEncaisser.resteAPayer - montant,
+      });
+      setAEncaisser(null);
+      setMessage("");
+      charger();
+    } catch {
+      setErreurEncaissement(t("dossier.erreurEncaissement"));
+    } finally {
+      setEncaissementEnCours(false);
+    }
+  }
+
+  const libellesModes: Record<string, string> = {
+    especes: t("paiement.especes"),
+    orange_money: t("paiement.orangeMoney"),
+    mobile_money: t("paiement.mobileMoney"),
+  };
 
   if (chargement) {
     return null;
@@ -144,10 +232,10 @@ export default function DossierCandidatPage() {
   const labelClass = "mb-1 block text-xs font-medium text-ink-soft";
 
   return (
-    <div className="px-4 py-10">
+    <div className="px-4 py-6 sm:py-10">
       <div className="mx-auto max-w-3xl">
-        <div className="rounded-2xl border border-ink/10 bg-white p-8 shadow-sm">
-          <div className="flex items-start justify-between gap-3">
+        <div className="rounded-2xl border border-ink/10 bg-white p-5 shadow-sm sm:p-8">
+          <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h1
                 className="text-2xl text-ink"
@@ -156,14 +244,14 @@ export default function DossierCandidatPage() {
                 {candidat.nom} {candidat.prenom}
               </h1>
               <p className="mt-1 text-sm text-ink-soft">
-                Téléphone : {candidat.telephone}
+                {t("facture.telephone")} : {candidat.telephone}
               </p>
             </div>
             <button
               onClick={() => setModeEdition(!modeEdition)}
               className="whitespace-nowrap rounded-lg border border-ink/15 px-4 py-2 text-sm font-medium text-ink transition hover:bg-paper"
             >
-              {modeEdition ? "Annuler" : "Modifier"}
+              {modeEdition ? t("commun.annuler") : t("candidats.modifier")}
             </button>
           </div>
 
@@ -178,13 +266,31 @@ export default function DossierCandidatPage() {
             </p>
           )}
 
+          {dernierEncaissement && (
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-accent/10 px-3 py-2 text-sm text-accent">
+              <span>
+                {t("dossier.paiementEnregistre", {
+                  montant: dernierEncaissement.montant.toLocaleString(locale),
+                  reste: dernierEncaissement.reste.toLocaleString(locale),
+                })}
+              </span>
+              <a
+                href={`/recu/${dernierEncaissement.id}`}
+                target="_blank"
+                className="font-semibold underline underline-offset-2"
+              >
+                {t("dossier.voirRecu")}
+              </a>
+            </div>
+          )}
+
           {modeEdition && (
             <form
               onSubmit={enregistrerModificationCandidat}
               className="mt-4 space-y-3 rounded-xl border border-ink/10 bg-paper p-5"
             >
               <div>
-                <label className={labelClass}>Nom</label>
+                <label className={labelClass}>{t("facture.nom")}</label>
                 <input
                   value={editNom}
                   onChange={(e) => setEditNom(e.target.value)}
@@ -192,7 +298,7 @@ export default function DossierCandidatPage() {
                 />
               </div>
               <div>
-                <label className={labelClass}>Prénom</label>
+                <label className={labelClass}>{t("facture.prenom")}</label>
                 <input
                   value={editPrenom}
                   onChange={(e) => setEditPrenom(e.target.value)}
@@ -200,7 +306,7 @@ export default function DossierCandidatPage() {
                 />
               </div>
               <div>
-                <label className={labelClass}>Téléphone</label>
+                <label className={labelClass}>{t("facture.telephone")}</label>
                 <input
                   value={editTelephone}
                   onChange={(e) => setEditTelephone(e.target.value)}
@@ -209,12 +315,12 @@ export default function DossierCandidatPage() {
               </div>
               <div>
                 <label className={labelClass}>
-                  Raison de la modification (obligatoire)
+                  {t("dossier.raisonObligatoire")}
                 </label>
                 <input
                   value={editRaison}
                   onChange={(e) => setEditRaison(e.target.value)}
-                  placeholder="Ex : correction faute de frappe sur le nom"
+                  placeholder={t("dossier.raisonExemple")}
                   className={`${champClass} bg-white`}
                 />
               </div>
@@ -223,17 +329,17 @@ export default function DossierCandidatPage() {
                 disabled={envoiEnCours}
                 className="rounded-lg bg-accent px-5 py-2 text-sm font-medium text-white transition disabled:cursor-not-allowed disabled:opacity-60 hover:bg-accent-hover"
               >
-                {envoiEnCours ? "Enregistrement..." : "Enregistrer"}
+                {envoiEnCours ? t("facture.enregistrementCourt") : t("commun.enregistrer")}
               </button>
             </form>
           )}
 
           <p className="mt-6 mb-3 text-sm font-semibold text-ink-soft">
-            {inscriptions.length} inscription{inscriptions.length > 1 ? "s" : ""} au total
+            {t("dossier.nombreInscriptions", { n: inscriptions.length })}
           </p>
 
           {inscriptions.length === 0 ? (
-            <p className="text-sm text-ink-soft">Aucune inscription pour ce candidat.</p>
+            <p className="text-sm text-ink-soft">{t("dossier.aucuneInscription")}</p>
           ) : (
             <div className="space-y-3">
               {inscriptions.map((insc) => (
@@ -248,15 +354,26 @@ export default function DossierCandidatPage() {
                       target="_blank"
                       className="rounded-full border border-seal/30 bg-seal/10 px-3 py-1 text-xs font-medium text-seal transition hover:bg-seal/20"
                     >
-                      N° {insc.numeroRecu}
+                      {t("candidats.numero")} {insc.numeroRecu}
                     </a>
                   </div>
-                  <div className="mt-2 grid grid-cols-2 gap-x-6 gap-y-1 text-ink-soft">
-                    <p>Inscrit le : {insc.dateInscription?.slice(0, 10)}</p>
-                    <p>Début du test : {insc.dateDebutTest?.slice(0, 10) ?? "—"}</p>
-                    <p>Montant total : {insc.montantTotal.toLocaleString("fr-FR")} FCFA</p>
-                    <p>Reste à payer : {insc.resteAPayer.toLocaleString("fr-FR")} FCFA</p>
+                  <div className="mt-2 grid grid-cols-1 gap-x-6 gap-y-1 text-ink-soft sm:grid-cols-2">
+                    <p>{t("dossier.inscritLe")} : {insc.dateInscription?.slice(0, 10)}</p>
+                    <p>{t("candidats.debutTest")} : {insc.dateDebutTest?.slice(0, 10) ?? "—"}</p>
+                    <p>{t("facture.montantTotal")} : {insc.montantTotal.toLocaleString(locale)} FCFA</p>
+                    <p>{t("facture.resteAPayer")} : {insc.resteAPayer.toLocaleString(locale)} FCFA</p>
                   </div>
+                  {insc.resteAPayer > 0 && (
+                    <div className="mt-3 flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => ouvrirEncaissement(insc)}
+                        className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:bg-accent-hover"
+                      >
+                        {t("dossier.encaisserReste")}
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -265,16 +382,21 @@ export default function DossierCandidatPage() {
           {role === "admin" && candidat.historique && candidat.historique.length > 0 && (
             <div className="mt-8 border-t border-ink/10 pt-5">
               <p className="mb-3 text-sm font-semibold text-ink-soft">
-                Historique des modifications
+                {t("dossier.historique")}
               </p>
               <div className="space-y-2">
                 {[...candidat.historique].reverse().map((h, i) => (
                   <div key={i} className="rounded-lg border border-ink/10 p-3 text-xs">
                     <p className="font-medium text-ink">{h.raison}</p>
                     <p className="mt-1 text-ink-soft">
-                      Modifié par {h.modifiePar} le {new Date(h.date).toLocaleString("fr-FR")}
+                      {t("dossier.modifiePar", {
+                        nom: h.modifiePar,
+                        date: new Date(h.date).toLocaleString(locale),
+                      })}
                     </p>
-                    <p className="text-ink-soft">Champs modifiés : {h.champsModifies}</p>
+                    <p className="text-ink-soft">
+                      {t("dossier.champsModifies")} : {h.champsModifies}
+                    </p>
                   </div>
                 ))}
               </div>
@@ -282,6 +404,78 @@ export default function DossierCandidatPage() {
           )}
         </div>
       </div>
+
+      {/* Fenêtre « Encaisser le reste » */}
+      {aEncaisser && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center" role="dialog" aria-modal="true" aria-label={t("dossier.encaisserReste")}>
+          <button
+            type="button"
+            aria-label={t("commun.annuler")}
+            onClick={() => !encaissementEnCours && setAEncaisser(null)}
+            className="absolute inset-0 h-full w-full bg-ink/40"
+          />
+          <div className="relative w-full max-w-md rounded-t-3xl bg-white p-6 pb-[max(24px,env(safe-area-inset-bottom))] sm:rounded-3xl">
+            <h2 className="text-xl font-semibold text-ink">
+              {t("dossier.encaisserTitre", { recu: aEncaisser.numeroRecu })}
+            </h2>
+            <p className="mt-1 text-sm text-ink-soft">
+              {LABEL_SERVICE[aEncaisser.service] ?? aEncaisser.service} · {candidat.nom} {candidat.prenom}
+            </p>
+            <p className="mt-4 rounded-xl bg-paper px-4 py-3 text-base text-ink">
+              {t("facture.resteAPayer")} :{" "}
+              <strong>{aEncaisser.resteAPayer.toLocaleString(locale)} FCFA</strong>
+            </p>
+
+            <label className="mt-4 flex flex-col gap-1.5 text-sm font-medium text-ink">
+              {t("facture.montantRecuAujourdhui")}
+              <input
+                inputMode="numeric"
+                value={montantRecu}
+                onChange={(e) => setMontantRecu(e.target.value.replace(/[^\d\s]/g, ""))}
+                className="h-12 rounded-xl border border-ink/15 px-3 text-base text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+              />
+            </label>
+            <label className="mt-3 flex flex-col gap-1.5 text-sm font-medium text-ink">
+              {t("facture.modeComplement")}
+              <select
+                value={modeRecu}
+                onChange={(e) => setModeRecu(e.target.value)}
+                className="h-12 rounded-xl border border-ink/15 bg-white px-3 text-base text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+              >
+                {modesAcceptes.map((mode) => (
+                  <option key={mode} value={mode}>
+                    {libellesModes[mode] ?? mode}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <p className="mt-3 text-xs text-ink-soft">{t("dossier.compteDansMaCaisse")}</p>
+
+            {erreurEncaissement && (
+              <p className="mt-4 rounded-xl bg-error/10 px-3 py-2 text-sm text-error">{erreurEncaissement}</p>
+            )}
+
+            <div className="mt-6 flex gap-3">
+              <button
+                type="button"
+                onClick={() => setAEncaisser(null)}
+                disabled={encaissementEnCours}
+                className="h-12 flex-1 rounded-xl border border-ink/15 bg-white text-sm font-semibold text-ink hover:bg-paper disabled:opacity-50"
+              >
+                {t("commun.annuler")}
+              </button>
+              <button
+                type="button"
+                onClick={encaisser}
+                disabled={encaissementEnCours || !montantRecu.trim()}
+                className="h-12 flex-1 rounded-xl bg-accent text-sm font-semibold text-white hover:bg-accent-hover disabled:opacity-50"
+              >
+                {encaissementEnCours ? t("dossier.encaissementEnCours") : t("dossier.encaisser")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

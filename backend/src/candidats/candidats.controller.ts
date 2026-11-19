@@ -6,6 +6,7 @@ import { UpdateCandidatDto } from './dto/update-candidat.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
+import { CentreId } from '../common/centre-id.decorator';
 
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
@@ -15,34 +16,39 @@ export class CandidatsController {
 
   @ApiOperation({ summary: 'Créer un nouveau candidat' })
   @Post()
-  create(@Body() createCandidatDto: CreateCandidatDto) {
-    return this.candidatsService.create(createCandidatDto);
+  create(@Body() createCandidatDto: CreateCandidatDto, @CentreId() centreId: string) {
+    return this.candidatsService.create(createCandidatDto, centreId);
   }
 
   @ApiOperation({ summary: 'Lister tous les candidats, avec filtre optionnel par nom/prénom' })
   @ApiQuery({ name: 'nom', required: false })
   @Get()
-  findAll(@Query('nom') nom?: string) {
-    return this.candidatsService.findAll(nom);
+  findAll(@CentreId() centreId: string, @Query('nom') nom?: string) {
+    return this.candidatsService.findAll(centreId, nom);
   }
 
   @ApiOperation({ summary: "Voir le détail d'un candidat précis" })
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.candidatsService.findOne(id);
+  findOne(@Param('id') id: string, @CentreId() centreId: string) {
+    return this.candidatsService.findOne(id, centreId);
   }
 
   @ApiOperation({ summary: 'Modifier un candidat (avec justification obligatoire)' })
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateCandidatDto: UpdateCandidatDto, @Req() req: any) {
-    return this.candidatsService.update(id, updateCandidatDto, req.user.email);
+  update(
+    @Param('id') id: string,
+    @Body() updateCandidatDto: UpdateCandidatDto,
+    @Req() req: any,
+    @CentreId() centreId: string,
+  ) {
+    return this.candidatsService.update(id, updateCandidatDto, req.user.email, centreId);
   }
 
   @ApiOperation({ summary: "Supprimer un candidat (réservé à l'administrateur)" })
   @UseGuards(RolesGuard)
   @Roles('admin')
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.candidatsService.remove(id);
+  remove(@Param('id') id: string, @CentreId() centreId: string) {
+    return this.candidatsService.remove(id, centreId);
   }
 }

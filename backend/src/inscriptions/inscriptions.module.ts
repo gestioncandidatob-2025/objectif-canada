@@ -8,6 +8,9 @@ import { TarifsModule } from '../tarifs/tarifs.module';
 import { MailModule } from '../mail/mail.module';
 import { UsersModule } from '../users/users.module';
 import { FacturesModule } from '../factures/factures.module';
+import { CentresModule } from '../centres/centres.module';
+import { CaisseModule } from '../caisse/caisse.module';
+import { AbonnementsModule } from '../abonnements/abonnements.module';
 
 @Module({
   imports: [
@@ -19,6 +22,10 @@ import { FacturesModule } from '../factures/factures.module';
     MailModule,
     UsersModule,
     FacturesModule,
+    CentresModule,
+    CaisseModule,
+    // Limites du plan (factures par mois, lecture seule)
+    AbonnementsModule,
   ],
   controllers: [InscriptionsController],
   providers: [InscriptionsService],

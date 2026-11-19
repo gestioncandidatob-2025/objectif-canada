@@ -6,6 +6,7 @@ import { VerifyEmailDto } from './dto/verify-email.dto';
 import { ResendVerificationDto } from './dto/resend-verification.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { RegisterCenterDto } from './dto/register-center.dto';
 import { JwtAuthGuard } from './jwt-auth.guard';
 
 @Controller('auth')
@@ -16,6 +17,14 @@ export class AuthController {
   @Post('login')
   login(@Body() loginDto: LoginDto) {
     return this.authService.login(loginDto.email, loginDto.motDePasse);
+  }
+
+  @ApiOperation({
+    summary: 'Inscrire un nouveau centre et son administrateur (page publique), renvoie un jeton JWT',
+  })
+  @Post('register-center')
+  registerCenter(@Body() dto: RegisterCenterDto) {
+    return this.authService.inscrireCentre(dto);
   }
 
   @ApiOperation({ summary: "Renvoie les infos de l'utilisateur actuellement connecté" })

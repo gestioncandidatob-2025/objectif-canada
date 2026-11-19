@@ -1,4 +1,4 @@
-import { IsEmail, IsEnum, IsNotEmpty, IsOptional, Matches, MinLength } from 'class-validator';
+import { IsEmail, IsIn, IsNotEmpty, IsOptional, Matches, MinLength } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Role } from '../schemas/user.schema';
 
@@ -20,8 +20,10 @@ export class CreateUserDto {
   @Matches(REGEX_MOT_DE_PASSE, { message: MESSAGE_MOT_DE_PASSE })
   motDePasse!: string;
 
-  @ApiPropertyOptional({ enum: Role, example: Role.SECRETARIAT, description: 'Rôle (secretariat par défaut si non fourni)' })
+  // Un administrateur de centre ne peut créer que des comptes secrétariat ou
+  // admin. Le rôle super_admin n'est jamais attribuable depuis l'application.
+  @ApiPropertyOptional({ enum: [Role.SECRETARIAT, Role.ADMIN], example: Role.SECRETARIAT, description: 'Rôle (secretariat par défaut si non fourni)' })
   @IsOptional()
-  @IsEnum(Role, { message: 'Rôle invalide' })
+  @IsIn([Role.SECRETARIAT, Role.ADMIN], { message: 'Rôle invalide' })
   role?: Role;
 }

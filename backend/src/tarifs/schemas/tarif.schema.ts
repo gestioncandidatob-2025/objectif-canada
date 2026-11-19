@@ -1,10 +1,15 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument } from 'mongoose';
+import { HydratedDocument, Schema as MongooseSchema, Types } from 'mongoose';
+import { centrePlugin } from '../../common/centre.plugin';
 
 export type TarifDocument = HydratedDocument<Tarif>;
 
 @Schema({ timestamps: true })
 export class Tarif {
+  // Centre auquel appartient ce document (multi-centres)
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Centre', required: true, index: true })
+  centreId!: Types.ObjectId;
+
   @Prop({ required: true })
   service!: string;
 
@@ -47,3 +52,4 @@ export class Tarif {
 }
 
 export const TarifSchema = SchemaFactory.createForClass(Tarif);
+TarifSchema.plugin(centrePlugin);

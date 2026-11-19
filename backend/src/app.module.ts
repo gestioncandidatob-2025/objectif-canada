@@ -13,6 +13,11 @@ import { TarifsModule } from './tarifs/tarifs.module';
 import { MailModule } from './mail/mail.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { HistoriqueModule } from './historique/historique.module';
+import { CentresModule } from './centres/centres.module';
+import { CaisseModule } from './caisse/caisse.module';
+import { RechercheModule } from './recherche/recherche.module';
+import { AssistantModule } from './assistant/assistant.module';
+import { AbonnementsModule } from './abonnements/abonnements.module';
 import { validerEnvironnement } from './config/environnement';
 
 @Module({
@@ -39,6 +44,11 @@ import { validerEnvironnement } from './config/environnement';
     MailModule,
     NotificationsModule,
     HistoriqueModule,
+    CentresModule,
+    CaisseModule,
+    RechercheModule,
+    AssistantModule,
+    AbonnementsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

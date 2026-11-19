@@ -22,6 +22,7 @@ const LIBELLES_MODULE: Record<string, string> = {
   factures: 'Factures',
   inscriptions: 'Inscriptions',
   auth: 'Authentification',
+  subscription: 'Abonnement',
 };
 
 // Traduction des noms de champs (tous modules confondus) en libellés lisibles,
@@ -61,8 +62,9 @@ const LIBELLES_CHAMPS: Record<string, string> = {
 const CHAMPS_IGNORES = new Set(['raison']);
 
 // Segments d'URL à ne jamais journaliser automatiquement (déjà gérés à part,
-// ou non pertinents).
-const MODULES_IGNORES = new Set(['historique', 'api', 'auth']);
+// ou non pertinents). Les questions posées à l'assistant ne sont pas des
+// actions sur les données : elles ne vont pas dans le journal.
+const MODULES_IGNORES = new Set(['historique', 'api', 'auth', 'assistant']);
 
 const METHODES_JOURNALISEES = new Set(['POST', 'PATCH', 'PUT', 'DELETE']);
 
@@ -126,22 +128,33 @@ export class HistoriqueLogInterceptor implements NestInterceptor {
     }
 
     const utilisateur = req.user as
-      | { email?: string; nom?: string; role?: string }
+      | { email?: string; nom?: string; role?: string; centreId?: string }
       | undefined;
 
-    if (!utilisateur?.email) {
+    // Seules les actions faites dans un centre sont journalisées (le journal
+    // est consulté par l'administrateur du centre).
+    if (!utilisateur?.email || !utilisateur.centreId) {
       return next.handle();
     }
 
     const module = LIBELLES_MODULE[segment] || segment;
-    const action = LIBELLES_ACTION[methode] || methode;
+    const chemin = String(req.url || '').split('?')[0];
+    // Une impression de reçu n'est pas une création : on l'appelle par son nom
+    const action = chemin.endsWith('/print')
+      ? 'Impression'
+      : LIBELLES_ACTION[methode] || methode;
     const route = `${methode} ${req.originalUrl || req.url}`;
 
     return next.handle().pipe(
       tap((reponse) => {
         const elementTouche = decrireElementTouche(methode, req.body, reponse);
         const raison = typeof req.body?.raison === 'string' ? req.body.raison : undefined;
+        // Valeurs avant / après, quand la route les a fournies (correction de facture)
+        const changements = Array.isArray(req.changementsHistorique)
+          ? (req.changementsHistorique as { champ: string; avant: string; apres: string }[])
+          : undefined;
         void this.historiqueService.enregistrer({
+          centreId: utilisateur.centreId!,
           utilisateurEmail: utilisateur.email!,
           utilisateurNom: utilisateur.nom,
           role: utilisateur.role,
@@ -150,11 +163,14 @@ export class HistoriqueLogInterceptor implements NestInterceptor {
           route,
           statut: 'succès',
           details: [elementTouche, raison].filter(Boolean).join(' — ') || undefined,
+          motif: raison,
+          changements: changements?.length ? changements : undefined,
         });
       }),
       catchError((erreur) => {
         const elementTouche = decrireElementTouche(methode, req.body, undefined);
         void this.historiqueService.enregistrer({
+          centreId: utilisateur.centreId!,
           utilisateurEmail: utilisateur.email!,
           utilisateurNom: utilisateur.nom,
           role: utilisateur.role,
