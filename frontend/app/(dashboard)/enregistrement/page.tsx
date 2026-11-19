@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "../../lib/api";
 import { useLangue } from "../../lib/langue";
+import ChampTelephone from "../../components/ChampTelephone";
 
 type Candidat = {
   _id: string;
@@ -71,7 +72,8 @@ export default function EnregistrementPage() {
   const [verificationDetteEnCours, setVerificationDetteEnCours] = useState(false);
   const [montantComplement, setMontantComplement] = useState("");
   // Comment le reste est payé (espèces ou mobile), pour le point de caisse
-  const [modeComplement, setModeComplement] = useState("especes");
+  // Vide au départ : la personne doit choisir le mode (on n'oublie plus Mobile Money)
+  const [modeComplement, setModeComplement] = useState("");
   const [paiementEnCours, setPaiementEnCours] = useState(false);
 
   const [nouveauNom, setNouveauNom] = useState("");
@@ -85,7 +87,8 @@ export default function EnregistrementPage() {
   const [dateFin, setDateFin] = useState("");
   const [montantNegocie, setMontantNegocie] = useState("");
   const [remise, setRemise] = useState("");
-  const [modePaiement, setModePaiement] = useState("especes");
+  // Vide au départ : la personne doit choisir le mode (on n'oublie plus Mobile Money)
+  const [modePaiement, setModePaiement] = useState("");
   const [montantPaye, setMontantPaye] = useState("");
   const [montantMobile, setMontantMobile] = useState("");
   const [montantEspeces, setMontantEspeces] = useState("");
@@ -130,7 +133,7 @@ export default function EnregistrementPage() {
       if (modes.length === 0) return;
       setModesAcceptes(modes);
       // Le mode sélectionné doit faire partie des modes acceptés
-      setModePaiement((actuel) => (modes.includes(actuel) ? actuel : modes[0]));
+      setModePaiement((actuel) => (modes.includes(actuel) ? actuel : ""));
     }
     chargerModesPaiement();
   }, []);
@@ -139,9 +142,7 @@ export default function EnregistrementPage() {
   const modesAffiches = ORDRE_MODES_PAIEMENT.filter((m) => modesAcceptes.includes(m));
   // Pour un reste à payer, un seul mode à la fois (pas de mixte)
   const modesComplement = modesAffiches.filter((m) => m !== "mobile_especes");
-  const modeComplementValide = modesComplement.includes(modeComplement)
-    ? modeComplement
-    : (modesComplement[0] ?? "especes");
+  const modeComplementValide = modesComplement.includes(modeComplement) ? modeComplement : "";
 
   // Il n'y a qu'une seule offre active par service (elle porte elle-même
   // sa liste de régimes le cas échéant).
@@ -267,6 +268,10 @@ export default function EnregistrementPage() {
       setErreur(t("facture.erreurMontantDepasse"));
       return;
     }
+    if (!modeComplementValide) {
+      setErreur(t("facture.erreurModePaiement"));
+      return;
+    }
 
     setPaiementEnCours(true);
     const res = await apiFetch(`/registrations/${detteInfo.inscription._id}/payment`, {
@@ -336,6 +341,11 @@ export default function EnregistrementPage() {
     const config = configActuelle;
     if (!config) {
       setErreur(t("facture.erreurAucuneOffre"));
+      return;
+    }
+
+    if (!modePaiement) {
+      setErreur(t("facture.erreurModePaiement"));
       return;
     }
 
@@ -624,6 +634,9 @@ export default function EnregistrementPage() {
                   onChange={(e) => setModeComplement(e.target.value)}
                   className={champClass}
                 >
+                  <option value="" disabled>
+                    {t("facture.choisirMode")}
+                  </option>
                   {modesComplement.map((mode) => (
                     <option key={mode} value={mode}>
                       {modePaiementLabels[mode] ?? mode}
@@ -657,13 +670,7 @@ export default function EnregistrementPage() {
                 className={champClass}
               />
               <label className={labelClass}>{t("facture.telephone9")}</label>
-              <input
-                value={nouveauTelephone}
-                onChange={(e) => handleTelephoneChange(e.target.value)}
-                inputMode="numeric"
-                maxLength={9}
-                className={champClass}
-              />
+              <ChampTelephone value={nouveauTelephone} onChange={handleTelephoneChange} />
               {erreurTelephone && (
                 <p className="text-sm text-error">{erreurTelephone}</p>
               )}
@@ -760,6 +767,9 @@ export default function EnregistrementPage() {
                 onChange={(e) => setModePaiement(e.target.value)}
                 className={champClass}
               >
+                <option value="" disabled>
+                  {t("facture.choisirMode")}
+                </option>
                 {modesAffiches.map((mode) => (
                   <option key={mode} value={mode}>
                     {modePaiementLabels[mode] ?? mode}

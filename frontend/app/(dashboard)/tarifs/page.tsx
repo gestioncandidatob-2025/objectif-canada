@@ -3,6 +3,7 @@
 import { useEffect, useState, Fragment } from "react";
 import { apiFetch } from "../../lib/api";
 import { useLangue } from "../../lib/langue";
+import Pagination, { usePagination } from "../../components/Pagination";
 
 type Tarif = {
   _id: string;
@@ -93,6 +94,7 @@ export default function TarifsPage() {
   const [suppressionEnCours, setSuppressionEnCours] = useState<string | null>(null);
   // « tr » et pas « t » : dans cette page, « t » désigne déjà une offre
   const { t: tr, locale } = useLangue();
+  const pages = usePagination(tarifs, 15);
 
   async function chargerTarifs() {
     setChargement(true);
@@ -346,6 +348,9 @@ export default function TarifsPage() {
         {afficherFormulaire && (
           <form
             onSubmit={handleCreer}
+            // Pas de contrôle du navigateur sur le prix : les flèches font ±1 000,
+            // mais un prix comme 65 500 doit rester accepté
+            noValidate
             className="mb-6 space-y-3 rounded-2xl border border-ink/10 bg-white p-6 shadow-sm"
           >
             <label className={labelClass}>{tr("facture.service")}</label>
@@ -366,17 +371,22 @@ export default function TarifsPage() {
             </p>
 
             {form.regimeActif && (
-              <ListeRegimes
-                regimes={form.regimes}
-                onChange={(regimes) => setForm({ ...form, regimes })}
-              />
+              // Appelé comme une fonction (et non <ListeRegimes />) : sinon React
+              // recrée le champ à chaque lettre tapée et on ne peut taper qu'un caractère
+              ListeRegimes({
+                regimes: form.regimes,
+                onChange: (regimes) => setForm({ ...form, regimes }),
+              })
             )}
 
             {!form.montantNegociable && (
               <>
                 <label className={labelClass}>{tr("tarifs.prixFcfa")}</label>
+                {/* Les flèches du champ ajoutent ou retirent 1 000 F */}
                 <input
                   type="number"
+                  step={1000}
+                  min={0}
                   value={form.prix}
                   onChange={(e) => setForm({ ...form, prix: e.target.value })}
                   className={champClass}
@@ -396,11 +406,11 @@ export default function TarifsPage() {
               </>
             )}
 
-            <BlocOptions
-              valeurs={form}
-              idPrefix="creation"
-              onChange={(champ, valeur) => setForm({ ...form, [champ]: valeur })}
-            />
+            {BlocOptions({
+              valeurs: form,
+              idPrefix: "creation",
+              onChange: (champ, valeur) => setForm({ ...form, [champ]: valeur }),
+            })}
 
             <button
               type="submit"
@@ -427,7 +437,7 @@ export default function TarifsPage() {
               </tr>
             </thead>
             <tbody>
-             {tarifs.map((t) => (
+             {pages.elements.map((t) => (
                 <Fragment key={t._id}>
                   <tr className="border-b border-ink/5">
                     <td className="px-4 py-3 font-medium text-ink">{formaterNomService(t.service)}</td>
@@ -496,6 +506,8 @@ export default function TarifsPage() {
                               </label>
                               <input
                                 type="number"
+                                step={1000}
+                                min={0}
                                 value={editForm.prix}
                                 onChange={(e) =>
                                   setEditForm({ ...editForm, prix: e.target.value })
@@ -537,19 +549,17 @@ export default function TarifsPage() {
                         </div>
 
                         {editForm.regimeActif && (
-                          <ListeRegimes
-                            regimes={editForm.regimes}
-                            onChange={(regimes) => setEditForm({ ...editForm, regimes })}
-                          />
+                          ListeRegimes({
+                            regimes: editForm.regimes,
+                            onChange: (regimes) => setEditForm({ ...editForm, regimes }),
+                          })
                         )}
 
-                        <BlocOptions
-                          valeurs={editForm}
-                          idPrefix={`edition-${t._id}`}
-                          onChange={(champ, valeur) =>
-                            setEditForm({ ...editForm, [champ]: valeur })
-                          }
-                        />
+                        {BlocOptions({
+                          valeurs: editForm,
+                          idPrefix: `edition-${t._id}`,
+                          onChange: (champ, valeur) => setEditForm({ ...editForm, [champ]: valeur }),
+                        })}
 
                         <div className="flex gap-2">
                           <button
@@ -581,6 +591,15 @@ export default function TarifsPage() {
             </p>
           )}
         </div>
+
+        <Pagination
+          page={pages.page}
+          totalPages={pages.totalPages}
+          onChange={pages.setPage}
+          texte={tr("tarifs.pagination", { page: pages.page, total: pages.totalPages, n: pages.total })}
+          precedent={tr("candidats.precedent")}
+          suivant={tr("candidats.suivant")}
+        />
       </div>
     </div>
   );

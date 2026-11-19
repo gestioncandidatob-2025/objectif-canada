@@ -96,6 +96,11 @@ export class AbonnementsService implements OnModuleInit {
           },
         })),
       );
+      // Nouvelles valeurs de départ (nov. 2026) : Gratuit 25 → 30 factures au
+      // total, Standard 100 → 120 factures par mois. On ne change que si le
+      // super admin n'a pas déjà modifié ces chiffres.
+      await this.planModel.updateOne({ code: PLAN_GRATUIT, factures: 25 }, { $set: { factures: 30 } });
+      await this.planModel.updateOne({ code: 'standard', factures: 100 }, { $set: { factures: 120 } });
       // Prix de départ du Sur mesure, s'ils n'ont jamais été enregistrés
       await this.planModel.updateOne(
         { code: PLAN_SUR_MESURE, prixParFacture: { $exists: false } },
@@ -200,15 +205,22 @@ export class AbonnementsService implements OnModuleInit {
     }
   }
 
-  /** Où en est le centre : plan, état, factures du mois et comptes utilisés */
+  /**
+   * Où en est le centre : plan, état, factures utilisées et comptes.
+   * Plan Gratuit : on compte TOUTES les factures du centre (30 au total).
+   * Plans payants : seulement les factures du mois en cours.
+   */
   async utilisation(centreId: string) {
     const centre = await this.trouverCentre(centreId);
-    const [plan, facturesCeMois, comptes] = await Promise.all([
-      this.planDuCentre(centre),
-      this.inscriptionModel.countDocuments({ centreId, createdAt: { $gte: debutDuMoisDouala() } }),
+    const plan = await this.planDuCentre(centre);
+    const quotaTotal = plan.code === PLAN_GRATUIT;
+    const [facturesCeMois, comptes] = await Promise.all([
+      this.inscriptionModel.countDocuments(
+        quotaTotal ? { centreId } : { centreId, createdAt: { $gte: debutDuMoisDouala() } },
+      ),
       this.userModel.countDocuments({ centreId }),
     ]);
-    return { centre, plan, etat: etatAbonnement(centre), facturesCeMois, comptes };
+    return { centre, plan, etat: etatAbonnement(centre), facturesCeMois, comptes, quotaTotal };
   }
 
   /**
@@ -216,8 +228,8 @@ export class AbonnementsService implements OnModuleInit {
    * peut-on créer une facture, et faut-il afficher un avertissement ?
    */
   async etatPourLeCentre(centreId: string) {
-    const { centre, plan, etat, facturesCeMois, comptes } = await this.utilisation(centreId);
-    const raison = this.raisonBlocageFacture(etat.statut, facturesCeMois, plan);
+    const { centre, plan, etat, facturesCeMois, comptes, quotaTotal } = await this.utilisation(centreId);
+    const raison = this.raisonBlocageFacture(etat.statut, facturesCeMois, plan, quotaTotal);
     return {
       plan: { code: plan.code, nom: plan.nom },
       statut: etat.statut,
@@ -228,7 +240,8 @@ export class AbonnementsService implements OnModuleInit {
       offre: centre.offre?.fin
         ? { fin: centre.offre.fin, planPrecedent: centre.offre.planPrecedent ?? PLAN_GRATUIT }
         : null,
-      factures: { utilisees: facturesCeMois, limite: plan.factures },
+      // total = true : quota sur toute la vie du centre (plan Gratuit), sinon par mois
+      factures: { utilisees: facturesCeMois, limite: plan.factures, total: quotaTotal },
       comptes: { utilises: comptes, limite: plan.comptes },
       peutFacturer: raison === null,
       raisonBlocage: raison,
@@ -283,9 +296,17 @@ export class AbonnementsService implements OnModuleInit {
 
   // ---------- Limites : vérifiées avant de créer une facture ou un compte ----------
 
-  private raisonBlocageFacture(statut: string, facturesCeMois: number, plan: PlanApplique): string | null {
+  private raisonBlocageFacture(
+    statut: string,
+    facturesCeMois: number,
+    plan: PlanApplique,
+    quotaTotal = false,
+  ): string | null {
     if (statut === 'lecture_seule') {
       return "L'abonnement du centre a expiré : plus de nouvelle facture. L'administrateur doit le renouveler (menu Abonnement).";
+    }
+    if (quotaTotal && facturesCeMois >= plan.factures) {
+      return `Les ${plan.factures} factures gratuites sont utilisées. L'administrateur doit choisir un plan payant (menu Abonnement).`;
     }
     if (facturesCeMois >= plan.factures) {
       return `Limite de ${plan.factures} factures ce mois atteinte (plan ${plan.nom}). L'administrateur peut passer à un plan supérieur (menu Abonnement).`;
@@ -294,8 +315,8 @@ export class AbonnementsService implements OnModuleInit {
   }
 
   async verifierPeutCreerFacture(centreId: string) {
-    const { plan, etat, facturesCeMois } = await this.utilisation(centreId);
-    const raison = this.raisonBlocageFacture(etat.statut, facturesCeMois, plan);
+    const { plan, etat, facturesCeMois, quotaTotal } = await this.utilisation(centreId);
+    const raison = this.raisonBlocageFacture(etat.statut, facturesCeMois, plan, quotaTotal);
     if (raison) throw new ForbiddenException(raison);
   }
 

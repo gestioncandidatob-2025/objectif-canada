@@ -95,6 +95,12 @@ export class InscriptionsController {
     return this.inscriptionsService.verifierDette(telephone, centreId);
   }
 
+  @ApiOperation({ summary: 'Nombre de candidats inscrits à chaque service (cartes de la page Groupes)' })
+  @Get('count-by-service')
+  compterParService(@CentreId() centreId: string) {
+    return this.inscriptionsService.compterCandidatsParService(centreId);
+  }
+
   @ApiOperation({ summary: "Voir le détail d'une inscription précise" })
   @Get(':id')
   findOne(@Param('id') id: string, @CentreId() centreId: string) {

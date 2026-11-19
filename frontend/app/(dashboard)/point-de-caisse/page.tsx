@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { apiFetch } from "../../lib/api";
 import { useLangue } from "../../lib/langue";
+import Pagination, { usePagination } from "../../components/Pagination";
 
 // Une personne dont on peut voir la caisse (un onglet)
 type Personne = {
@@ -69,6 +70,8 @@ export default function PointDeCaissePage() {
   const estAujourdhui = dateChoisie === aujourdhui;
 
   const [chargement, setChargement] = useState(true);
+  // Le détail du jour, découpé en pages (on revient à la page 1 si on change de jour ou de personne)
+  const pages = usePagination(detail, 15, `${personneActive}-${dateChoisie}`);
   const [erreur, setErreur] = useState("");
 
   // 1. Qui est connecté, et quelles caisses il peut voir
@@ -325,7 +328,7 @@ export default function PointDeCaissePage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {detail.map((ligne) => (
+                      {pages.elements.map((ligne) => (
                         <tr key={ligne.id} className="border-b border-ink/5 last:border-0">
                           <td className="px-4 py-3 text-ink-soft">
                             {new Date(ligne.date).toLocaleTimeString(locale, {
@@ -348,7 +351,7 @@ export default function PointDeCaissePage() {
 
                 {/* Téléphone : cartes */}
                 <div className="space-y-3 md:hidden">
-                  {detail.map((ligne) => (
+                  {pages.elements.map((ligne) => (
                     <div key={ligne.id} className="rounded-xl border border-ink/10 bg-white p-4">
                       <div className="flex items-baseline justify-between gap-3">
                         <p className="font-semibold text-ink">{ligne.candidatNom ?? "—"}</p>
@@ -365,6 +368,15 @@ export default function PointDeCaissePage() {
                     </div>
                   ))}
                 </div>
+
+                <Pagination
+                  page={pages.page}
+                  totalPages={pages.totalPages}
+                  onChange={pages.setPage}
+                  texte={t("caisse.pagination", { page: pages.page, total: pages.totalPages, n: pages.total })}
+                  precedent={t("candidats.precedent")}
+                  suivant={t("candidats.suivant")}
+                />
               </>
             )}
           </>

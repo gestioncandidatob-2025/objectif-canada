@@ -120,7 +120,7 @@ export default function PaiementsPage() {
                       </div>
                       <div className="flex items-center gap-2">
                         <BadgePlan code={codeDuPlan(ligne.plan)} nom={ligne.plan} />
-                        <Link href={`/super-admin?plan=${ligne.centreId}`} className={boutonSecondaire}>
+                        <Link href={`/super-admin/centres?plan=${ligne.centreId}`} className={boutonSecondaire}>
                           Voir
                         </Link>
                       </div>

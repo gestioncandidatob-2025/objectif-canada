@@ -69,9 +69,10 @@ async function main() {
     console.log(`Centre existant : ${CENTRE_PAR_DEFAUT.nom} (${centreId})`);
   } else if (appliquer) {
     const maintenant = new Date();
+    // Pas de compteur de reçus ici : l'étape 5 l'initialise avec le nombre
+    // de factures déjà émises, pour que la numérotation continue la suite.
     const resultat = await centres.insertOne({
       ...CENTRE_PAR_DEFAUT,
-      dernierNumeroRecu: 0,
       createdAt: maintenant,
       updatedAt: maintenant,
     });
@@ -128,6 +129,11 @@ async function main() {
 
   // 5. Compteur de reçus : on part du nombre de factures déjà émises par le
   //    centre, pour que la numérotation continue là où elle en était.
+  //    En simulation, le centre n'existe pas encore : on affiche ce qui serait fait.
+  if (!appliquer && !centre) {
+    const nombreFactures = await inscriptions.countDocuments({ centreId: { $exists: false } });
+    console.log(`Compteur de reçus de "${CENTRE_PAR_DEFAUT.nom}" à initialiser à ${nombreFactures}`);
+  }
   const centresSansCompteur = await centres
     .find({ dernierNumeroRecu: { $exists: false } })
     .toArray();

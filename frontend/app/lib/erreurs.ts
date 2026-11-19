@@ -160,6 +160,10 @@ const MODELES_EN: [RegExp, (...valeurs: string[]) => string][] = [
       `${limite}-invoice monthly limit reached (${plan} plan). The administrator can upgrade (Subscription menu).`,
   ],
   [
+    /^Les (\d+) factures gratuites sont utilisées\. L'administrateur doit choisir un plan payant \(menu Abonnement\)\.$/,
+    (limite) => `The ${limite} free invoices are used up. The administrator must choose a paid plan (Subscription menu).`,
+  ],
+  [
     /^Limite de (\d+) comptes atteinte \(plan (.+)\)\. Passe à un plan supérieur \(menu Abonnement\)\.$/,
     (limite, plan) => `${limite}-account limit reached (${plan} plan). Upgrade your plan (Subscription menu).`,
   ],

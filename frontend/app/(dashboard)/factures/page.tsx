@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { apiFetch } from "../../lib/api";
 import { useLangue } from "../../lib/langue";
+import Pagination, { usePagination } from "../../components/Pagination";
 
 type Candidat = {
   nom: string;
@@ -50,6 +51,7 @@ export default function FacturesPage() {
   const [erreur, setErreur] = useState("");
   const [ouvertureEnCours, setOuvertureEnCours] = useState<string | null>(null);
   const { t, locale } = useLangue();
+  const pages = usePagination(factures, 15);
 
   // Export Excel (administrateur seulement) : par défaut, le mois en cours
   const [estAdmin, setEstAdmin] = useState(false);
@@ -211,7 +213,7 @@ export default function FacturesPage() {
               </tr>
             </thead>
             <tbody>
-              {factures.map((f) => (
+              {pages.elements.map((f) => (
                 <tr key={f._id} className="border-b border-ink/5">
                   <td className="whitespace-nowrap px-4 py-3 font-medium text-ink">
                     {f.numeroRecu}
@@ -248,6 +250,15 @@ export default function FacturesPage() {
             </p>
           )}
         </div>
+
+        <Pagination
+          page={pages.page}
+          totalPages={pages.totalPages}
+          onChange={pages.setPage}
+          texte={t("factures.pagination", { page: pages.page, total: pages.totalPages, n: pages.total })}
+          precedent={t("candidats.precedent")}
+          suivant={t("candidats.suivant")}
+        />
       </div>
     </div>
   );
