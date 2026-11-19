@@ -18,6 +18,7 @@ import { CaisseModule } from './caisse/caisse.module';
 import { RechercheModule } from './recherche/recherche.module';
 import { AssistantModule } from './assistant/assistant.module';
 import { AbonnementsModule } from './abonnements/abonnements.module';
+import { VerificationsCaisseModule } from './verifications-caisse/verifications-caisse.module';
 import { validerEnvironnement } from './config/environnement';
 
 @Module({
@@ -49,6 +50,7 @@ import { validerEnvironnement } from './config/environnement';
     RechercheModule,
     AssistantModule,
     AbonnementsModule,
+    VerificationsCaisseModule,
   ],
   controllers: [AppController],
   providers: [AppService],

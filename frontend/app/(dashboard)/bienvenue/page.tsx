@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { apiFetch } from "../../lib/api";
 import { useLangue } from "../../lib/langue";
+import CaissesAVerifier from "../../components/CaissesAVerifier";
+import QuestionsCaisse from "../../components/QuestionsCaisse";
 
 type User = {
   nom: string;
@@ -132,6 +134,9 @@ export default function BienvenuePage() {
             {t("accueil.bonjour", { prenom })}
           </h1>
         </div>
+
+        {/* ---------- Caisse : à vérifier (administrateur) ou questions à répondre (secrétaire) ---------- */}
+        {estAdmin ? <CaissesAVerifier /> : <QuestionsCaisse />}
 
         {/* ---------- Nouvelle facture : toute la largeur ---------- */}
         <Link

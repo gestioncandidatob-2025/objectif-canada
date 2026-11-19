@@ -124,6 +124,17 @@ const MESSAGES_EN: Record<string, string> = {
   "Indique un nombre de comptes": "Enter a number of accounts",
   "Nombre de factures trop grand": "Number of invoices too large",
   "Nombre de comptes trop grand": "Number of accounts too large",
+
+  // Vérification de la caisse
+  "Ce lien ne correspond à aucune caisse.": "This link does not match any cash register.",
+  "Ce lien a expiré. Retrouve cette caisse sur ton Accueil dans l'application.":
+    "This link has expired. Find this cash register on your Home page in the app.",
+  "Caisse introuvable": "Cash register not found",
+  "Choix invalide": "Invalid choice",
+  "Le message est vide": "The message is empty",
+  "Le message est trop long (1000 caractères maximum)": "The message is too long (1000 characters maximum)",
+  "Cette caisse n'est pas la tienne.": "This cash register is not yours.",
+  "Aucune question n'attend ta réponse.": "No question is waiting for your answer.",
 };
 
 // Messages qui contiennent une valeur (montant, nom, nombre)
