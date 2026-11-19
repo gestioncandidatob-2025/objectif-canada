@@ -22,8 +22,9 @@ export interface PlanParDefaut {
 }
 
 export const PLANS_PAR_DEFAUT: PlanParDefaut[] = [
-  { code: PLAN_GRATUIT, nom: 'Gratuit', ordre: 1, prixMensuel: 0, prixAnnuel: null, factures: 25, comptes: 2 },
-  { code: 'standard', nom: 'Standard', ordre: 2, prixMensuel: 10000, prixAnnuel: 100000, factures: 100, comptes: 3 },
+  // Gratuit : 30 factures AU TOTAL (pas par mois), à utiliser quand le centre veut
+  { code: PLAN_GRATUIT, nom: 'Gratuit', ordre: 1, prixMensuel: 0, prixAnnuel: null, factures: 30, comptes: 2 },
+  { code: 'standard', nom: 'Standard', ordre: 2, prixMensuel: 10000, prixAnnuel: 100000, factures: 120, comptes: 3 },
   { code: 'pro', nom: 'Pro', ordre: 3, prixMensuel: 20000, prixAnnuel: 200000, factures: 200, comptes: 5 },
   // Sur mesure : le centre choisit ses factures (et ses comptes), le prix est
   // calculé avec TARIF_SUR_MESURE_PAR_DEFAUT. Les limites ci-dessous ne

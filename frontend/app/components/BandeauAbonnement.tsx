@@ -40,9 +40,16 @@ export default function BandeauAbonnement({
       : t("abonnement.bandeau.lectureSeuleSecretaire");
   } else if (quotaAtteint) {
     ton = "rouge";
-    message = estAdmin
-      ? t("abonnement.bandeau.quotaAtteintAdmin", { limite: etat.factures.limite, plan })
-      : t("abonnement.bandeau.quotaAtteintSecretaire", { limite: etat.factures.limite });
+    // Plan Gratuit : les factures gratuites (au total) sont toutes utilisées
+    if (etat.factures.total) {
+      message = estAdmin
+        ? t("abonnement.bandeau.gratuitEpuiseAdmin", { limite: etat.factures.limite })
+        : t("abonnement.bandeau.gratuitEpuiseSecretaire", { limite: etat.factures.limite });
+    } else {
+      message = estAdmin
+        ? t("abonnement.bandeau.quotaAtteintAdmin", { limite: etat.factures.limite, plan })
+        : t("abonnement.bandeau.quotaAtteintSecretaire", { limite: etat.factures.limite });
+    }
   } else if (estAdmin && etat.statut === "grace") {
     ton = "orange";
     message = t("abonnement.bandeau.grace", {
@@ -51,7 +58,7 @@ export default function BandeauAbonnement({
     });
   } else if (estAdmin && etat.alerteQuota) {
     ton = "orange";
-    message = t("abonnement.bandeau.quotaProche", {
+    message = t(etat.factures.total ? "abonnement.bandeau.quotaProcheTotal" : "abonnement.bandeau.quotaProche", {
       utilisees: etat.factures.utilisees,
       limite: etat.factures.limite,
     });

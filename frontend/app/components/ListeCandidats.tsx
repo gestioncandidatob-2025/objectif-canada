@@ -163,7 +163,7 @@ export default function ListeCandidats({
   const [triColonne, setTriColonne] = useState<ColonneTri | null>(null);
   const [triOrdre, setTriOrdre] = useState<OrdreTri>("asc");
 
-  const CANDIDATS_PAR_PAGE = 10;
+  const CANDIDATS_PAR_PAGE = 15;
   const [page, setPage] = useState(1);
 
   function basculerTri(colonne: ColonneTri) {

@@ -5,6 +5,7 @@ import { apiFetch, getToken, traduireReponseServeur } from "../../lib/api";
 import { signalerCentreModifie } from "../../lib/centre";
 import { useLangue } from "../../lib/langue";
 import TarifsPage from "../tarifs/page";
+import ChampTelephone, { avecIndicatif, chiffresSansIndicatif } from "../../components/ChampTelephone";
 
 type Parametres = {
   nom: string;
@@ -349,13 +350,9 @@ export default function ParametresPage() {
                 </div>
                 <div>
                   <label className={labelClass}>{t("facture.telephone")}</label>
-                  <input
-                    type="tel"
-                    value={formulaire.telephone}
-                    onChange={(e) => modifierChamp("telephone", e.target.value)}
-                    placeholder="Ex : +237 699 00 00 00"
-                    maxLength={30}
-                    className={champClass}
+                  <ChampTelephone
+                    value={chiffresSansIndicatif(formulaire.telephone)}
+                    onChange={(chiffres) => modifierChamp("telephone", avecIndicatif(chiffres))}
                   />
                 </div>
                 <div className="sm:col-span-2">

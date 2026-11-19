@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { apiFetch } from "../../../lib/api";
 import { useLangue } from "../../../lib/langue";
+import ChampTelephone, { chiffresSansIndicatif } from "../../../components/ChampTelephone";
 
 type HistoriqueEntree = {
   raison: string;
@@ -64,7 +65,8 @@ export default function DossierCandidatPage() {
   const [modesAcceptes, setModesAcceptes] = useState<string[]>(MODES_RESTE);
   const [aEncaisser, setAEncaisser] = useState<Inscription | null>(null);
   const [montantRecu, setMontantRecu] = useState("");
-  const [modeRecu, setModeRecu] = useState("especes");
+  // Vide au départ : la personne doit choisir le mode (on n'oublie plus Mobile Money)
+  const [modeRecu, setModeRecu] = useState("");
   const [encaissementEnCours, setEncaissementEnCours] = useState(false);
   const [erreurEncaissement, setErreurEncaissement] = useState("");
   // Dernier encaissement fait ici : message + lien vers le reçu
@@ -111,7 +113,7 @@ export default function DossierCandidatPage() {
     setCandidat(c);
     setEditNom(c.nom);
     setEditPrenom(c.prenom);
-    setEditTelephone(c.telephone);
+    setEditTelephone(chiffresSansIndicatif(c.telephone));
     setInscriptions(await rInscriptions.json());
     setChargement(false);
   }
@@ -159,7 +161,7 @@ export default function DossierCandidatPage() {
   function ouvrirEncaissement(insc: Inscription) {
     setAEncaisser(insc);
     setMontantRecu(String(insc.resteAPayer));
-    setModeRecu(modesAcceptes[0] ?? "especes");
+    setModeRecu("");
     setErreurEncaissement("");
   }
 
@@ -174,6 +176,10 @@ export default function DossierCandidatPage() {
     }
     if (montant > aEncaisser.resteAPayer) {
       setErreurEncaissement(t("facture.erreurMontantDepasse"));
+      return;
+    }
+    if (!modeRecu) {
+      setErreurEncaissement(t("facture.erreurModePaiement"));
       return;
     }
 
@@ -307,11 +313,7 @@ export default function DossierCandidatPage() {
               </div>
               <div>
                 <label className={labelClass}>{t("facture.telephone")}</label>
-                <input
-                  value={editTelephone}
-                  onChange={(e) => setEditTelephone(e.target.value)}
-                  className={`${champClass} bg-white`}
-                />
+                <ChampTelephone value={editTelephone} onChange={setEditTelephone} />
               </div>
               <div>
                 <label className={labelClass}>
@@ -442,6 +444,9 @@ export default function DossierCandidatPage() {
                 onChange={(e) => setModeRecu(e.target.value)}
                 className="h-12 rounded-xl border border-ink/15 bg-white px-3 text-base text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
               >
+                <option value="" disabled>
+                  {t("facture.choisirMode")}
+                </option>
                 {modesAcceptes.map((mode) => (
                   <option key={mode} value={mode}>
                     {libellesModes[mode] ?? mode}

@@ -10,9 +10,39 @@ import { jetonExpire, terminerSession, useSurveillanceSession } from "../lib/ses
  * menu à gauche sur ordinateur, barre en haut sur téléphone.
  */
 
+// Ordre du menu : tableau de bord, transactions, paiements, centres, plans, à suivre
 const LIENS = [
   {
     href: "/super-admin",
+    label: "Tableau de bord",
+    icone: (
+      <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
+        <path d="M3 3v18h18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        <path d="M7 15l4-4 3 3 5-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    ),
+  },
+  {
+    href: "/super-admin/transactions",
+    label: "Transactions",
+    icone: (
+      <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
+        <path d="M7 4 3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    ),
+  },
+  {
+    href: "/super-admin/paiements",
+    label: "Paiements",
+    icone: (
+      <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
+        <rect x="3" y="5.5" width="18" height="13" rx="2.5" stroke="currentColor" strokeWidth="1.8" />
+        <path d="M3 10h18M7 15h4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+  {
+    href: "/super-admin/centres",
     label: "Centres",
     icone: (
       <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
@@ -28,25 +58,6 @@ const LIENS = [
       <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
         <path d="M3 12V4h8l10 10-8 8L3 12Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
         <circle cx="7.5" cy="8.5" r="1.5" fill="currentColor" />
-      </svg>
-    ),
-  },
-  {
-    href: "/super-admin/paiements",
-    label: "Paiements",
-    icone: (
-      <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
-        <rect x="3" y="5.5" width="18" height="13" rx="2.5" stroke="currentColor" strokeWidth="1.8" />
-        <path d="M3 10h18M7 15h4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      </svg>
-    ),
-  },
-  {
-    href: "/super-admin/transactions",
-    label: "Transactions",
-    icone: (
-      <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
-        <path d="M7 4 3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     ),
   },

@@ -176,7 +176,7 @@ export default function SuiviPage() {
                     <p className="mt-3 text-xs text-ink-soft">{statut.explication}</p>
 
                     <div className="mt-4 flex justify-end">
-                      <Link href={`/super-admin?plan=${ligne.centreId}`} className={boutonSecondaire}>
+                      <Link href={`/super-admin/centres?plan=${ligne.centreId}`} className={boutonSecondaire}>
                         Changer le plan
                       </Link>
                     </div>

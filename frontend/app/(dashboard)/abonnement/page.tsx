@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "../../lib/api";
 import { useLangue } from "../../lib/langue";
+import ChampTelephone from "../../components/ChampTelephone";
 import {
   EVENEMENT_ABONNEMENT_MODIFIE,
   calculerSurMesure,
@@ -382,7 +383,9 @@ export default function AbonnementPage() {
               <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2">
                 <div>
                   <div className="flex items-baseline justify-between gap-3 text-sm">
-                    <span className="font-medium text-ink">{t("abonnement.facturesCeMois")}</span>
+                    <span className="font-medium text-ink">
+                      {resume.factures.total ? t("abonnement.facturesGratuitesUtilisees") : t("abonnement.facturesCeMois")}
+                    </span>
                     <span className="text-ink-soft">
                       {resume.factures.utilisees} / {resume.factures.limite}
                     </span>
@@ -459,7 +462,7 @@ export default function AbonnementPage() {
                     <Separateur />
                     <ListeAvantages
                       lignes={[
-                        [String(plan.factures), t("abonnement.facturesParMois")],
+                        [String(plan.factures), t("abonnement.facturesAuTotal")],
                         [String(plan.comptes), t("abonnement.comptesMot")],
                         ["", t("abonnement.assistantIA")],
                       ]}
@@ -578,20 +581,7 @@ export default function AbonnementPage() {
                       unite={periodicite === "annuel" ? t("abonnement.an") : t("abonnement.mois")}
                       sombre
                     />
-                    {valide && (
-                      <p className="mt-1 text-xs text-white/70">
-                        {t("abonnement.sm.calcul", {
-                          prix: formaterMontant(sm.tarif.prixParFacture),
-                          factures: calcul.factures.toLocaleString(locale),
-                          comptes: calcul.comptesInclus,
-                        })}
-                        {calcul.comptesEnPlus > 0 &&
-                          ` · ${t("abonnement.sm.comptesEnPlus", {
-                            nombre: calcul.comptesEnPlus,
-                            prix: formaterMontant(sm.tarif.prixCompteSupplementaire),
-                          })}`}
-                      </p>
-                    )}
+                    {/* Pas de détail du calcul : le centre voit seulement le montant */}
                     <Separateur sombre />
                     {valide && (
                       <ListeAvantages
@@ -863,15 +853,7 @@ export default function AbonnementPage() {
             {moyen === "mobile" ? (
               <label className="mt-5 flex flex-col gap-1.5 text-sm font-medium text-ink">
                 {t("abonnement.numeroQuiPaie")}
-                <input
-                  type="tel"
-                  inputMode="tel"
-                  autoComplete="tel"
-                  value={telephone}
-                  onChange={(e) => setTelephone(e.target.value)}
-                  placeholder="6 90 00 00 00"
-                  className="h-12 rounded-xl border border-ink/15 bg-white px-3 text-base text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
-                />
+                <ChampTelephone value={telephone} onChange={setTelephone} />
                 <span className="text-xs font-normal text-ink-soft">{t("abonnement.aideMobile")}</span>
               </label>
             ) : (

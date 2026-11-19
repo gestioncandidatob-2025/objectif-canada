@@ -35,6 +35,8 @@ export default function GroupesPage() {
 
   const [services, setServices] = useState<{ service: string; actif: boolean }[]>([]);
   const [serviceChoisi, setServiceChoisi] = useState<string | null>(null);
+  // Nombre de personnes inscrites à chaque service
+  const [nombres, setNombres] = useState<Record<string, number>>({});
   const [chargement, setChargement] = useState(true);
   const [erreur, setErreur] = useState("");
 
@@ -58,7 +60,14 @@ export default function GroupesPage() {
       setServices(liste);
       setChargement(false);
     }
+    async function chargerNombres() {
+      const res = await apiFetch("/registrations/count-by-service");
+      if (!res.ok) return;
+      const lignes: { service: string; candidats: number }[] = await res.json();
+      setNombres(Object.fromEntries(lignes.map((l) => [l.service, l.candidats])));
+    }
     chargerServices();
+    chargerNombres();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -100,6 +109,13 @@ export default function GroupesPage() {
                     }`}
                   >
                     {t("groupes.groupe", { service: formaterNomService(service) })}
+                    <span
+                      className={`mt-2 rounded-full px-3 py-0.5 text-sm font-semibold ${
+                        choisi ? "bg-white/20 text-white" : "bg-accent/10 text-accent"
+                      }`}
+                    >
+                      {t("groupes.nbCandidats", { nombre: nombres[service] ?? 0 })}
+                    </span>
                     {!actif && (
                       <span className={`mt-1 text-sm font-normal ${choisi ? "text-white/80" : "text-ink-soft"}`}>
                         ({t("candidats.offreInactive")})

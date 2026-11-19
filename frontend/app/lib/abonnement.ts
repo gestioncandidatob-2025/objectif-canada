@@ -10,7 +10,8 @@ export type EtatAbonnement = {
   periodicite: "mensuel" | "annuel" | null;
   finAbonnement: string | null;
   finGrace: string | null;
-  factures: { utilisees: number; limite: number };
+  // total : quota sur toute la vie du centre (plan Gratuit), sinon par mois
+  factures: { utilisees: number; limite: number; total?: boolean };
   comptes: { utilises: number; limite: number };
   peutFacturer: boolean;
   raisonBlocage: string | null;
