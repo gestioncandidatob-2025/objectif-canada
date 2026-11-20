@@ -4,7 +4,8 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "../../lib/api";
 import { useLangue } from "../../lib/langue";
-import ChampTelephone from "../../components/ChampTelephone";
+import ChampTelephone, { chiffresSansIndicatif } from "../../components/ChampTelephone";
+import AttentePaiementCampay from "../../components/AttentePaiementCampay";
 
 type Candidat = {
   _id: string;
@@ -58,7 +59,7 @@ function formaterNomService(service: string): string {
 
 // Tous les modes de paiement possibles (mêmes valeurs que dans le backend),
 // dans l'ordre où ils s'affichent dans la liste
-const ORDRE_MODES_PAIEMENT = ["especes", "orange_money", "mobile_money", "mobile_especes"];
+const ORDRE_MODES_PAIEMENT = ["especes", "orange_money", "mobile_money", "mobile_especes", "campay"];
 
 export default function EnregistrementPage() {
   const { t, locale } = useLangue();
@@ -93,6 +94,14 @@ export default function EnregistrementPage() {
   const [montantMobile, setMontantMobile] = useState("");
   const [montantEspeces, setMontantEspeces] = useState("");
   const [reference, setReference] = useState("");
+  // Paiement CamPay : numéro du candidat (9 chiffres) et paiement en attente
+  const [telephoneCampay, setTelephoneCampay] = useState("");
+  const [suiviCampay, setSuiviCampay] = useState<{
+    id: string;
+    montant: number;
+    telephone: string;
+    ussdCode: string | null;
+  } | null>(null);
 
  const [facturePar, setFacturePar] = useState("");
   // Nom du centre, pour l'aperçu du reçu (jamais un nom écrit en dur)
@@ -140,8 +149,9 @@ export default function EnregistrementPage() {
 
   // Modes affichés dans la liste, toujours dans le même ordre
   const modesAffiches = ORDRE_MODES_PAIEMENT.filter((m) => modesAcceptes.includes(m));
-  // Pour un reste à payer, un seul mode à la fois (pas de mixte)
-  const modesComplement = modesAffiches.filter((m) => m !== "mobile_especes");
+  // Pour un reste à payer, un seul mode à la fois (pas de mixte). Le reste en
+  // CamPay se paie depuis la fiche du candidat (bouton « Encaisser le reste »).
+  const modesComplement = modesAffiches.filter((m) => m !== "mobile_especes" && m !== "campay");
   const modeComplementValide = modesComplement.includes(modeComplement) ? modeComplement : "";
 
   // Il n'y a qu'une seule offre active par service (elle porte elle-même
@@ -183,6 +193,7 @@ export default function EnregistrementPage() {
     orange_money: t("paiement.orangeMoney"),
     mobile_money: t("paiement.mobileMoney"),
     mobile_especes: t("paiement.mixte"),
+    campay: t("paiement.campay"),
   };
   // Le reçu reste en français (document officiel du centre) : l'aperçu aussi
   const modePaiementLabelsRecu: Record<string, string> = {
@@ -190,6 +201,7 @@ export default function EnregistrementPage() {
     orange_money: "Orange Money",
     mobile_money: "MTN Mobile Money",
     mobile_especes: "Mixte (Mobile + Espèces)",
+    campay: "Mobile Money (direct)",
   };
 
   function calculerMontantTotal(): number {
@@ -369,6 +381,11 @@ export default function EnregistrementPage() {
       return;
     }
 
+    if (modePaiement === "campay" && telephoneCampay.length !== 9) {
+      setErreur(t("campay.erreurNumero"));
+      return;
+    }
+
     const MONTANT_MINIMUM_INSCRIPTION = 25000;
     const montantTotal = calculerMontantTotal();
     const montantPayeCalcule = calculerMontantPaye();
@@ -440,6 +457,31 @@ export default function EnregistrementPage() {
       body.montantEspeces = Number(montantEspeces);
     } else {
       body.montantPaye = Number(montantPaye);
+    }
+
+    // CamPay : on envoie la demande de code PIN au candidat. La facture sera
+    // créée par le serveur dès que le paiement est confirmé.
+    if (modePaiement === "campay") {
+      delete body.modePaiement;
+      body.telephone = telephoneCampay;
+      const resCampay = await apiFetch("/mobile-payments/registration", {
+        method: "POST",
+        body: JSON.stringify(body),
+      });
+      const donnees = await resCampay.json().catch(() => ({}));
+      setEnvoiEnCours(false);
+      setModalConfirmationOuvert(false);
+      if (!resCampay.ok) {
+        setErreur(Array.isArray(donnees.message) ? donnees.message.join(", ") : donnees.message);
+        return;
+      }
+      setSuiviCampay({
+        id: donnees.id,
+        montant: donnees.montant,
+        telephone: telephoneCampay,
+        ussdCode: donnees.ussdCode ?? null,
+      });
+      return;
     }
 
     const res = await apiFetch("/registrations", {
@@ -764,7 +806,13 @@ export default function EnregistrementPage() {
               <label className={labelClass}>{t("facture.modePaiement")}</label>
               <select
                 value={modePaiement}
-                onChange={(e) => setModePaiement(e.target.value)}
+                onChange={(e) => {
+                  setModePaiement(e.target.value);
+                  // CamPay : on propose le numéro du candidat, modifiable
+                  if (e.target.value === "campay" && !telephoneCampay) {
+                    setTelephoneCampay(chiffresSansIndicatif(candidatSelectionne?.telephone ?? nouveauTelephone));
+                  }
+                }}
                 className={champClass}
               >
                 <option value="" disabled>
@@ -803,6 +851,14 @@ export default function EnregistrementPage() {
                     onChange={(e) => setMontantPaye(e.target.value)}
                     className={champClass}
                   />
+                </>
+              )}
+
+              {modePaiement === "campay" && (
+                <>
+                  <label className={labelClass}>{t("campay.numeroCandidat")}</label>
+                  <ChampTelephone value={telephoneCampay} onChange={setTelephoneCampay} />
+                  <p className="text-xs text-ink-soft">{t("campay.aideNumero")}</p>
                 </>
               )}
 
@@ -917,11 +973,27 @@ export default function EnregistrementPage() {
                 disabled={envoiEnCours}
                 className="flex-1 rounded-lg bg-accent py-2.5 font-medium text-white transition active:scale-[0.98] hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {envoiEnCours ? t("facture.enregistrementEnCours") : t("facture.confirmerEtEnregistrer")}
+                {envoiEnCours
+                  ? t("facture.enregistrementEnCours")
+                  : modePaiement === "campay"
+                    ? t("campay.envoyerDemande")
+                    : t("facture.confirmerEtEnregistrer")}
               </button>
             </div>
           </div>
         </div>
+      )}
+
+      {/* Paiement CamPay : attente du code PIN du candidat */}
+      {suiviCampay && (
+        <AttentePaiementCampay
+          paiementId={suiviCampay.id}
+          montant={suiviCampay.montant}
+          telephone={suiviCampay.telephone}
+          ussdCode={suiviCampay.ussdCode}
+          onReussi={(suivi) => router.push(`/recu/${suivi.inscriptionId}`)}
+          onFermer={() => setSuiviCampay(null)}
+        />
       )}
     </div>
   );

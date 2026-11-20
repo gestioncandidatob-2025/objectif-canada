@@ -9,7 +9,7 @@ export function repartir(
   montantMobile?: number,
   montantEspeces?: number,
 ): { especes: number; mobile: number } {
-  if (mode === 'orange_money' || mode === 'mobile_money') {
+  if (mode === 'orange_money' || mode === 'mobile_money' || mode === 'campay') {
     return { especes: 0, mobile: montant };
   }
   if (mode === 'mobile_especes') {

@@ -55,6 +55,7 @@ const LABEL_PAIEMENT: Record<string, string> = {
   orange_money: "Orange Money",
   mobile_money: "MTN Mobile Money",
   mobile_especes: "Mixte (Mobile + Espèces)",
+  campay: "Mobile Money (direct)",
 };
 
 export default function RecuPage() {

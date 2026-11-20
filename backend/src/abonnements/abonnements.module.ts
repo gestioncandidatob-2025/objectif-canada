@@ -9,7 +9,6 @@ import { CampayService } from './campay.service';
 import { AbonnementsService } from './abonnements.service';
 import { AbonnementsSuperAdminService } from './abonnements-super-admin.service';
 import { AbonnementsController } from './abonnements.controller';
-import { CampayWebhookController } from './campay-webhook.controller';
 import { AbonnementsSuperAdminController } from './abonnements-super-admin.controller';
 
 /**
@@ -28,8 +27,10 @@ import { AbonnementsSuperAdminController } from './abonnements-super-admin.contr
       { name: PaiementAbonnement.name, schema: PaiementAbonnementSchema },
     ]),
   ],
-  controllers: [AbonnementsController, CampayWebhookController, AbonnementsSuperAdminController],
+  // La notification CamPay (webhook) est reçue par le module Paiements mobiles,
+  // qui la passe aux abonnements ou aux paiements des candidats
+  controllers: [AbonnementsController, AbonnementsSuperAdminController],
   providers: [CampayService, AbonnementsService, AbonnementsSuperAdminService],
-  exports: [AbonnementsService],
+  exports: [AbonnementsService, CampayService],
 })
 export class AbonnementsModule {}

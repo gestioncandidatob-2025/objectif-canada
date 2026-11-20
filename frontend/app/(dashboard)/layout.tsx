@@ -36,6 +36,7 @@ type NomIcone =
   | "factures"
   | "caisse"
   | "abonnement"
+  | "mobile"
   | "historique"
   | "parametres"
   | "plus"
@@ -91,6 +92,12 @@ function Icone({ nom, taille = 20 }: { nom: NomIcone; taille?: number }) {
       <>
         <rect x="2" y="5" width="20" height="14" rx="2" />
         <path d="M2 10h20M6 15h4" />
+      </>
+    ),
+    mobile: (
+      <>
+        <rect x="6" y="2" width="12" height="20" rx="2.5" />
+        <path d="M11 18h2" />
       </>
     ),
     historique: (
@@ -232,6 +239,8 @@ export default function DashboardLayout({
     { href: "/tableau-de-bord", label: t("menu.tableauDeBord"), icone: "tableau", visible: estAdmin },
     { href: "/utilisateurs", label: t("menu.utilisateurs"), icone: "utilisateurs", visible: estAdmin },
     { href: "/historique", label: t("menu.historique"), icone: "historique", visible: estAdmin },
+    // Argent reçu avec CamPay (paiement des candidats) et retraits
+    { href: "/mobile-money", label: t("menu.mobileMoney"), icone: "mobile", visible: estAdmin },
     // Plan, quotas et paiement de l'abonnement (CamPay)
     { href: "/abonnement", label: t("menu.abonnement"), icone: "abonnement", visible: estAdmin },
     // Paramètres du centre (les tarifs sont dans l'onglet Services)

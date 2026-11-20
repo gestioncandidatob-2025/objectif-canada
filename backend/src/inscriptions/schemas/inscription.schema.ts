@@ -9,7 +9,18 @@ export enum ModePaiement {
   MOBILE_MONEY = 'mobile_money',
   ESPECES = 'especes',
   MOBILE_ESPECES = 'mobile_especes',
+  // Payé dans l'application : le candidat valide avec son code PIN, l'argent
+  // arrive sur le compte CamPay de HREFF (jamais choisi à la main)
+  CAMPAY = 'campay',
 }
+
+/**
+ * Modes acceptés par défaut par un centre. CamPay n'en fait pas partie :
+ * le centre doit l'activer lui-même dans Paramètres → Paiements.
+ */
+export const MODES_PAIEMENT_PAR_DEFAUT: string[] = Object.values(ModePaiement).filter(
+  (mode) => mode !== ModePaiement.CAMPAY,
+);
 
 @Schema({ timestamps: true })
 export class Inscription {
