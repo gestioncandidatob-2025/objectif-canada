@@ -18,7 +18,33 @@ type Facture = {
   numeroRecu: string;
   dateInscription: string;
   montantTotal: number;
+  modePaiement?: string;
+  resteAPayer?: number;
 };
+
+// Libellés des modes de paiement (clés de traduction)
+const MODES_PAIEMENT: { valeur: string; cle: string }[] = [
+  { valeur: "especes", cle: "paiement.especes" },
+  { valeur: "orange_money", cle: "paiement.orangeMoney" },
+  { valeur: "mobile_money", cle: "paiement.mobileMoney" },
+  { valeur: "mobile_especes", cle: "paiement.mixte" },
+];
+
+/** Jour (AAAA-MM-JJ, heure locale) d'une date, pour la filtrer par période */
+function jourLocal(date: string): string {
+  const d = new Date(date);
+  const mois = String(d.getMonth() + 1).padStart(2, "0");
+  const jour = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${mois}-${jour}`;
+}
+
+/** Minuscules et sans accents, pour chercher « Hélène » en tapant « helene » */
+function normaliser(texte: string): string {
+  return texte
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
 
 const LABEL_SERVICE: Record<string, string> = {
   tcf: "TCF",
@@ -51,7 +77,56 @@ export default function FacturesPage() {
   const [erreur, setErreur] = useState("");
   const [ouvertureEnCours, setOuvertureEnCours] = useState<string | null>(null);
   const { t, locale } = useLangue();
-  const pages = usePagination(factures, 15);
+
+  // Filtres
+  const [recherche, setRecherche] = useState("");
+  const [filtreService, setFiltreService] = useState("");
+  const [filtreMode, setFiltreMode] = useState("");
+  const [filtrePaiement, setFiltrePaiement] = useState<"" | "solde" | "reste">("");
+  const [filtreDebut, setFiltreDebut] = useState("");
+  const [filtreFin, setFiltreFin] = useState("");
+
+  const servicesExistants = Array.from(new Set(factures.map((f) => f.service))).sort();
+  const filtresActifs = Boolean(
+    recherche || filtreService || filtreMode || filtrePaiement || filtreDebut || filtreFin,
+  );
+
+  const termes = normaliser(recherche.trim()).split(/\s+/).filter(Boolean);
+  const facturesFiltrees = factures.filter((f) => {
+    if (termes.length > 0) {
+      const texte = normaliser(
+        `${f.candidatId?.nom ?? ""} ${f.candidatId?.prenom ?? ""} ${f.candidatId?.telephone ?? ""} ${f.numeroRecu ?? ""}`,
+      );
+      const texteChiffres = texte.replace(/\s/g, "");
+      // Chaque mot tapé doit se retrouver (le téléphone se cherche aussi sans espaces)
+      if (!termes.every((m) => texte.includes(m) || texteChiffres.includes(m))) return false;
+    }
+    if (filtreService && f.service !== filtreService) return false;
+    if (filtreMode && f.modePaiement !== filtreMode) return false;
+    if (filtrePaiement === "solde" && (f.resteAPayer ?? 0) > 0) return false;
+    if (filtrePaiement === "reste" && (f.resteAPayer ?? 0) <= 0) return false;
+    const jour = jourLocal(f.dateInscription);
+    if (filtreDebut && jour < filtreDebut) return false;
+    if (filtreFin && jour > filtreFin) return false;
+    return true;
+  });
+
+  function effacerFiltres() {
+    setRecherche("");
+    setFiltreService("");
+    setFiltreMode("");
+    setFiltrePaiement("");
+    setFiltreDebut("");
+    setFiltreFin("");
+  }
+
+  // Un filtre changé : retour à la page 1
+  const pages = usePagination(
+    facturesFiltrees,
+    15,
+    [recherche, filtreService, filtreMode, filtrePaiement, filtreDebut, filtreFin].join("|"),
+  );
+  const totalFiltre = facturesFiltrees.reduce((somme, f) => somme + (f.montantTotal ?? 0), 0);
 
   // Export Excel (administrateur seulement) : par défaut, le mois en cours
   const [estAdmin, setEstAdmin] = useState(false);
@@ -66,6 +141,9 @@ export default function FacturesPage() {
       setEstAdmin(JSON.parse(userStr).role === "admin");
     }
   }, []);
+
+  const champFiltre =
+    "w-full min-w-0 rounded-lg border border-ink/15 bg-white px-3 py-2 text-base text-ink outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20";
 
   async function exporterExcel() {
     setErreurExport("");
@@ -200,6 +278,72 @@ export default function FacturesPage() {
         )}
         {chargement && <p className="mb-4 text-sm text-ink-soft">{t("commun.chargement")}</p>}
 
+        {/* Filtres */}
+        <div className="mb-4 rounded-2xl border border-ink/10 bg-white p-4 shadow-sm">
+          <input
+            type="search"
+            value={recherche}
+            onChange={(e) => setRecherche(e.target.value)}
+            placeholder={t("factures.rechercher")}
+            className={champFiltre}
+          />
+          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            <select value={filtreService} onChange={(e) => setFiltreService(e.target.value)} className={champFiltre}>
+              <option value="">{t("factures.tousServices")}</option>
+              {servicesExistants.map((s) => (
+                <option key={s} value={s}>
+                  {formaterNomService(s)}
+                </option>
+              ))}
+            </select>
+            <select value={filtreMode} onChange={(e) => setFiltreMode(e.target.value)} className={champFiltre}>
+              <option value="">{t("factures.tousModes")}</option>
+              {MODES_PAIEMENT.map((m) => (
+                <option key={m.valeur} value={m.valeur}>
+                  {t(m.cle)}
+                </option>
+              ))}
+            </select>
+            <select
+              value={filtrePaiement}
+              onChange={(e) => setFiltrePaiement(e.target.value as "" | "solde" | "reste")}
+              className={champFiltre}
+            >
+              <option value="">{t("factures.tousPaiements")}</option>
+              <option value="solde">{t("factures.soldees")}</option>
+              <option value="reste">{t("factures.avecReste")}</option>
+            </select>
+            <label className="flex items-center gap-2 text-sm text-ink-soft">
+              <span className="shrink-0">{t("factures.du")}</span>
+              <input
+                type="date"
+                value={filtreDebut}
+                onChange={(e) => setFiltreDebut(e.target.value)}
+                className={champFiltre}
+              />
+            </label>
+            <label className="flex items-center gap-2 text-sm text-ink-soft">
+              <span className="shrink-0">{t("factures.au")}</span>
+              <input
+                type="date"
+                value={filtreFin}
+                onChange={(e) => setFiltreFin(e.target.value)}
+                className={champFiltre}
+              />
+            </label>
+          </div>
+          {filtresActifs && (
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-sm">
+              <p className="text-ink-soft">
+                {t("factures.resultat", { n: facturesFiltrees.length, total: totalFiltre.toLocaleString(locale) })}
+              </p>
+              <button onClick={effacerFiltres} className="font-medium text-accent hover:underline">
+                {t("factures.effacerFiltres")}
+              </button>
+            </div>
+          )}
+        </div>
+
         <div className="overflow-x-auto rounded-2xl border border-ink/10 bg-white shadow-sm">
           <table className="w-full min-w-[600px] border-collapse text-sm">
             <thead>
@@ -248,6 +392,9 @@ export default function FacturesPage() {
             <p className="px-4 py-8 text-center text-ink-soft">
               {t("factures.aucune")}
             </p>
+          )}
+          {factures.length > 0 && facturesFiltrees.length === 0 && (
+            <p className="px-4 py-8 text-center text-ink-soft">{t("factures.aucunResultat")}</p>
           )}
         </div>
 
