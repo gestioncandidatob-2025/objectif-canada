@@ -65,6 +65,7 @@ const LIBELLES_PAIEMENT_EXPORT: Record<string, string> = {
   orange_money: 'Orange Money',
   mobile_money: 'MTN Mobile Money',
   mobile_especes: 'Mixte (Mobile + Espèces)',
+  campay: 'Mobile Money (CamPay)',
 };
 
 /** Montant lisible : "65 000 FCFA" */
@@ -115,7 +116,13 @@ export class InscriptionsService {
     private caisseService: CaisseService,
   ) {}
 
-  async create(createInscriptionDto: CreateInscriptionDto, centreId: string, utilisateurId?: string) {
+  /**
+   * Vérifie une facture avant de l'enregistrer et calcule ses montants et
+   * ses dates (candidat, mode de paiement, offre, régime, remise, montant
+   * payé). Utilisé par create(), et avant de lancer un paiement CamPay :
+   * on ne demande pas d'argent au candidat pour une facture qui serait refusée.
+   */
+  async preparer(createInscriptionDto: CreateInscriptionDto, centreId: string) {
     // 1. Vérifier que le candidat existe dans ce centre
     const candidat = await this.candidatModel.findOne({
       _id: createInscriptionDto.candidatId,
@@ -229,6 +236,14 @@ export class InscriptionsService {
         `Ce service coûte ${montantTotal.toLocaleString('fr-FR')} FCFA (moins de ${MONTANT_MINIMUM_INSCRIPTION.toLocaleString('fr-FR')} FCFA) : il doit être payé intégralement à l'inscription`,
       );
     }
+
+    return { candidat, offre, montantTotal, remise, dateInscription, dateDebutTest, dateFin, montantPaye };
+  }
+
+  async create(createInscriptionDto: CreateInscriptionDto, centreId: string, utilisateurId?: string) {
+    // 1 à 7 : vérifications et calculs
+    const { candidat, offre, montantTotal, remise, dateInscription, dateDebutTest, dateFin, montantPaye } =
+      await this.preparer(createInscriptionDto, centreId);
 
     // 8. Calculer le reste à payer
     const resteAPayer = montantTotal - montantPaye;
@@ -738,6 +753,12 @@ export class InscriptionsService {
   private async verifierModePaiementAccepte(modePaiement: string, centreId: string) {
     const centre = await this.centresService.trouverParId(centreId);
     const modesAcceptes = centre.modesPaiement ?? [];
+    // CamPay doit toujours avoir été activé par le centre lui-même
+    if (modePaiement === ModePaiement.CAMPAY && !modesAcceptes.includes(modePaiement)) {
+      throw new BadRequestException(
+        "Le paiement CamPay n'est pas activé pour ce centre (voir Paramètres → Paiements)",
+      );
+    }
     // Ancien centre sans liste enregistrée : tous les modes sont acceptés
     if (modesAcceptes.length > 0 && !modesAcceptes.includes(modePaiement)) {
       throw new BadRequestException(

@@ -107,6 +107,8 @@ export class VerificationsCaisseService {
             centreId: new Types.ObjectId(centreId),
             date: { $gte: debut, $lt: fin },
             encaisseParId: encaisseParId ?? { $ne: null },
+            // L'argent reçu avec CamPay n'est dans les mains de personne : déjà confirmé par CamPay
+            modePaiement: { $ne: 'campay' },
           },
         },
         {

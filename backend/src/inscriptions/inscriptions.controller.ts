@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Query, UseGuards, Req, Res } from '@nestjs/common';
+import { BadRequestException, Controller, Get, Post, Body, Patch, Param, Query, UseGuards, Req, Res } from '@nestjs/common';
 import type { Response } from 'express';
 import { ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { InscriptionsService } from './inscriptions.service';
@@ -31,6 +31,12 @@ export class InscriptionsController {
     // Abonnement : refusé si le quota de factures du mois est atteint,
     // ou si le centre est en lecture seule (abonnement expiré)
     await this.abonnementsService.verifierPeutCreerFacture(centreId);
+    // Une facture CamPay n'est créée qu'après le paiement réussi (module Paiements mobiles)
+    if (createInscriptionDto.modePaiement === 'campay') {
+      throw new BadRequestException(
+        'Un paiement CamPay se lance avec le mode « Mobile Money (CamPay) » du formulaire',
+      );
+    }
     // req.user.userId : la personne connectée, qui encaisse (point de caisse)
     return this.inscriptionsService.create(createInscriptionDto, centreId, req.user.userId);
   }

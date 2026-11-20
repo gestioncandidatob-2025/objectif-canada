@@ -135,10 +135,26 @@ const MESSAGES_EN: Record<string, string> = {
   "Le message est trop long (1000 caractères maximum)": "The message is too long (1000 characters maximum)",
   "Cette caisse n'est pas la tienne.": "This cash register is not yours.",
   "Aucune question n'attend ta réponse.": "No question is waiting for your answer.",
+
+  // Paiement CamPay des candidats et retraits
+  "Indique le montant que le candidat va payer": "Enter the amount the candidate will pay",
+  "Facture introuvable": "Invoice not found",
+  "Retrait introuvable": "Withdrawal not found",
+  "Ce retrait a déjà été traité": "This withdrawal has already been processed",
+  "Le paiement CamPay n'est pas activé pour ce centre (voir Paramètres → Paiements)":
+    "CamPay payment is not enabled for this centre (see Settings → Payments)",
+  "Un paiement CamPay se lance avec le mode « Mobile Money (CamPay) » du formulaire":
+    "A CamPay payment is started with the “Mobile Money (CamPay)” method of the form",
+  "CamPay n'a pas confirmé l'envoi": "CamPay did not confirm the transfer",
 };
 
 // Messages qui contiennent une valeur (montant, nom, nombre)
 const MODELES_EN: [RegExp, (...valeurs: string[]) => string][] = [
+  [/^Le retrait minimum est de (.+) FCFA$/, (montant) => `The minimum withdrawal is ${montant} FCFA`],
+  [
+    /^Solde insuffisant : tu peux retirer au plus (.+) FCFA$/,
+    (montant) => `Insufficient balance: you can withdraw at most ${montant} FCFA`,
+  ],
   [
     /^Le régime "(.+)" n'existe pas pour ce service\.$/,
     (regime) => `The schedule "${regime}" does not exist for this service.`,

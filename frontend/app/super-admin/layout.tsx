@@ -62,6 +62,16 @@ const LIENS = [
     ),
   },
   {
+    href: "/super-admin/mobile-money",
+    label: "Mobile Money",
+    icone: (
+      <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
+        <rect x="6" y="2" width="12" height="20" rx="2.5" stroke="currentColor" strokeWidth="1.8" />
+        <path d="M11 18h2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+  {
     href: "/super-admin/suivi",
     label: "À suivre",
     icone: (

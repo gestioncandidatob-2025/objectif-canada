@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory, raw } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
-import { ModePaiement } from '../../inscriptions/schemas/inscription.schema';
+import { MODES_PAIEMENT_PAR_DEFAUT } from '../../inscriptions/schemas/inscription.schema';
 
 export type CentreDocument = HydratedDocument<Centre>;
 
@@ -45,7 +45,7 @@ export class Centre {
 
   // Modes de paiement acceptés par le centre (toujours au moins un).
   // Un mode retiré n'apparaît plus dans le formulaire de facture.
-  @Prop({ type: [String], default: () => Object.values(ModePaiement) })
+  @Prop({ type: [String], default: () => [...MODES_PAIEMENT_PAR_DEFAUT] })
   modesPaiement!: string[];
 
   // Compteur des reçus du centre : chaque nouvelle facture prend le numéro

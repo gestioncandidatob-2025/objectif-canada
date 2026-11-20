@@ -10,7 +10,7 @@ import { Model } from 'mongoose';
 import { Centre, CentreDocument } from './schemas/centre.schema';
 import { Tarif, TarifDocument } from '../tarifs/schemas/tarif.schema';
 import { User, UserDocument, Role } from '../users/schemas/user.schema';
-import { ModePaiement } from '../inscriptions/schemas/inscription.schema';
+import { MODES_PAIEMENT_PAR_DEFAUT } from '../inscriptions/schemas/inscription.schema';
 import { S3Service } from '../factures/s3.service';
 import { UpdateSettingsDto } from './dto/update-settings.dto';
 
@@ -75,7 +75,7 @@ export class MonCentreService {
       modesPaiement:
         centre.modesPaiement && centre.modesPaiement.length > 0
           ? centre.modesPaiement
-          : Object.values(ModePaiement),
+          : MODES_PAIEMENT_PAR_DEFAUT,
       logoUrl,
       plan: centre.plan,
     };

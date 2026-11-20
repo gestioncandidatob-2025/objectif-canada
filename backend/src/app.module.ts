@@ -19,6 +19,7 @@ import { RechercheModule } from './recherche/recherche.module';
 import { AssistantModule } from './assistant/assistant.module';
 import { AbonnementsModule } from './abonnements/abonnements.module';
 import { VerificationsCaisseModule } from './verifications-caisse/verifications-caisse.module';
+import { PaiementsMobilesModule } from './paiements-mobiles/paiements-mobiles.module';
 import { validerEnvironnement } from './config/environnement';
 
 @Module({
@@ -51,6 +52,7 @@ import { validerEnvironnement } from './config/environnement';
     AssistantModule,
     AbonnementsModule,
     VerificationsCaisseModule,
+    PaiementsMobilesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

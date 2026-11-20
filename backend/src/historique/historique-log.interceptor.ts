@@ -24,6 +24,7 @@ const LIBELLES_MODULE: Record<string, string> = {
   auth: 'Authentification',
   subscription: 'Abonnement',
   'cash-checks': 'Vérification de caisse',
+  'mobile-payments': 'Paiement CamPay',
 };
 
 // Traduction des noms de champs (tous modules confondus) en libellés lisibles,

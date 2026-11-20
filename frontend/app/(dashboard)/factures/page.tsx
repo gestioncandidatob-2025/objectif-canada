@@ -28,6 +28,7 @@ const MODES_PAIEMENT: { valeur: string; cle: string }[] = [
   { valeur: "orange_money", cle: "paiement.orangeMoney" },
   { valeur: "mobile_money", cle: "paiement.mobileMoney" },
   { valeur: "mobile_especes", cle: "paiement.mixte" },
+  { valeur: "campay", cle: "paiement.campay" },
 ];
 
 /** Jour (AAAA-MM-JJ, heure locale) d'une date, pour la filtrer par période */
