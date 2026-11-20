@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { apiFetch } from "../../../lib/api";
 import { useLangue } from "../../../lib/langue";
 import ChampTelephone, { chiffresSansIndicatif } from "../../../components/ChampTelephone";
+import AttentePaiementCampay from "../../../components/AttentePaiementCampay";
 
 type HistoriqueEntree = {
   raison: string;
@@ -35,7 +36,7 @@ type Inscription = {
 };
 
 // Modes possibles pour encaisser un reste (un seul mode à la fois, pas de mixte)
-const MODES_RESTE = ["especes", "orange_money", "mobile_money"];
+const MODES_RESTE = ["especes", "orange_money", "mobile_money", "campay"];
 
 const LABEL_SERVICE: Record<string, string> = {
   tcf: "TCF",
@@ -62,12 +63,23 @@ export default function DossierCandidatPage() {
   const [envoiEnCours, setEnvoiEnCours] = useState(false);
 
   // Encaisser le reste d'une facture depuis la fiche
-  const [modesAcceptes, setModesAcceptes] = useState<string[]>(MODES_RESTE);
+  // CamPay n'est proposé que si le centre l'a activé (chargé ci-dessous)
+  const [modesAcceptes, setModesAcceptes] = useState<string[]>(MODES_RESTE.filter((m) => m !== "campay"));
   const [aEncaisser, setAEncaisser] = useState<Inscription | null>(null);
   const [montantRecu, setMontantRecu] = useState("");
   // Vide au départ : la personne doit choisir le mode (on n'oublie plus Mobile Money)
   const [modeRecu, setModeRecu] = useState("");
   const [encaissementEnCours, setEncaissementEnCours] = useState(false);
+  // Reste payé avec CamPay : numéro du candidat, puis attente de son code PIN
+  const [telephoneCampay, setTelephoneCampay] = useState("");
+  const [suiviCampay, setSuiviCampay] = useState<{
+    id: string;
+    inscriptionId: string;
+    montant: number;
+    reste: number;
+    telephone: string;
+    ussdCode: string | null;
+  } | null>(null);
   const [erreurEncaissement, setErreurEncaissement] = useState("");
   // Dernier encaissement fait ici : message + lien vers le reçu
   const [dernierEncaissement, setDernierEncaissement] = useState<{
@@ -162,6 +174,7 @@ export default function DossierCandidatPage() {
     setAEncaisser(insc);
     setMontantRecu(String(insc.resteAPayer));
     setModeRecu("");
+    setTelephoneCampay(chiffresSansIndicatif(candidat?.telephone));
     setErreurEncaissement("");
   }
 
@@ -180,6 +193,42 @@ export default function DossierCandidatPage() {
     }
     if (!modeRecu) {
       setErreurEncaissement(t("facture.erreurModePaiement"));
+      return;
+    }
+
+    // CamPay : demande de code PIN au candidat, puis attente de la confirmation
+    if (modeRecu === "campay") {
+      if (telephoneCampay.length !== 9) {
+        setErreurEncaissement(t("campay.erreurNumero"));
+        return;
+      }
+      setEncaissementEnCours(true);
+      try {
+        const res = await apiFetch("/mobile-payments/remaining-balance", {
+          method: "POST",
+          body: JSON.stringify({ inscriptionId: aEncaisser._id, montant, telephone: telephoneCampay }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          setErreurEncaissement(
+            Array.isArray(data.message) ? data.message.join(", ") : data.message ?? t("dossier.erreurEncaissement"),
+          );
+          return;
+        }
+        setSuiviCampay({
+          id: data.id,
+          inscriptionId: aEncaisser._id,
+          montant,
+          reste: aEncaisser.resteAPayer - montant,
+          telephone: telephoneCampay,
+          ussdCode: data.ussdCode ?? null,
+        });
+        setAEncaisser(null);
+      } catch {
+        setErreurEncaissement(t("dossier.erreurEncaissement"));
+      } finally {
+        setEncaissementEnCours(false);
+      }
       return;
     }
 
@@ -215,6 +264,7 @@ export default function DossierCandidatPage() {
     especes: t("paiement.especes"),
     orange_money: t("paiement.orangeMoney"),
     mobile_money: t("paiement.mobileMoney"),
+    campay: t("paiement.campay"),
   };
 
   if (chargement) {
@@ -454,7 +504,15 @@ export default function DossierCandidatPage() {
                 ))}
               </select>
             </label>
-            <p className="mt-3 text-xs text-ink-soft">{t("dossier.compteDansMaCaisse")}</p>
+            {modeRecu === "campay" ? (
+              <label className="mt-3 flex flex-col gap-1.5 text-sm font-medium text-ink">
+                {t("campay.numeroCandidat")}
+                <ChampTelephone value={telephoneCampay} onChange={setTelephoneCampay} />
+                <span className="text-xs font-normal text-ink-soft">{t("campay.aideNumero")}</span>
+              </label>
+            ) : (
+              <p className="mt-3 text-xs text-ink-soft">{t("dossier.compteDansMaCaisse")}</p>
+            )}
 
             {erreurEncaissement && (
               <p className="mt-4 rounded-xl bg-error/10 px-3 py-2 text-sm text-error">{erreurEncaissement}</p>
@@ -475,11 +533,41 @@ export default function DossierCandidatPage() {
                 disabled={encaissementEnCours || !montantRecu.trim()}
                 className="h-12 flex-1 rounded-xl bg-accent text-sm font-semibold text-white hover:bg-accent-hover disabled:opacity-50"
               >
-                {encaissementEnCours ? t("dossier.encaissementEnCours") : t("dossier.encaisser")}
+                {encaissementEnCours
+                  ? t("dossier.encaissementEnCours")
+                  : modeRecu === "campay"
+                    ? t("campay.envoyerDemande")
+                    : t("dossier.encaisser")}
               </button>
             </div>
           </div>
         </div>
+      )}
+
+      {/* Reste payé avec CamPay : attente du code PIN du candidat */}
+      {suiviCampay && (
+        <AttentePaiementCampay
+          paiementId={suiviCampay.id}
+          montant={suiviCampay.montant}
+          telephone={suiviCampay.telephone}
+          ussdCode={suiviCampay.ussdCode}
+          onReussi={() => {
+            setDernierEncaissement({
+              id: suiviCampay.inscriptionId,
+              montant: suiviCampay.montant,
+              reste: suiviCampay.reste,
+            });
+            setSuiviCampay(null);
+            setMessage("");
+            // La facture est complétée juste après la confirmation : on recharge un peu plus tard aussi
+            charger();
+            setTimeout(charger, 3000);
+          }}
+          onFermer={() => {
+            setSuiviCampay(null);
+            charger();
+          }}
+        />
       )}
     </div>
   );

@@ -154,6 +154,7 @@ export default function PointDeCaissePage() {
     if (mode === "orange_money") return t("paiement.orangeMoney");
     if (mode === "mobile_money") return t("paiement.mobileMoney");
     if (mode === "mobile_especes") return t("paiement.mixte");
+    if (mode === "campay") return t("paiement.campay");
     return mode ?? "";
   }
 

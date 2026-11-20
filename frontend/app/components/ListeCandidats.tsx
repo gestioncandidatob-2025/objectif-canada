@@ -52,6 +52,7 @@ const LIBELLES_PAIEMENT: Record<string, string> = {
   orange_money: "paiement.orangeMoney",
   mobile_money: "paiement.mobileMoney",
   mobile_especes: "paiement.mixte",
+  campay: "paiement.campay",
 };
 
 type ColonneTri = "nom" | "service" | "regime" | "resteAPayer" | "dateFin";

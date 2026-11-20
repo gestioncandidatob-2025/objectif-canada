@@ -87,6 +87,43 @@ export class CampayService {
     return { lien: data.link, reference: data.reference };
   }
 
+  /**
+   * Envoie de l'argent du compte CamPay vers un numéro MTN ou Orange
+   * (retrait demandé par un centre et validé par le super admin).
+   */
+  async envoyerVersMobile(params: {
+    montant: number;
+    telephone: string;
+    description: string;
+    referenceExterne: string;
+  }): Promise<{ reference: string; statut?: string }> {
+    const data = await this.appeler('POST', '/withdraw/', {
+      amount: String(Math.round(params.montant)),
+      to: params.telephone,
+      description: params.description,
+      external_reference: params.referenceExterne,
+    });
+    if (!data.reference) {
+      throw new HttpException("CamPay n'a pas confirmé l'envoi", HttpStatus.BAD_GATEWAY);
+    }
+    return { reference: data.reference, statut: data.status };
+  }
+
+  /** Solde réel du compte CamPay (pour comparer avec ce que l'application doit aux centres) */
+  async solde(): Promise<{ total: number; mtn: number; orange: number } | null> {
+    try {
+      const data = await this.appeler('GET', '/balance/');
+      return {
+        total: Number(data.total_balance ?? 0),
+        mtn: Number(data.mtn_balance ?? 0),
+        orange: Number(data.orange_balance ?? 0),
+      };
+    } catch (erreur) {
+      this.logger.warn(`Solde CamPay illisible : ${String(erreur)}`);
+      return null;
+    }
+  }
+
   /** Demande à CamPay où en est une transaction (la seule source sûre) */
   async etatTransaction(reference: string): Promise<TransactionCampay | null> {
     try {

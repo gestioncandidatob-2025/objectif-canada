@@ -38,6 +38,7 @@ const MODES_PAIEMENT: { cle: string; label: string; description: string }[] = [
   { cle: "orange_money", label: "paiement.orangeMoney", description: "parametres.orangeDetail" },
   { cle: "mobile_money", label: "paiement.mobileMoney", description: "parametres.mtnDetail" },
   { cle: "mobile_especes", label: "parametres.mixte", description: "parametres.mixteDetail" },
+  { cle: "campay", label: "paiement.campay", description: "parametres.campayDetail" },
 ];
 
 const TAILLE_MAX_LOGO = 1024 * 1024; // 1 Mo
