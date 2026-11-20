@@ -34,7 +34,7 @@ export class InscriptionsController {
     // Une facture CamPay n'est créée qu'après le paiement réussi (module Paiements mobiles)
     if (createInscriptionDto.modePaiement === 'campay') {
       throw new BadRequestException(
-        'Un paiement CamPay se lance avec le mode « Mobile Money (CamPay) » du formulaire',
+        'Un paiement direct se lance avec le mode « Mobile Money (direct) » du formulaire',
       );
     }
     // req.user.userId : la personne connectée, qui encaisse (point de caisse)

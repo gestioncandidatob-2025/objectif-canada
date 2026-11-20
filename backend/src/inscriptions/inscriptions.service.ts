@@ -65,7 +65,7 @@ const LIBELLES_PAIEMENT_EXPORT: Record<string, string> = {
   orange_money: 'Orange Money',
   mobile_money: 'MTN Mobile Money',
   mobile_especes: 'Mixte (Mobile + Espèces)',
-  campay: 'Mobile Money (CamPay)',
+  campay: 'Mobile Money (direct)',
 };
 
 /** Montant lisible : "65 000 FCFA" */
@@ -756,7 +756,7 @@ export class InscriptionsService {
     // CamPay doit toujours avoir été activé par le centre lui-même
     if (modePaiement === ModePaiement.CAMPAY && !modesAcceptes.includes(modePaiement)) {
       throw new BadRequestException(
-        "Le paiement CamPay n'est pas activé pour ce centre (voir Paramètres → Paiements)",
+        "Le paiement Mobile Money direct n'est pas activé pour ce centre (voir Paramètres → Paiements)",
       );
     }
     // Ancien centre sans liste enregistrée : tous les modes sont acceptés
