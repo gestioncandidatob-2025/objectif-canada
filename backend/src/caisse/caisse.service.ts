@@ -163,8 +163,12 @@ export class CaisseService {
   }
 
   /**
-   * Les onglets de la page : tous les comptes du centre, plus les anciens
-   * noms "Facturé par" qui ne correspondent à aucun compte.
+   * Les onglets de la page : les comptes qui existent dans le centre.
+   *
+   * Les anciens noms "Facturé par" (personnes sans compte, d'avant le passage
+   * aux comptes) ne sont plus affichés en onglets. Leurs paiements ne sont pas
+   * supprimés : ils restent dans la base, dans les factures et dans le tableau
+   * de bord.
    */
   async personnel(centreId: string) {
     const comptes = await this.userModel
@@ -172,14 +176,8 @@ export class CaisseService {
       .select('nom role')
       .sort({ createdAt: 1 })
       .exec();
-    const anciensNoms = (await this.paiementModel
-      .distinct('encaisseParNom', { centreId, encaisseParId: null })
-      .exec()) as string[];
 
-    return [
-      ...comptes.map((u) => ({ id: String(u._id), nom: u.nom, role: u.role as string })),
-      ...anciensNoms.map((nom) => ({ id: `nom:${nom}`, nom, role: 'ancien' })),
-    ];
+    return comptes.map((u) => ({ id: String(u._id), nom: u.nom, role: u.role as string }));
   }
 
   /**
