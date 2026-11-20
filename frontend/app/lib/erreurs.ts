@@ -141,10 +141,10 @@ const MESSAGES_EN: Record<string, string> = {
   "Facture introuvable": "Invoice not found",
   "Retrait introuvable": "Withdrawal not found",
   "Ce retrait a déjà été traité": "This withdrawal has already been processed",
-  "Le paiement CamPay n'est pas activé pour ce centre (voir Paramètres → Paiements)":
-    "CamPay payment is not enabled for this centre (see Settings → Payments)",
-  "Un paiement CamPay se lance avec le mode « Mobile Money (CamPay) » du formulaire":
-    "A CamPay payment is started with the “Mobile Money (CamPay)” method of the form",
+  "Le paiement Mobile Money direct n'est pas activé pour ce centre (voir Paramètres → Paiements)":
+    "Direct Mobile Money payment is not enabled for this centre (see Settings → Payments)",
+  "Un paiement direct se lance avec le mode « Mobile Money (direct) » du formulaire":
+    "A direct payment is started with the “Mobile Money (direct)” method of the form",
   "CamPay n'a pas confirmé l'envoi": "CamPay did not confirm the transfer",
 };
 

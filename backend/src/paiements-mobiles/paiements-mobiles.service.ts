@@ -475,7 +475,7 @@ export class PaiementsMobilesService {
       await this.actualiserRetrait(pris);
     } catch (erreur) {
       pris.statut = StatutRetrait.ECHOUE;
-      pris.raison = erreur instanceof Error ? erreur.message : 'Envoi refusé par CamPay';
+      pris.raison = erreur instanceof Error ? erreur.message : 'Envoi refusé par l’opérateur';
       await pris.save();
     }
     const aJour = await this.trouverRetrait(id);
@@ -514,7 +514,7 @@ export class PaiementsMobilesService {
     } else if (transaction.status === 'FAILED') {
       await this.retraitModel.updateOne(
         { _id: retrait._id, centreId: retrait.centreId, statut: StatutRetrait.EN_COURS },
-        { statut: StatutRetrait.ECHOUE, raison: transaction.reason || 'Envoi refusé par CamPay' },
+        { statut: StatutRetrait.ECHOUE, raison: transaction.reason || 'Envoi refusé par l’opérateur' },
       );
     }
   }
@@ -604,7 +604,7 @@ export class PaiementsMobilesService {
     const centre = await this.centreModel.findById(centreId).select('modesPaiement').exec();
     if (!centre?.modesPaiement?.includes(ModePaiement.CAMPAY)) {
       throw new ForbiddenException(
-        "Le paiement CamPay n'est pas activé pour ce centre (voir Paramètres → Paiements)",
+        "Le paiement Mobile Money direct n'est pas activé pour ce centre (voir Paramètres → Paiements)",
       );
     }
   }

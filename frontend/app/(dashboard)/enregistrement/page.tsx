@@ -201,7 +201,7 @@ export default function EnregistrementPage() {
     orange_money: "Orange Money",
     mobile_money: "MTN Mobile Money",
     mobile_especes: "Mixte (Mobile + Espèces)",
-    campay: "Mobile Money (CamPay)",
+    campay: "Mobile Money (direct)",
   };
 
   function calculerMontantTotal(): number {
