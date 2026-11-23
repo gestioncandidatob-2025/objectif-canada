@@ -64,7 +64,7 @@ export default function RecuPage() {
   const [inscription, setInscription] = useState<Inscription | null>(null);
   const [infosCentre, setInfosCentre] = useState<InfosCentre | null>(null);
   const [erreur, setErreur] = useState("");
-  // Nombre d'impressions déjà faites : dès la 1re, le reçu affiché devient un DUPLICATA
+  // Nombre d'impressions déjà faites (compté par le serveur, sans mention sur le reçu)
   const [nombreImpressions, setNombreImpressions] = useState(0);
   // Le reçu lui-même reste en français (document officiel du centre) :
   // seuls les messages et les boutons autour suivent la langue choisie
@@ -103,8 +103,7 @@ export default function RecuPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, router]);
 
-  // Le serveur compte chaque impression : la 1re est l'original, les suivantes
-  // portent « DUPLICATA »
+  // Le serveur compte chaque impression (le reçu ne porte plus de mention « DUPLICATA »)
   async function imprimer() {
     let nouveauNombre = nombreImpressions + 1;
     try {
@@ -118,7 +117,7 @@ export default function RecuPage() {
     }
 
     if (nouveauNombre >= 2 && nombreImpressions === 0) {
-      // Déjà imprimé ailleurs entre-temps : on affiche DUPLICATA avant d'imprimer
+      // Déjà imprimé ailleurs entre-temps : on met le compteur à jour avant d'imprimer
       setNombreImpressions(nouveauNombre);
       setTimeout(() => window.print(), 100);
       return;
@@ -184,9 +183,6 @@ export default function RecuPage() {
             ------------------------------------
           </p>
           <p className="font-bold">REÇU DE PAIEMENT</p>
-          {nombreImpressions >= 1 && (
-            <p className="my-1 text-lg font-bold tracking-[0.3em]">*** DUPLICATA ***</p>
-          )}
           <p className="tracking-widest">
             ------------------------------------
           </p>
