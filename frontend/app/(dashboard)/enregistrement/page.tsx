@@ -712,7 +712,7 @@ export default function EnregistrementPage() {
                 className={champClass}
               />
               <label className={labelClass}>{t("facture.telephone9")}</label>
-              <ChampTelephone value={nouveauTelephone} onChange={handleTelephoneChange} />
+              <ChampTelephone value={nouveauTelephone} onChange={handleTelephoneChange} sansIndicatif />
               {erreurTelephone && (
                 <p className="text-sm text-error">{erreurTelephone}</p>
               )}
@@ -857,7 +857,7 @@ export default function EnregistrementPage() {
               {modePaiement === "campay" && (
                 <>
                   <label className={labelClass}>{t("campay.numeroCandidat")}</label>
-                  <ChampTelephone value={telephoneCampay} onChange={setTelephoneCampay} />
+                  <ChampTelephone value={telephoneCampay} onChange={setTelephoneCampay} sansIndicatif />
                   <p className="text-xs text-ink-soft">{t("campay.aideNumero")}</p>
                 </>
               )}

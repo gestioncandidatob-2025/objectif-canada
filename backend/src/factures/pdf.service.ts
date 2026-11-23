@@ -137,11 +137,8 @@ export class PdfService {
 
       separateur();
       centre('REÇU DE PAIEMENT', 11, true);
-      // Réimpression : la copie ne peut pas passer pour l'original
-      if (options.duplicata) {
-        doc.moveDown(0.2);
-        centre('*** DUPLICATA ***', 12, true);
-      }
+      // La mention « DUPLICATA » a été retirée à la demande : une réimpression
+      // est identique à l'original (options.duplicata est gardé mais ignoré)
       separateur();
 
       // ---- Le reçu ----

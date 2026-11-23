@@ -363,7 +363,7 @@ export default function DossierCandidatPage() {
               </div>
               <div>
                 <label className={labelClass}>{t("facture.telephone")}</label>
-                <ChampTelephone value={editTelephone} onChange={setEditTelephone} />
+                <ChampTelephone value={editTelephone} onChange={setEditTelephone} sansIndicatif />
               </div>
               <div>
                 <label className={labelClass}>
@@ -507,7 +507,7 @@ export default function DossierCandidatPage() {
             {modeRecu === "campay" ? (
               <label className="mt-3 flex flex-col gap-1.5 text-sm font-medium text-ink">
                 {t("campay.numeroCandidat")}
-                <ChampTelephone value={telephoneCampay} onChange={setTelephoneCampay} />
+                <ChampTelephone value={telephoneCampay} onChange={setTelephoneCampay} sansIndicatif />
                 <span className="text-xs font-normal text-ink-soft">{t("campay.aideNumero")}</span>
               </label>
             ) : (

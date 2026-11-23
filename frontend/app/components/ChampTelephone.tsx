@@ -1,8 +1,9 @@
 "use client";
 
 /**
- * Champ de téléphone camerounais : l'indicatif +237 est affiché d'office,
- * la personne tape seulement ses 9 chiffres (ex : 690000000).
+ * Champ de téléphone camerounais : la personne tape seulement ses 9 chiffres
+ * (ex : 690000000). L'indicatif +237 est affiché devant, sauf avec
+ * `sansIndicatif` (numéros des candidats).
  *
  * `value` et `onChange` travaillent avec les 9 chiffres seuls.
  */
@@ -27,6 +28,7 @@ export default function ChampTelephone({
   placeholder = "6 90 00 00 00",
   disabled,
   autoFocus,
+  sansIndicatif = false,
 }: {
   value: string;
   onChange: (chiffres: string) => void;
@@ -35,6 +37,7 @@ export default function ChampTelephone({
   placeholder?: string;
   disabled?: boolean;
   autoFocus?: boolean;
+  sansIndicatif?: boolean;
 }) {
   return (
     <div
@@ -44,9 +47,11 @@ export default function ChampTelephone({
         className
       }
     >
-      <span className="flex select-none items-center border-r border-ink/10 bg-paper px-3 text-base font-medium text-ink-soft">
-        +237
-      </span>
+      {!sansIndicatif && (
+        <span className="flex select-none items-center border-r border-ink/10 bg-paper px-3 text-base font-medium text-ink-soft">
+          +237
+        </span>
+      )}
       <input
         id={id}
         type="tel"
