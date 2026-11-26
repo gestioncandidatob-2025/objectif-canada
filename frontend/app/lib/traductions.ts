@@ -446,8 +446,7 @@ export const fr = {
     cree: "Utilisateur créé avec succès",
     confirmerSuppression: "Confirmer la suppression de cet utilisateur ?",
     nom: "Nom",
-    reglesMotDePasse:
-      "Au moins 8 caractères, avec 1 majuscule, 1 minuscule, 1 chiffre et 1 caractère spécial.",
+    reglesMotDePasse: "Au moins 6 caractères.",
     confirmerMotDePasse: "Confirmer le mot de passe",
     motsDePasseDifferents: "Les mots de passe ne correspondent pas",
     role: "Rôle",
@@ -528,6 +527,7 @@ export const fr = {
   },
   inscription: {
     surTitre: "Nouveau centre",
+    reglesMotDePasse: "Au moins 6 caractères.",
     accroche: "Crée ton espace en une minute. Tu commences au plan Gratuit.",
     erreurChamps: "Remplis tous les champs",
     nomCentreExemple: "Ex : Centre Excellence Langues",
@@ -1239,8 +1239,7 @@ export const en: Dictionnaire = {
     cree: "User created",
     confirmerSuppression: "Delete this user?",
     nom: "Name",
-    reglesMotDePasse:
-      "At least 8 characters, with 1 capital letter, 1 lowercase letter, 1 number and 1 special character.",
+    reglesMotDePasse: "At least 6 characters.",
     confirmerMotDePasse: "Confirm the password",
     motsDePasseDifferents: "The passwords do not match",
     role: "Role",
@@ -1321,6 +1320,7 @@ export const en: Dictionnaire = {
   },
   inscription: {
     surTitre: "New centre",
+    reglesMotDePasse: "At least 6 characters.",
     accroche: "Create your space in one minute. You start on the Free plan.",
     erreurChamps: "Fill in all the fields",
     nomCentreExemple: "E.g. Excellence Language Centre",

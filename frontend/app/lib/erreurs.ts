@@ -9,8 +9,7 @@ const MESSAGES_EN: Record<string, string> = {
     "This centre is suspended. Contact HREFF to reactivate it.",
   "Email invalide": "Invalid email",
   "Le mot de passe est obligatoire": "Password is required",
-  "Le mot de passe doit contenir au moins 8 caractères, avec 1 majuscule, 1 minuscule, 1 chiffre et 1 caractère spécial":
-    "The password must have at least 8 characters, with 1 uppercase letter, 1 lowercase letter, 1 digit and 1 special character",
+  "Le mot de passe doit contenir au moins 6 caractères": "The password must have at least 6 characters",
   "Ce mot de passe a déjà été utilisé. Choisis-en un différent.":
     "This password has already been used. Choose a different one.",
   "Le nouveau mot de passe est obligatoire": "The new password is required",

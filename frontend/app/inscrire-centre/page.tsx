@@ -9,8 +9,8 @@ import { useLangue } from "../lib/langue";
 import ChampTelephone, { avecIndicatif } from "../components/ChampTelephone";
 import { traduireReponseServeur } from "../lib/api";
 
-// Mêmes règles que le backend (8 caractères, 1 majuscule, 1 minuscule, 1 chiffre, 1 caractère spécial)
-const REGEX_MOT_DE_PASSE = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
+// Même règle que le backend : 6 caractères minimum, sans autre contrainte
+const LONGUEUR_MIN_MOT_DE_PASSE = 6;
 
 export default function InscrireCentrePage() {
   const router = useRouter();
@@ -38,8 +38,8 @@ export default function InscrireCentrePage() {
       setErreur(t("inscription.erreurChamps"));
       return;
     }
-    if (!REGEX_MOT_DE_PASSE.test(motDePasse)) {
-      setErreur(t("utilisateurs.reglesMotDePasse"));
+    if (motDePasse.length < LONGUEUR_MIN_MOT_DE_PASSE) {
+      setErreur(t("inscription.reglesMotDePasse"));
       return;
     }
     if (motDePasse !== confirmation) {
@@ -143,7 +143,7 @@ export default function InscrireCentrePage() {
             wrapperClassName="mb-1"
             className="w-full rounded-lg border border-ink/15 px-3 py-2.5 text-base text-ink outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20"
           />
-          <p className="mb-4 text-xs text-ink-soft">{t("utilisateurs.reglesMotDePasse")}</p>
+          <p className="mb-4 text-xs text-ink-soft">{t("inscription.reglesMotDePasse")}</p>
 
           <label className={labelClass}>{t("utilisateurs.confirmerMotDePasse")}</label>
           <ChampMotDePasse

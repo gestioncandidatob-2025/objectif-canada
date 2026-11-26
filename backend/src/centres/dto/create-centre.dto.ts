@@ -1,6 +1,6 @@
-import { IsEmail, IsNotEmpty, IsOptional, Matches, MinLength } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsOptional, MinLength } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { MESSAGE_MOT_DE_PASSE, REGEX_MOT_DE_PASSE } from '../../users/dto/create-user.dto';
+import { MESSAGE_MOT_DE_PASSE_CENTRE } from '../../users/dto/create-user.dto';
 
 /** Création d'un centre et de son premier administrateur (par le super admin) */
 export class CreateCentreDto {
@@ -24,8 +24,8 @@ export class CreateCentreDto {
   @IsEmail({}, { message: "Email de l'administrateur invalide" })
   adminEmail!: string;
 
-  @ApiProperty({ example: 'MotDePasse123!' })
-  @MinLength(8, { message: MESSAGE_MOT_DE_PASSE })
-  @Matches(REGEX_MOT_DE_PASSE, { message: MESSAGE_MOT_DE_PASSE })
+  // Création d'un centre : seulement 6 caractères minimum, sans autre règle
+  @ApiProperty({ example: 'secret' })
+  @MinLength(6, { message: MESSAGE_MOT_DE_PASSE_CENTRE })
   adminMotDePasse!: string;
 }

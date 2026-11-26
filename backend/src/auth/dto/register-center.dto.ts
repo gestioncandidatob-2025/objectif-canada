@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import { IsEmail, IsNotEmpty, IsString, Matches, MaxLength, MinLength } from 'class-validator';
-import { MESSAGE_MOT_DE_PASSE, REGEX_MOT_DE_PASSE } from '../../users/dto/create-user.dto';
+import { MESSAGE_MOT_DE_PASSE_CENTRE } from '../../users/dto/create-user.dto';
 
 // Enlève les espaces au début et à la fin de ce que la personne a tapé
 const enleverEspaces = ({ value }: { value: unknown }) =>
@@ -34,8 +34,9 @@ export class RegisterCenterDto {
   @Matches(/^[+\d\s().-]{8,20}$/, { message: 'Numéro de téléphone invalide' })
   telephone!: string;
 
-  @ApiProperty({ example: 'MotDePasse123!' })
-  @MinLength(8, { message: MESSAGE_MOT_DE_PASSE })
-  @Matches(REGEX_MOT_DE_PASSE, { message: MESSAGE_MOT_DE_PASSE })
+  // Création d'un centre : seulement 6 caractères minimum, sans autre règle
+  @ApiProperty({ example: 'secret' })
+  @IsString()
+  @MinLength(6, { message: MESSAGE_MOT_DE_PASSE_CENTRE })
   motDePasse!: string;
 }
