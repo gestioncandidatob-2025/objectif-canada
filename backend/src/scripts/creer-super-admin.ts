@@ -31,8 +31,8 @@ async function main() {
   if (!email || !motDePasse) {
     throw new Error('SUPER_ADMIN_EMAIL et SUPER_ADMIN_PASSWORD sont obligatoires');
   }
-  if (motDePasse.length < 8) {
-    throw new Error('SUPER_ADMIN_PASSWORD doit faire au moins 8 caractères');
+  if (motDePasse.length < 6) {
+    throw new Error('SUPER_ADMIN_PASSWORD doit faire au moins 6 caractères');
   }
 
   const dbName = String(config.MONGODB_DB_NAME);

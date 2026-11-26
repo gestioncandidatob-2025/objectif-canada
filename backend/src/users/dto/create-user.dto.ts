@@ -2,9 +2,13 @@ import { IsEmail, IsIn, IsNotEmpty, IsOptional, Matches, MinLength } from 'class
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Role } from '../schemas/user.schema';
 
-export const REGEX_MOT_DE_PASSE = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
+// Règle unique pour tous les mots de passe : 6 caractères minimum, sans autre contrainte
+export const REGEX_MOT_DE_PASSE = /^.{6,}$/;
 export const MESSAGE_MOT_DE_PASSE =
-  'Le mot de passe doit contenir au moins 8 caractères, avec 1 majuscule, 1 minuscule, 1 chiffre et 1 caractère spécial';
+  'Le mot de passe doit contenir au moins 6 caractères';
+
+/** Création d'un centre (inscription ou super admin) : même règle */
+export const MESSAGE_MOT_DE_PASSE_CENTRE = MESSAGE_MOT_DE_PASSE;
 
 export class CreateUserDto {
   @ApiProperty({ example: 'Marie Fotso', description: "Nom complet de l'utilisateur" })
@@ -16,7 +20,7 @@ export class CreateUserDto {
   email!: string;
 
   @ApiProperty({ example: 'MotDePasse123!', description: 'Mot de passe (sera chiffré automatiquement)' })
-  @MinLength(8, { message: MESSAGE_MOT_DE_PASSE })
+  @MinLength(6, { message: MESSAGE_MOT_DE_PASSE })
   @Matches(REGEX_MOT_DE_PASSE, { message: MESSAGE_MOT_DE_PASSE })
   motDePasse!: string;
 
