@@ -471,7 +471,7 @@ function PageCentres() {
                 </button>
               </div>
               <p className="mt-1 text-xs text-ink-soft">
-                8 caractères minimum, avec majuscule, minuscule, chiffre et caractère spécial.
+                6 caractères minimum.
               </p>
             </div>
 

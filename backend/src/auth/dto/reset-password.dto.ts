@@ -16,7 +16,7 @@ export class ResetPasswordDto {
   @ApiProperty({ example: 'NouveauMotDePasse123!' })
   @IsNotEmpty({ message: 'Le nouveau mot de passe est obligatoire' })
   @IsString()
-  @MinLength(8, { message: MESSAGE_MOT_DE_PASSE })
+  @MinLength(6, { message: MESSAGE_MOT_DE_PASSE })
   @Matches(REGEX_MOT_DE_PASSE, { message: MESSAGE_MOT_DE_PASSE })
   nouveauMotDePasse!: string;
 }
