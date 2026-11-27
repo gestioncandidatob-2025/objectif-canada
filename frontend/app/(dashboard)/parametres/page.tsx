@@ -15,6 +15,8 @@ type Parametres = {
   niu: string;
   rccm: string;
   piedDePageRecu: string;
+  // Taille du logo sur le reçu : 1 (très petit) à 5 (très grand)
+  tailleLogoRecu: number;
   modesPaiement: string[];
   logoUrl: string | null;
   plan: string;
@@ -42,6 +44,16 @@ const MODES_PAIEMENT: { cle: string; label: string; description: string }[] = [
 ];
 
 const TAILLE_MAX_LOGO = 1024 * 1024; // 1 Mo
+
+// Taille du logo sur le reçu : agrandissement et nom de chaque taille
+const ECHELLES_LOGO: Record<number, number> = { 1: 0.6, 2: 0.8, 3: 1, 4: 1.3, 5: 1.6 };
+const NOMS_TAILLES: Record<number, string> = {
+  1: "parametres.tailleTresPetit",
+  2: "parametres.taillePetit",
+  3: "parametres.tailleMoyen",
+  4: "parametres.tailleGrand",
+  5: "parametres.tailleTresGrand",
+};
 const LONGUEUR_MAX_PIED_DE_PAGE = 300;
 
 // Le serveur renvoie soit un message, soit une liste de messages
@@ -159,6 +171,39 @@ export default function ParametresPage() {
       setErreur(t("connexion.erreurServeur"));
     } finally {
       setEnregistrementEnCours(false);
+    }
+  }
+
+  // Boutons − et + : la nouvelle taille est enregistrée tout de suite
+  const [tailleEnCours, setTailleEnCours] = useState(false);
+  async function changerTailleLogo(ecart: number) {
+    if (!formulaire) return;
+    const actuelle = formulaire.tailleLogoRecu ?? 3;
+    const nouvelle = Math.min(5, Math.max(1, actuelle + ecart));
+    if (nouvelle === actuelle) return;
+    setMessage("");
+    setErreur("");
+    // L'aperçu change tout de suite
+    setFormulaire({ ...formulaire, tailleLogoRecu: nouvelle });
+    setTailleEnCours(true);
+    try {
+      const res = await apiFetch("/center/settings", {
+        method: "PATCH",
+        body: JSON.stringify({ tailleLogoRecu: nouvelle }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setFormulaire((f) => (f ? { ...f, tailleLogoRecu: actuelle } : f));
+        setErreur(messageErreur(data, t("parametres.erreurEnregistrement")));
+        return;
+      }
+      setFormulaire((f) => (f ? { ...f, tailleLogoRecu: data.tailleLogoRecu ?? nouvelle } : data));
+      setMessage(t("parametres.tailleLogoEnregistree", { taille: t(NOMS_TAILLES[nouvelle]) }));
+    } catch {
+      setFormulaire((f) => (f ? { ...f, tailleLogoRecu: actuelle } : f));
+      setErreur(t("connexion.erreurServeur"));
+    } finally {
+      setTailleEnCours(false);
     }
   }
 
@@ -290,12 +335,14 @@ export default function ParametresPage() {
             <div className="rounded-2xl border border-ink/10 bg-white p-6 shadow-sm">
               <h2 className="mb-4 text-lg font-semibold text-ink">{t("parametres.logo")}</h2>
               <div className="flex flex-wrap items-center gap-6">
-                <div className="flex h-24 w-40 items-center justify-center overflow-hidden rounded-lg border border-dashed border-ink/20 bg-paper">
+                <div className="flex h-28 w-48 items-center justify-center overflow-hidden rounded-lg border border-dashed border-ink/20 bg-paper">
                   {formulaire.logoUrl ? (
                     <img
                       src={formulaire.logoUrl}
                       alt={t("menu.logoDuCentre")}
-                      className="h-full w-full object-contain"
+                      className="w-auto max-w-full object-contain transition-all"
+                      // Même rapport de taille que sur le reçu
+                      style={{ height: Math.round(64 * (ECHELLES_LOGO[formulaire.tailleLogoRecu ?? 3] ?? 1)) }}
                     />
                   ) : (
                     <span className="text-xs text-ink-soft">{t("parametres.aucunLogo")}</span>
@@ -321,6 +368,39 @@ export default function ParametresPage() {
                     />
                   </label>
                   <p className="mt-2 text-xs text-ink-soft">{t("parametres.formatLogo")}</p>
+
+                  {/* Taille du logo sur le reçu */}
+                  {formulaire.logoUrl && (
+                    <div className="mt-4">
+                      <p className="mb-1.5 text-sm font-medium text-ink-soft">{t("parametres.tailleLogoRecu")}</p>
+                      <div className="inline-flex items-center overflow-hidden rounded-lg border border-ink/15">
+                        <button
+                          type="button"
+                          onClick={() => changerTailleLogo(-1)}
+                          disabled={tailleEnCours || (formulaire.tailleLogoRecu ?? 3) <= 1}
+                          aria-label={t("parametres.diminuerLogo")}
+                          title={t("parametres.diminuerLogo")}
+                          className="flex h-10 w-11 items-center justify-center text-lg font-semibold text-ink transition hover:bg-paper disabled:cursor-not-allowed disabled:opacity-30"
+                        >
+                          −
+                        </button>
+                        <span className="min-w-[7.5rem] border-x border-ink/15 px-3 text-center text-sm font-medium text-ink">
+                          {t(NOMS_TAILLES[formulaire.tailleLogoRecu ?? 3])}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => changerTailleLogo(1)}
+                          disabled={tailleEnCours || (formulaire.tailleLogoRecu ?? 3) >= 5}
+                          aria-label={t("parametres.augmenterLogo")}
+                          title={t("parametres.augmenterLogo")}
+                          className="flex h-10 w-11 items-center justify-center text-lg font-semibold text-ink transition hover:bg-paper disabled:cursor-not-allowed disabled:opacity-30"
+                        >
+                          +
+                        </button>
+                      </div>
+                      <p className="mt-1.5 text-xs text-ink-soft">{t("parametres.tailleLogoAide")}</p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -444,7 +524,8 @@ export default function ParametresPage() {
                   <img
                     src={formulaire.logoUrl}
                     alt="Logo"
-                    className="mx-auto mb-2 h-12 w-auto object-contain"
+                    className="mx-auto mb-2 w-auto max-w-full object-contain"
+                    style={{ height: Math.round(48 * (ECHELLES_LOGO[formulaire.tailleLogoRecu ?? 3] ?? 1)) }}
                   />
                 )}
                 <p className="font-bold">{formulaire.nom}</p>

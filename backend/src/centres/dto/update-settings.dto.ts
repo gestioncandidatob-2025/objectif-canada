@@ -5,10 +5,13 @@ import {
   ArrayUnique,
   IsArray,
   IsIn,
+  IsInt,
   IsNotEmpty,
   IsOptional,
   IsString,
+  Max,
   MaxLength,
+  Min,
 } from 'class-validator';
 import { ModePaiement } from '../../inscriptions/schemas/inscription.schema';
 
@@ -71,6 +74,13 @@ export class UpdateSettingsDto {
   @IsString()
   @MaxLength(300, { message: 'Le texte du reçu ne doit pas dépasser 300 caractères' })
   piedDePageRecu?: string;
+
+  @ApiPropertyOptional({ example: 3, description: 'Taille du logo sur le reçu : 1 (très petit) à 5 (très grand)' })
+  @IsOptional()
+  @IsInt({ message: 'La taille du logo doit être un nombre entier' })
+  @Min(1, { message: 'La taille du logo va de 1 à 5' })
+  @Max(5, { message: 'La taille du logo va de 1 à 5' })
+  tailleLogoRecu?: number;
 
   @ApiPropertyOptional({
     enum: ModePaiement,
