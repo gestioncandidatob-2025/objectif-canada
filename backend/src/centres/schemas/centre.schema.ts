@@ -43,6 +43,11 @@ export class Centre {
   @Prop()
   piedDePageRecu?: string;
 
+  // Taille du logo sur le reçu (page reçu et PDF) : de 1 (très petit) à 5
+  // (très grand). 3 = taille normale.
+  @Prop({ default: 3, min: 1, max: 5 })
+  tailleLogoRecu!: number;
+
   // Modes de paiement acceptés par le centre (toujours au moins un).
   // Un mode retiré n'apparaît plus dans le formulaire de facture.
   @Prop({ type: [String], default: () => [...MODES_PAIEMENT_PAR_DEFAUT] })

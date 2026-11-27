@@ -789,6 +789,7 @@ export class InscriptionsService {
         ville: centre.ville,
         piedDePageRecu: centre.piedDePageRecu,
         logo: logo ?? undefined,
+        tailleLogo: centre.tailleLogoRecu ?? 3,
       },
       { duplicata },
     );

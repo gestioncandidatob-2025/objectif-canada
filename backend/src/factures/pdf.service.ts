@@ -33,7 +33,12 @@ export interface CentrePourFacture {
   piedDePageRecu?: string;
   // Contenu de l'image du logo (PNG ou JPG), si le centre en a un
   logo?: Buffer;
+  // Taille du logo : 1 (très petit) à 5 (très grand), 3 = normal
+  tailleLogo?: number;
 }
+
+/** Agrandissement du logo pour chaque taille (3 = taille normale) */
+export const ECHELLES_LOGO: Record<number, number> = { 1: 0.6, 2: 0.8, 3: 1, 4: 1.3, 5: 1.6 };
 
 // Libellés des anciens services (données existantes) ; tout autre service
 // est affiché tel qu'il a été saisi dans la page Services
@@ -109,17 +114,21 @@ export class PdfService {
       if (centreFacture.logo) {
         const margeGauche = doc.page.margins.left;
         const yLogo = doc.y;
+        // Taille choisie dans les Paramètres (jamais plus large que le ticket)
+        const echelle = ECHELLES_LOGO[centreFacture.tailleLogo ?? 3] ?? 1;
+        const largeurLogo = Math.min(LARGEUR_LOGO * echelle, LARGEUR_TICKET - 2 * margeGauche);
+        const hauteurLogo = HAUTEUR_LOGO * echelle;
         try {
-          // Logo centré dans un cadre de LARGEUR_LOGO x HAUTEUR_LOGO
-          doc.image(centreFacture.logo, (LARGEUR_TICKET - LARGEUR_LOGO) / 2, yLogo, {
-            fit: [LARGEUR_LOGO, HAUTEUR_LOGO],
+          // Logo centré dans un cadre largeurLogo x hauteurLogo
+          doc.image(centreFacture.logo, (LARGEUR_TICKET - largeurLogo) / 2, yLogo, {
+            fit: [largeurLogo, hauteurLogo],
             align: 'center',
             valign: 'center',
           });
           // On place nous-mêmes le texte suivant SOUS le logo, et on remet la
           // position horizontale à la marge (sinon le texte se superpose au logo)
           doc.x = margeGauche;
-          doc.y = yLogo + HAUTEUR_LOGO + 6;
+          doc.y = yLogo + hauteurLogo + 6;
         } catch (erreur) {
           // Image illisible : le reçu sort quand même, sans logo
           doc.x = margeGauche;

@@ -401,6 +401,16 @@ export const fr = {
     modesAcceptes: "Modes de paiement acceptés",
     modesAide:
       "Un mode décoché n'apparaît plus dans le formulaire de facture. Il en faut au moins un.",
+    tailleLogoRecu: "Taille du logo sur le reçu",
+    tailleLogoAide: "S'applique au reçu imprimé et au PDF de la facture.",
+    diminuerLogo: "Diminuer la taille du logo",
+    augmenterLogo: "Augmenter la taille du logo",
+    tailleTresPetit: "Très petit",
+    taillePetit: "Petit",
+    tailleMoyen: "Moyen",
+    tailleGrand: "Grand",
+    tailleTresGrand: "Très grand",
+    tailleLogoEnregistree: "Taille du logo enregistrée : {taille}",
   },
   tarifs: {
     titre: "Offres de formation",
@@ -1194,6 +1204,16 @@ export const en: Dictionnaire = {
     modesAcceptes: "Accepted payment methods",
     modesAide:
       "An unticked method no longer appears in the invoice form. At least one is required.",
+    tailleLogoRecu: "Logo size on the receipt",
+    tailleLogoAide: "Applies to the printed receipt and the invoice PDF.",
+    diminuerLogo: "Make the logo smaller",
+    augmenterLogo: "Make the logo bigger",
+    tailleTresPetit: "Very small",
+    taillePetit: "Small",
+    tailleMoyen: "Medium",
+    tailleGrand: "Large",
+    tailleTresGrand: "Very large",
+    tailleLogoEnregistree: "Logo size saved: {taille}",
   },
   tarifs: {
     titre: "Training offers",

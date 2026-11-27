@@ -39,6 +39,8 @@ type InfosCentre = {
   rccm: string;
   piedDePageRecu: string;
   logoUrl: string | null;
+  // Taille du logo sur le reçu : 1 (très petit) à 5 (très grand)
+  tailleLogoRecu?: number;
 };
 
 // Libellés des anciens services (données existantes) ; tout autre service
@@ -57,6 +59,9 @@ const LABEL_PAIEMENT: Record<string, string> = {
   mobile_especes: "Mixte (Mobile + Espèces)",
   campay: "Mobile Money (direct)",
 };
+
+// Agrandissement du logo pour chaque taille (les mêmes que dans le PDF)
+const ECHELLES_LOGO: Record<number, number> = { 1: 0.6, 2: 0.8, 3: 1, 4: 1.3, 5: 1.6 };
 
 export default function RecuPage() {
   const { id } = useParams<{ id: string }>();
@@ -163,7 +168,9 @@ export default function RecuPage() {
             <img
               src={infosCentre.logoUrl}
               alt="Logo"
-              className="mx-auto h-20 w-auto object-contain"
+              className="mx-auto w-auto max-w-full object-contain"
+              // Taille choisie dans Paramètres (80 px = taille normale)
+              style={{ height: Math.round(80 * (ECHELLES_LOGO[infosCentre.tailleLogoRecu ?? 3] ?? 1)) }}
             />
           )}
           <p className="mt-1 font-bold">{infosCentre.nom}</p>

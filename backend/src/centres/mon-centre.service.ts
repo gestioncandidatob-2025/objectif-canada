@@ -71,6 +71,7 @@ export class MonCentreService {
       niu: centre.niu ?? '',
       rccm: centre.rccm ?? '',
       piedDePageRecu: centre.piedDePageRecu ?? '',
+      tailleLogoRecu: centre.tailleLogoRecu ?? 3,
       // Ancien centre sans liste enregistrée : tous les modes sont acceptés
       modesPaiement:
         centre.modesPaiement && centre.modesPaiement.length > 0
@@ -102,6 +103,7 @@ export class MonCentreService {
     if (dto.niu !== undefined) centre.niu = dto.niu;
     if (dto.rccm !== undefined) centre.rccm = dto.rccm;
     if (dto.piedDePageRecu !== undefined) centre.piedDePageRecu = dto.piedDePageRecu;
+    if (dto.tailleLogoRecu !== undefined) centre.tailleLogoRecu = dto.tailleLogoRecu;
     if (dto.modesPaiement !== undefined) centre.modesPaiement = dto.modesPaiement;
 
     await centre.save();

@@ -35,6 +35,8 @@ const MESSAGES_EN: Record<string, string> = {
   "Cette action nécessite d'être rattaché à un centre":
     "This action requires being linked to a centre",
   "Mode de paiement invalide": "Invalid payment method",
+  "La taille du logo doit être un nombre entier": "The logo size must be a whole number",
+  "La taille du logo va de 1 à 5": "The logo size goes from 1 to 5",
   "Ce mode de paiement n'est pas accepté par le centre (voir Paramètres → Paiements)":
     "This payment method is not accepted by the centre (see Settings → Payments)",
 
